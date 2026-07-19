@@ -130,21 +130,27 @@ class HomeViewModel(
                 
                 combine(
                     swipeDecisionRepository.getSyncHistory(config.userId),
+                    swipeDecisionRepository.getAllDecisionsForUser(config.userId),
                     _uiState.map { it.albums },
                     _uiState.map { it.albumTreatedCounts }
-                ) { history, albums, treatedCounts ->
+                ) { history, allDecisions, albums, treatedCounts ->
                     val now = System.currentTimeMillis()
                     val oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000L)
                     
                     val weeklyHistory = history.filter { it.timestamp >= oneWeekAgo }
 
+                    // STATS GLOBALES (Cumul Historique + Décisions locales non synchronisées)
+                    // On reprend le cumul de tout ce qui a été fait par le passé
                     val totalDeleted = history.sumOf { it.deletedCount }
                     val totalBytes = history.sumOf { it.bytesSaved }
-                    val totalKept = history.sumOf { it.keptCount }
-                    val totalArchived = history.sumOf { it.archivedCount }
                     val totalLocked = history.sumOf { it.lockedCount }
-                    val totalSkipped = history.sumOf { it.skippedCount }
                     
+                    // Pour KEEP, ARCHIVE et SKIP, on fait : (Somme de l'historique) + (Nouveaux swipes pas encore synchronisés)
+                    val totalKept = history.sumOf { it.keptCount } + allDecisions.count { it.decision == "KEEP" && !it.isSynced }
+                    val totalArchived = history.sumOf { it.archivedCount } + allDecisions.count { it.decision == "ARCHIVE" && !it.isSynced }
+                    val totalSkipped = history.sumOf { it.skippedCount } + allDecisions.count { it.decision == "SKIP" && !it.isSynced }
+                    
+                    // Stats hebdomadaires (basées sur l'activité réelle enregistrée)
                     val weeklyDeleted = weeklyHistory.sumOf { it.deletedCount }
                     val weeklyBytes = weeklyHistory.sumOf { it.bytesSaved }
 

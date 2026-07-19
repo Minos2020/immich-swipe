@@ -24,34 +24,32 @@ interface SwipeDecisionDao {
 
     /**
      * Récupère toutes les décisions pour un album spécifique d'un utilisateur donné.
-     * On utilise un Flow pour être notifié automatiquement dès que la base change.
+     * Utilise désormais la table de jointure album_assets.
      */
-    @Query("SELECT * FROM swipe_decisions WHERE albumId = :albumId AND userId = :userId")
+    @Query("""
+        SELECT sd.* FROM swipe_decisions sd
+        JOIN album_assets aa ON sd.assetId = aa.assetId
+        WHERE aa.albumId = :albumId AND sd.userId = :userId
+    """)
     fun getDecisionsForAlbum(albumId: String, userId: String): Flow<List<SwipeDecisionEntity>>
 
     /**
-     * Récupère une décision spécifique pour un asset dans un album donné pour un utilisateur.
+     * Récupère une décision spécifique pour un asset pour un utilisateur.
      */
-    @Query("SELECT * FROM swipe_decisions WHERE assetId = :assetId AND albumId = :albumId AND userId = :userId")
-    suspend fun getDecisionForAsset(assetId: String, albumId: String, userId: String): SwipeDecisionEntity?
-
-    /**
-     * Supprime toutes les décisions d'un album pour un utilisateur.
-     */
-    @Query("DELETE FROM swipe_decisions WHERE albumId = :albumId AND userId = :userId")
-    suspend fun deleteDecisionsForAlbum(albumId: String, userId: String)
+    @Query("SELECT * FROM swipe_decisions WHERE assetId = :assetId AND userId = :userId")
+    suspend fun getDecisionForAsset(assetId: String, userId: String): SwipeDecisionEntity?
     
     /**
-     * Supprime une décision spécifique pour un asset dans un album donné pour un utilisateur.
+     * Supprime une décision spécifique pour un asset pour un utilisateur.
      */
-    @Query("DELETE FROM swipe_decisions WHERE assetId = :assetId AND albumId = :albumId AND userId = :userId")
-    suspend fun deleteDecision(assetId: String, albumId: String, userId: String)
+    @Query("DELETE FROM swipe_decisions WHERE assetId = :assetId AND userId = :userId")
+    suspend fun deleteDecision(assetId: String, userId: String)
 
     /**
-     * Supprime plusieurs décisions d'un coup pour un album donné pour un utilisateur.
+     * Supprime plusieurs décisions d'un coup pour un utilisateur.
      */
-    @Query("DELETE FROM swipe_decisions WHERE assetId IN (:assetIds) AND albumId = :albumId AND userId = :userId")
-    suspend fun deleteDecisions(assetIds: List<String>, albumId: String, userId: String)
+    @Query("DELETE FROM swipe_decisions WHERE assetId IN (:assetIds) AND userId = :userId")
+    suspend fun deleteDecisions(assetIds: List<String>, userId: String)
 
     /**
      * Supprime toutes les décisions liées à une liste d'assets spécifique pour un utilisateur.

@@ -19,7 +19,7 @@ import com.minos2020.immichswipe.data.local.entity.AlbumAssetEntity
  */
 @Database(
     entities = [SwipeDecisionEntity::class, SyncHistoryEntity::class, AlbumAssetEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,6 +27,41 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun albumAssetDao(): AlbumAssetDao
 
     companion object {
+        /**
+         * Migration ROOM de la version 6 vers la version 7.
+         * - Modifie la clé primaire de 'swipe_decisions' pour retirer 'albumId'.
+         */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                AppLogger.i("Database", "Exécution Migration 6 -> 7 (Modification PK swipe_decisions)")
+                // 1. Créer la nouvelle table sans albumId dans la PK
+                db.execSQL("""
+                    CREATE TABLE swipe_decisions_new (
+                        assetId TEXT NOT NULL,
+                        albumId TEXT NOT NULL,
+                        userId TEXT NOT NULL,
+                        decision TEXT NOT NULL,
+                        fileSize INTEGER,
+                        createdAt INTEGER NOT NULL,
+                        isSynced INTEGER NOT NULL,
+                        PRIMARY KEY(assetId, userId)
+                    )
+                """.trimIndent())
+
+                // 2. Copier les données uniques par (assetId, userId)
+                // En cas de conflit (plusieurs albums pour une photo), on garde la plus récente
+                db.execSQL("""
+                    INSERT OR REPLACE INTO swipe_decisions_new (assetId, albumId, userId, decision, fileSize, createdAt, isSynced)
+                    SELECT assetId, albumId, userId, decision, fileSize, createdAt, isSynced
+                    FROM swipe_decisions
+                    GROUP BY assetId, userId
+                """.trimIndent())
+
+                // 3. Remplacer l'ancienne table
+                db.execSQL("DROP TABLE swipe_decisions")
+                db.execSQL("ALTER TABLE swipe_decisions_new RENAME TO swipe_decisions")
+            }
+        }
         /**
          * Migration ROOM de la version 5 vers la version 6.
          * - Ajoute la table 'album_assets' pour synchroniser les compteurs entre albums.
@@ -125,7 +160,7 @@ abstract class AppDatabase : RoomDatabase() {
                                 "immich_swipe_database"
                             )
                     // On enregistre nos scripts de migration
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration(false)
                 .build()
                 INSTANCE = instance

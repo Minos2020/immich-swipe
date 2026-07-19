@@ -143,6 +143,9 @@ class SwipeViewModel(
         }
     }
 
+    // On garde en mémoire les décisions qui étaient déjà synchronisées au début de la session
+    private var initialSyncedDecisions = mapOf<String, SwipeDecision>()
+
     private fun loadAssetsAndDecisions() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
@@ -151,13 +154,20 @@ class SwipeViewModel(
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
                 val includeArchived = sessionRepository.includeArchived.first()
 
-                // On charge les assets depuis l'API (en passant le userId pour l'album virtuel)
+                // On charge les assets depuis l'API
                 val assets = assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId)
                 
-                // On charge les décisions locales (TOUTES les décisions de l'utilisateur, car elles sont désormais partagées)
+                // On charge TOUTES les décisions locales de l'utilisateur (partagées entre albums)
                 val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
                 AppLogger.d("Swipe", "${assets.size} assets trouvés, ${localDecisions.size} décisions locales")
                 
+                // On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation
+                initialSyncedDecisions = localDecisions
+                    .filter { it.isSynced }
+                    .associate { entity ->
+                        entity.assetId to try { SwipeDecision.valueOf(entity.decision) } catch (e: Exception) { SwipeDecision.SKIP }
+                    }
+
                 // Durée d'expiration en millisecondes
                 val lifespanDays = sessionRepository.skipLifespanDays.first()
                 val lifespanMs = lifespanDays * 24 * 60 * 60 * 1000L
@@ -169,7 +179,6 @@ class SwipeViewModel(
                 }
 
                 // On transforme la liste de SwipeDecisionEntity en Map<String, SwipeDecision>
-                // On filtre les SKIP expirés (au cas où le cleanup prend du temps)
                 val decisionMap = mutableMapOf<String, SwipeDecision>()
                 val sizeMap = mutableMapOf<String, Long>()
 
@@ -185,8 +194,10 @@ class SwipeViewModel(
                         if (isExpired) return@forEach
                     }
 
-                    // On ne met dans l'état de l'UI (Timeline/Pile) que ce qui n'est PAS synchronisé
-                    if (!entity.isSynced) {
+                    // On met dans l'état de l'UI (Timeline/Pile) :
+                    // 1. Ce qui n'est PAS synchronisé
+                    // 2. OU ce qui est synchronisé mais dans la collection SKIP (pour permettre le retraitement)
+                    if (!entity.isSynced || (album.id == Album.VIRTUAL_SKIPPED_ID && decision == SwipeDecision.SKIP)) {
                         decisionMap[entity.assetId] = decision
                         entity.fileSize?.let { sizeMap[entity.assetId] = it }
                     }
@@ -229,7 +240,7 @@ class SwipeViewModel(
                     // Pour le nettoyage au chargement, on est prudent : on ne nettoie que pour CET album
                     // car l'absence dans CET album ne veut pas dire que l'asset est mort sur Immich
                     // (il a pu être simplement retiré de l'album).
-                    swipeDecisionRepository.removeDecisions(invalidAssetIds, album.id, config.userId)
+                    swipeDecisionRepository.removeDecisions(invalidAssetIds, config.userId)
                     invalidAssetIds.forEach { 
                         decisionMap.remove(it)
                         sizeMap.remove(it)
@@ -400,7 +411,7 @@ class SwipeViewModel(
             val config = sessionRepository.sessionConfig.first() ?: return@launch
             if (lastAssetIdFromHistory != null) {
                 // 1. LOGIQUE DE SESSION (Historique présent)
-                swipeDecisionRepository.removeDecision(lastAssetIdFromHistory, album.id, config.userId)
+                swipeDecisionRepository.removeDecision(lastAssetIdFromHistory, config.userId)
                 
                 val newDecisions = currentState.decisions.toMutableMap()
                 newDecisions.remove(lastAssetIdFromHistory)
@@ -428,7 +439,7 @@ class SwipeViewModel(
 
                 // On nettoie UNIQUEMENT l'actuel
                 if (currentAsset != null) {
-                    swipeDecisionRepository.removeDecision(currentAsset.id, album.id, config.userId)
+                    swipeDecisionRepository.removeDecision(currentAsset.id, config.userId)
                 }
                 
                 val newDecisions = currentState.decisions.toMutableMap()
@@ -471,7 +482,7 @@ class SwipeViewModel(
         viewModelScope.launch {
             val config = sessionRepository.sessionConfig.first() ?: return@launch
             // 1. Suppression base Room
-            swipeDecisionRepository.removeDecision(assetId, album.id, config.userId)
+            swipeDecisionRepository.removeDecision(assetId, config.userId)
             
             // 2. Mise à jour UI
             val newDecisions = currentState.decisions.toMutableMap()
@@ -531,22 +542,43 @@ class SwipeViewModel(
                 // 3. Mise à jour de la base de données locale
                 if (successfullyDisappeared.isNotEmpty()) {
                     // On retire de la base locale car ils ne sont plus dans l'album
-                    swipeDecisionRepository.removeDecisionsFromAllAlbums(successfullyDisappeared, config.userId)
+                    swipeDecisionRepository.removeDecisions(successfullyDisappeared, config.userId)
                 }
 
                 if (successfulKeeps.isNotEmpty()) {
                     swipeDecisionRepository.markAsSynced(successfulKeeps, config.userId)
                 }
 
-                // 3.5 Enregistrement dans l'historique pour les statistiques
+                // 3.5 Enregistrement dans l'historique avec calcul de DELTAS pour éviter les doublons
+                val deltaDelete = toDelete.filter { successfullyDisappeared.contains(it) }.size
+                val deltaLock = toLock.filter { successfullyDisappeared.contains(it) }.size
+                
+                // Pour KEEP, ARCHIVE, SKIP : on soustrait l'ancienne valeur si elle existait déjà dans l'historique
+                var deltaKeep = toKeep.size
+                var deltaArchive = toArchive.size
+                var deltaSkip = toSkip.size
+
+                (toKeep + toArchive + toSkip + toDelete + toLock).forEach { id ->
+                    val previous = initialSyncedDecisions[id]
+                    if (previous != null) {
+                        // L'asset avait déjà une décision synchronisée : on annule l'ancienne catégorie
+                        when (previous) {
+                            SwipeDecision.KEEP -> deltaKeep--
+                            SwipeDecision.ARCHIVE -> deltaArchive--
+                            SwipeDecision.SKIP -> deltaSkip--
+                            else -> {}
+                        }
+                    }
+                }
+
                 swipeDecisionRepository.saveSyncHistory(
                     userId = config.userId,
-                    deletedCount = toDelete.filter { successfullyDisappeared.contains(it) }.size,
+                    deletedCount = deltaDelete,
                     bytesSaved = toDelete.filter { successfullyDisappeared.contains(it) }.sumOf { assetSizes[it] ?: 0L },
-                    keptCount = toKeep.size,
-                    archivedCount = toArchive.size,
-                    lockedCount = toLock.filter { successfullyDisappeared.contains(it) }.size,
-                    skippedCount = toSkip.size
+                    keptCount = deltaKeep,
+                    archivedCount = deltaArchive,
+                    lockedCount = deltaLock,
+                    skippedCount = deltaSkip
                 )
 
                 AppLogger.i("Swipe", "Synchronisation réussie. ${successfullyDisappeared.size} supprimés/verrouillés, ${successfulKeeps.size} gardés localement.")

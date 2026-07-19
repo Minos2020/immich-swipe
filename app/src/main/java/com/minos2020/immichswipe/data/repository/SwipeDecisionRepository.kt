@@ -63,15 +63,15 @@ class SwipeDecisionRepository(
     /**
      * Supprime une décision (si l'utilisateur veut annuler un swipe par exemple).
      */
-    suspend fun removeDecision(assetId: String, albumId: String, userId: String) {
-        swipeDecisionDao.deleteDecision(assetId, albumId, userId)
+    suspend fun removeDecision(assetId: String, userId: String) {
+        swipeDecisionDao.deleteDecision(assetId, userId)
     }
 
     /**
-     * Supprime plusieurs décisions d'un coup pour un album donné.
+     * Supprime plusieurs décisions d'un coup.
      */
-    suspend fun removeDecisions(assetIds: List<String>, albumId: String, userId: String) {
-        swipeDecisionDao.deleteDecisions(assetIds, albumId, userId)
+    suspend fun removeDecisions(assetIds: List<String>, userId: String) {
+        swipeDecisionDao.deleteDecisions(assetIds, userId)
     }
 
     /**
@@ -85,7 +85,7 @@ class SwipeDecisionRepository(
      * Nettoie les décisions d'un album pour un utilisateur.
      */
     suspend fun clearAlbumDecisions(albumId: String, userId: String) {
-        swipeDecisionDao.deleteDecisionsForAlbum(albumId, userId)
+        // swipeDecisionDao.deleteDecisionsForAlbum(albumId, userId) // Supprimé du DAO
     }
 
     /**
