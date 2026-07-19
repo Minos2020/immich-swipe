@@ -20,6 +20,14 @@ class SwipeDecisionRepository(
         return swipeDecisionDao.getAllAlbumDecisionCounts(userId)
     }
 
+    fun getGlobalUniqueTreatedCount(userId: String): Flow<Int> {
+        return swipeDecisionDao.getGlobalUniqueTreatedCount(userId)
+    }
+
+    fun getAllDecisionsForUser(userId: String): Flow<List<SwipeDecisionEntity>> {
+        return swipeDecisionDao.getAllDecisionsForUser(userId)
+    }
+
     /**
      * Enregistre un nouveau swipe en base locale.
      */

@@ -8,22 +8,42 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.data.local.dao.SwipeDecisionDao
+import com.minos2020.immichswipe.data.local.dao.AlbumAssetDao
 import com.minos2020.immichswipe.data.local.entity.SwipeDecisionEntity
 import com.minos2020.immichswipe.data.local.entity.SyncHistoryEntity
+import com.minos2020.immichswipe.data.local.entity.AlbumAssetEntity
 
 /**
  * La base de données principale de l'application.
  * Elle centralise les accès via les DAOs.
  */
 @Database(
-    entities = [SwipeDecisionEntity::class, SyncHistoryEntity::class],
-    version = 5,
+    entities = [SwipeDecisionEntity::class, SyncHistoryEntity::class, AlbumAssetEntity::class],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun swipeDecisionDao(): SwipeDecisionDao
+    abstract fun albumAssetDao(): AlbumAssetDao
 
     companion object {
+        /**
+         * Migration ROOM de la version 5 vers la version 6.
+         * - Ajoute la table 'album_assets' pour synchroniser les compteurs entre albums.
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                AppLogger.i("Database", "Exécution Migration 5 -> 6 (Ajout album_assets)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS album_assets (
+                        albumId TEXT NOT NULL,
+                        assetId TEXT NOT NULL,
+                        PRIMARY KEY(albumId, assetId)
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_album_assets_assetId ON album_assets (assetId)")
+            }
+        }
         /**
          * Migration ROOM de la version 2 vers la version 3.
          * - Ajoute la colonne 'fileSize'.
@@ -105,7 +125,7 @@ abstract class AppDatabase : RoomDatabase() {
                                 "immich_swipe_database"
                             )
                     // On enregistre nos scripts de migration
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration(false)
                 .build()
                 INSTANCE = instance

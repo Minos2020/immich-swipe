@@ -108,16 +108,30 @@ interface SwipeDecisionDao {
     @Query("SELECT * FROM sync_history WHERE userId = :userId ORDER BY timestamp DESC")
     fun getSyncHistory(userId: String): Flow<List<SyncHistoryEntity>>
 
+    @Query("SELECT COUNT(DISTINCT assetId) FROM swipe_decisions WHERE userId = :userId")
+    fun getGlobalUniqueTreatedCount(userId: String): Flow<Int>
+
+    /**
+     * Récupère le nombre d'assets orphelins triés globalement.
+     * Pour cela, on a besoin de savoir si l'asset est un orphelin (c'est complexe en SQL pur
+     * sans la liste des orphelins, donc on va peut-être gérer ça au niveau ViewModel/Repo).
+     */
+
+    @Query("SELECT * FROM swipe_decisions WHERE userId = :userId")
+    fun getAllDecisionsForUser(userId: String): Flow<List<SwipeDecisionEntity>>
+
     /**
      * Récupère les statistiques de décisions pour tous les albums d'un utilisateur sous forme de Flow.
+     * Utilise désormais la table album_assets pour inclure les décisions prises dans d'autres albums.
      */
     @Query("""
-        SELECT albumId, 
-               COUNT(*) as totalCount, 
-               SUM(CASE WHEN isSynced = 0 THEN 1 ELSE 0 END) as unsyncedCount 
-        FROM swipe_decisions 
-        WHERE userId = :userId
-        GROUP BY albumId
+        SELECT aa.albumId, 
+               COUNT(DISTINCT sd.assetId) as totalCount, 
+               SUM(CASE WHEN sd.isSynced = 0 THEN 1 ELSE 0 END) as unsyncedCount 
+        FROM album_assets aa
+        JOIN swipe_decisions sd ON aa.assetId = sd.assetId
+        WHERE sd.userId = :userId
+        GROUP BY aa.albumId
     """)
     fun getAllAlbumDecisionCounts(userId: String): Flow<List<AlbumDecisionCount>>
 

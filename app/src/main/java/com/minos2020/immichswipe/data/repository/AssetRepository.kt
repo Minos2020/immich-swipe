@@ -5,6 +5,8 @@ import com.minos2020.immichswipe.data.api.ImmichApi
 import com.minos2020.immichswipe.data.api.SearchAssetsRequest
 import com.minos2020.immichswipe.data.api.UpdateAssetsRequest
 import com.minos2020.immichswipe.data.local.dao.SwipeDecisionDao
+import com.minos2020.immichswipe.data.local.dao.AlbumAssetDao
+import com.minos2020.immichswipe.data.local.entity.AlbumAssetEntity
 import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.async
@@ -17,7 +19,8 @@ import kotlinx.coroutines.flow.first
  */
 class AssetRepository(
     private val api: ImmichApi,
-    private val swipeDecisionDao: SwipeDecisionDao? = null
+    private val swipeDecisionDao: SwipeDecisionDao? = null,
+    private val albumAssetDao: AlbumAssetDao? = null
 ) {
     /**
      * Récupère toutes les photos d'un album.
@@ -29,6 +32,9 @@ class AssetRepository(
             val assetIds = skippedDecisions.map { it.assetId }
             
             if (assetIds.isEmpty()) return emptyList()
+
+            // Mise à jour de la table de correspondance
+            albumAssetDao?.insertAlbumAssets(assetIds.map { AlbumAssetEntity(albumId, it) })
 
             // Fix: fetching by ID one by one (parallelized) because search/metadata ignores the 'ids' parameter
             // and returns the entire library instead.
@@ -49,31 +55,31 @@ class AssetRepository(
             return if (includeArchived) {
                 // Return everything (by combining timeline + archive)
                 coroutineScope {
-                    val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline")) }
-                    val archive = async { fetchAllAssets(SearchAssetsRequest(visibility = "archive")) }
+                    val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId) }
+                    val archive = async { fetchAllAssets(SearchAssetsRequest(visibility = "archive"), albumId) }
                     (timeline.await() + archive.await()).sortedByDescending { it.fileCreatedAt }
                 }
             } else {
-                fetchAllAssets(SearchAssetsRequest(visibility = "timeline"))
+                fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId)
             }
         }
 
         if (albumId == Album.VIRTUAL_ORPHANS_ID) {
             return if (includeArchived) {
                 coroutineScope {
-                    val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline")) }
-                    val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive")) }
+                    val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId) }
+                    val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId) }
                     (timeline.await() + archive.await()).sortedByDescending { it.fileCreatedAt }
                 }
             } else {
-                fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"))
+                fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId)
             }
         }
 
         return if (includeArchived) {
             coroutineScope {
-                val timelineDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline")) }
-                val archiveDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive")) }
+                val timelineDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId) }
+                val archiveDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId) }
                 
                 val timeline = try { timelineDeferred.await() } catch (_: Exception) { emptyList() }
                 val archive = try { archiveDeferred.await() } catch (_: Exception) { emptyList() }
@@ -82,7 +88,7 @@ class AssetRepository(
             }
         } else {
             try {
-                fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"))
+                fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId)
             } catch (_: Exception) {
                 emptyList()
             }
@@ -141,7 +147,7 @@ class AssetRepository(
     /**
      * Récupère TOUS les assets correspondant à une requête en gérant la pagination.
      */
-    private suspend fun fetchAllAssets(baseRequest: SearchAssetsRequest): List<Asset> {
+    private suspend fun fetchAllAssets(baseRequest: SearchAssetsRequest, albumIdForMapping: String? = null): List<Asset> {
         val allItems = mutableListOf<Asset>()
         var nextToFetch: String? = "1" // On commence à la page 1
 
@@ -152,8 +158,14 @@ class AssetRepository(
                     page = nextToFetch.toIntOrNull() ?: 1
                 )
             )
-            allItems.addAll(response.assets.items)
+            val newAssets = response.assets.items
+            allItems.addAll(newAssets)
             
+            // Mise à jour de la table de correspondance en arrière-plan
+            if (albumIdForMapping != null && albumAssetDao != null && newAssets.isNotEmpty()) {
+                albumAssetDao.insertAlbumAssets(newAssets.map { AlbumAssetEntity(albumIdForMapping, it.id) })
+            }
+
             // Le serveur nous dit quelle est la prochaine page à charger
             nextToFetch = response.assets.nextPage
 

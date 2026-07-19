@@ -154,8 +154,8 @@ class SwipeViewModel(
                 // On charge les assets depuis l'API (en passant le userId pour l'album virtuel)
                 val assets = assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId)
                 
-                // On charge les décisions locales déjà prises pour cet album
-                val localDecisions = swipeDecisionRepository.getDecisionsForAlbum(album.id, config.userId).first()
+                // On charge les décisions locales (TOUTES les décisions de l'utilisateur, car elles sont désormais partagées)
+                val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
                 AppLogger.d("Swipe", "${assets.size} assets trouvés, ${localDecisions.size} décisions locales")
                 
                 // Durée d'expiration en millisecondes

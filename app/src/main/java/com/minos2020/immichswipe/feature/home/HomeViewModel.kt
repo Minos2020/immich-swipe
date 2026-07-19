@@ -81,16 +81,28 @@ class HomeViewModel(
         viewModelScope.launch {
             sessionRepository.sessionConfig.collect { config ->
                 if (config != null) {
-                    swipeDecisionRepository.getAllAlbumDecisionCounts(config.userId).collect { stats ->
-                        val treatedMap = stats.associate { it.albumId to it.totalCount }
-                        val unsyncedMap = stats.associate { it.albumId to it.unsyncedCount }
+                    combine(
+                        swipeDecisionRepository.getAllDecisionsForUser(config.userId),
+                        swipeDecisionRepository.getAllAlbumDecisionCounts(config.userId)
+                    ) { allDecisions, albumStats ->
+                        val uniqueDecisions = allDecisions.distinctBy { it.assetId }
+                        val treatedMap = albumStats.associate { it.albumId to it.totalCount }.toMutableMap()
+                        val unsyncedMap = albumStats.associate { it.albumId to it.unsyncedCount }.toMutableMap()
+                        
+                        // Injection du compte global pour "Tous les médias"
+                        treatedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.size
+                        unsyncedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.count { !it.isSynced }
+                        
+                        // Note: Pour les orphelins, on se base sur les décisions prises spécifiquement sur des orphelins
+                        // ou on pourra affiner le calcul plus tard.
+
                         _uiState.update { 
                             it.copy(
                                 albumTreatedCounts = treatedMap,
                                 albumUnsyncedChanges = unsyncedMap
                             )
                         }
-                    }
+                    }.collect {}
                 }
             }
         }

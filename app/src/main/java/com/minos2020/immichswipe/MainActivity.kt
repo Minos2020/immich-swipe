@@ -100,7 +100,13 @@ class MainActivity : ComponentActivity() {
                                     val sessionKey = "$baseUrl-$apiKey"
                                     
                                     val albumRepository = remember(sessionKey) { AlbumRepository(api) }
-                                    val assetRepository = remember(sessionKey) { AssetRepository(api, database.swipeDecisionDao()) }
+                                    val assetRepository = remember(sessionKey) { 
+                                        AssetRepository(
+                                            api, 
+                                            database.swipeDecisionDao(),
+                                            database.albumAssetDao()
+                                        ) 
+                                    }
 
                                     HomeScreen(
                                         viewModel = viewModel(
