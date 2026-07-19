@@ -8,6 +8,7 @@ import com.minos2020.immichswipe.data.local.dao.SwipeDecisionDao
 import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 
@@ -29,8 +30,44 @@ class AssetRepository(
             
             if (assetIds.isEmpty()) return emptyList()
 
-            // On utilise l'API de recherche avec la liste d'IDs pour être plus efficace
-            return fetchAllAssets(SearchAssetsRequest(ids = assetIds))
+            // Fix: fetching by ID one by one (parallelized) because search/metadata ignores the 'ids' parameter
+            // and returns the entire library instead.
+            return coroutineScope {
+                assetIds.map { id ->
+                    async {
+                        try {
+                            api.getAssetDetail(id)
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                }.awaitAll().filterNotNull()
+            }
+        }
+
+        if (albumId == Album.VIRTUAL_ALL_ID) {
+            return if (includeArchived) {
+                // Return everything (by combining timeline + archive)
+                coroutineScope {
+                    val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline")) }
+                    val archive = async { fetchAllAssets(SearchAssetsRequest(visibility = "archive")) }
+                    (timeline.await() + archive.await()).sortedByDescending { it.fileCreatedAt }
+                }
+            } else {
+                fetchAllAssets(SearchAssetsRequest(visibility = "timeline"))
+            }
+        }
+
+        if (albumId == Album.VIRTUAL_ORPHANS_ID) {
+            return if (includeArchived) {
+                coroutineScope {
+                    val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline")) }
+                    val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive")) }
+                    (timeline.await() + archive.await()).sortedByDescending { it.fileCreatedAt }
+                }
+            } else {
+                fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"))
+            }
         }
 
         return if (includeArchived) {
@@ -49,6 +86,55 @@ class AssetRepository(
             } catch (_: Exception) {
                 emptyList()
             }
+        }
+    }
+
+    suspend fun getTotalAssetCount(includeArchived: Boolean = false): Int {
+        return try {
+            if (includeArchived) {
+                coroutineScope {
+                    val timeline = async { api.getSearchStatistics(SearchAssetsRequest(visibility = "timeline")).total }
+                    val archive = async { api.getSearchStatistics(SearchAssetsRequest(visibility = "archive")).total }
+                    timeline.await() + archive.await()
+                }
+            } else {
+                api.getSearchStatistics(SearchAssetsRequest(visibility = "timeline")).total
+            }
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    suspend fun getAssetCountInAlbums(albumIds: List<String>, includeArchived: Boolean = false): Int {
+        if (albumIds.isEmpty()) return 0
+        return try {
+            if (includeArchived) {
+                coroutineScope {
+                    val timeline = async { api.getSearchStatistics(SearchAssetsRequest(albumIds = albumIds, visibility = "timeline")).total }
+                    val archive = async { api.getSearchStatistics(SearchAssetsRequest(albumIds = albumIds, visibility = "archive")).total }
+                    timeline.await() + archive.await()
+                }
+            } else {
+                api.getSearchStatistics(SearchAssetsRequest(albumIds = albumIds, visibility = "timeline")).total
+            }
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    suspend fun getOrphansCount(includeArchived: Boolean = false): Int {
+        return try {
+            if (includeArchived) {
+                coroutineScope {
+                    val timeline = async { api.getSearchStatistics(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline")).total }
+                    val archive = async { api.getSearchStatistics(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive")).total }
+                    timeline.await() + archive.await()
+                }
+            } else {
+                api.getSearchStatistics(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline")).total
+            }
+        } catch (_: Exception) {
+            0
         }
     }
 

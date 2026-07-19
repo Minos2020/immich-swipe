@@ -43,6 +43,11 @@
     <string name="home_new_badge">NOUVEAU</string>
     <string name="home_unsynced_badge">NON SYNCHRONISÉ</string>
     <string name="home_virtual_skipped_synced">SKIPs</string>
+    <string name="home_virtual_skipped_synced_desc">Collection de tous les assets marqués SKIP et synchronisés</string>
+    <string name="home_virtual_all_assets">Tous les médias</string>
+    <string name="home_virtual_all_assets_desc">Collection de l\'ensemble de votre bibliothèque (excepté le dossier verouillé)</string>
+    <string name="home_virtual_orphans">Orphelins</string>
+    <string name="home_virtual_orphans_desc">Collection des médias qui ne sont dans aucun album</string>
     <string name="home_user_fallback">Utilisateur</string>
 
     <!-- Popup Profil & Diagnostic -->
@@ -160,7 +165,6 @@
     <string name="common_retry">Réessayer</string>
     <string name="common_close">Fermer</string>
     <string name="common_loading">Chargement…</string>
-    <string name="home_virtual_skipped_synced_desc">Collection de tous les assets marqués SKIP et synchronisés</string>
 
     <!-- Statistiques -->
     <string name="stats_popup_title">Statistiques d\'usage</string>

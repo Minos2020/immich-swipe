@@ -41,7 +41,12 @@
     <string name="home_photos_to_discover">%1$d photos to discover</string>
     <string name="home_new_badge">NEW</string>
     <string name="home_unsynced_badge">NOT SYNCED</string>
+    <string name="home_virtual_skipped_synced">SKIPs</string>
     <string name="home_virtual_skipped_synced_desc">Collection of all assets previously skipped and synced</string>
+    <string name="home_virtual_all_assets">All Assets</string>
+    <string name="home_virtual_all_assets_desc">Collection of all assets in your library (except for locked folder)</string>
+    <string name="home_virtual_orphans">Orphans</string>
+    <string name="home_virtual_orphans_desc">Collection of assets that are not in any album</string>
     <string name="home_user_fallback">User</string>
 
     <!-- Profile Popup & Diag -->
@@ -159,7 +164,6 @@
     <string name="common_retry">Retry</string>
     <string name="common_close">Close</string>
     <string name="common_loading">Loading…</string>
-    <string name="home_virtual_skipped_synced">SKIPs</string>
 
     <!-- Statistics -->
     <string name="stats_popup_title">Usage Statistics</string>

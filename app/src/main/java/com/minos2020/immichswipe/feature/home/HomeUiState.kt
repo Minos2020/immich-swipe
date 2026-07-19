@@ -36,6 +36,8 @@ data class HomeUiState(
     val searchQuery: String = "", // Texte de recherche pour filtrer les albums
     val connectionStatus: ConnectionStatus = ConnectionStatus(),
     val syncedSkipCount: Int = 0, // Nombre de SKIP synchronisés pour l'album virtuel
+    val allAssetsCount: Int = 0, // Nombre total de médias
+    val orphansCount: Int = 0, // Nombre de médias orphelins (sans album)
     val includeArchived: Boolean = false, // Inclure ou non les archives externes
     val virtualNames: Map<String, String> = emptyMap(), // Noms localisés des albums virtuels
     val virtualDescriptions: Map<String, String> = emptyMap(), // Descriptions localisées
@@ -48,18 +50,42 @@ data class HomeUiState(
      */
     val filteredAlbums: List<Album>
         get() {
-            val baseList = if (syncedSkipCount > 0) {
-                val virtualAlbum = Album(
+            val virtuals = mutableListOf<Album>()
+            
+            // 1. SKIPs
+            if (syncedSkipCount > 0) {
+                virtuals.add(Album(
                     id = Album.VIRTUAL_SKIPPED_ID,
                     albumName = virtualNames[Album.VIRTUAL_SKIPPED_ID] ?: "Review Skips",
                     description = virtualDescriptions[Album.VIRTUAL_SKIPPED_ID],
                     assetCount = syncedSkipCount,
                     albumThumbnailAssetId = null
-                )
-                listOf(virtualAlbum) + albums
-            } else {
-                albums
+                ))
             }
+
+            // 2. All Assets
+            if (allAssetsCount > 0) {
+                virtuals.add(Album(
+                    id = Album.VIRTUAL_ALL_ID,
+                    albumName = virtualNames[Album.VIRTUAL_ALL_ID] ?: "All Assets",
+                    description = virtualDescriptions[Album.VIRTUAL_ALL_ID],
+                    assetCount = allAssetsCount,
+                    albumThumbnailAssetId = null
+                ))
+            }
+
+            // 3. Orphans
+            if (orphansCount > 0) {
+                virtuals.add(Album(
+                    id = Album.VIRTUAL_ORPHANS_ID,
+                    albumName = virtualNames[Album.VIRTUAL_ORPHANS_ID] ?: "Orphans",
+                    description = virtualDescriptions[Album.VIRTUAL_ORPHANS_ID],
+                    assetCount = orphansCount,
+                    albumThumbnailAssetId = null
+                ))
+            }
+
+            val baseList = virtuals + albums
 
             return if (searchQuery.isBlank()) {
                 baseList
@@ -80,7 +106,11 @@ data class HomeUiState(
         get() {
             val filtered = filteredAlbums
             return filtered.groupBy { album ->
-                if (album.id == Album.VIRTUAL_SKIPPED_ID) return@groupBy AlbumStatus.VIRTUAL
+                if (album.id == Album.VIRTUAL_SKIPPED_ID || 
+                    album.id == Album.VIRTUAL_ALL_ID || 
+                    album.id == Album.VIRTUAL_ORPHANS_ID) {
+                    return@groupBy AlbumStatus.VIRTUAL
+                }
                 
                 val treated = albumTreatedCounts[album.id] ?: 0
                 when {

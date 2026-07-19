@@ -85,8 +85,15 @@ fun HomeScreen(
     // Mise à jour des noms localisés pour les albums virtuels
     val virtualSkippedName = stringResource(R.string.home_virtual_skipped_synced)
     val virtualSkippedDesc = stringResource(R.string.home_virtual_skipped_synced_desc)
-    LaunchedEffect(virtualSkippedName, virtualSkippedDesc) {
+    val virtualAllName = stringResource(R.string.home_virtual_all_assets)
+    val virtualAllDesc = stringResource(R.string.home_virtual_all_assets_desc)
+    val virtualOrphansName = stringResource(R.string.home_virtual_orphans)
+    val virtualOrphansDesc = stringResource(R.string.home_virtual_orphans_desc)
+
+    LaunchedEffect(virtualSkippedName, virtualSkippedDesc, virtualAllName, virtualAllDesc, virtualOrphansName, virtualOrphansDesc) {
         viewModel.updateVirtualNames(Album.VIRTUAL_SKIPPED_ID, virtualSkippedName, virtualSkippedDesc)
+        viewModel.updateVirtualNames(Album.VIRTUAL_ALL_ID, virtualAllName, virtualAllDesc)
+        viewModel.updateVirtualNames(Album.VIRTUAL_ORPHANS_ID, virtualOrphansName, virtualOrphansDesc)
     }
 
     // Gestion du retour physique/gestuel du téléphone
@@ -1120,20 +1127,16 @@ fun AlbumGridItem(
                         .then(if (isCompleted) Modifier.alpha(0.8f) else Modifier)
                 )
             } else {
-                val icon = if (album.id == Album.VIRTUAL_SKIPPED_ID) {
-                    Icons.Default.FastForward
-                } else {
-                    Icons.Default.PhotoLibrary
-                }
+                val (icon, brush, tint) = getVirtualCollectionStyle(album.id)
                 Box(
-                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer),
+                    modifier = Modifier.fillMaxSize().background(brush),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = if (album.id == Album.VIRTUAL_SKIPPED_ID) Modifier.size(32.dp) else Modifier
+                        tint = tint,
+                        modifier = Modifier.size(48.dp)
                     )
                 }
             }
@@ -1269,17 +1272,18 @@ fun AlbumItem(
                                 error = rememberVectorPainter(Icons.Default.PhotoLibrary)
                             )
                         } else {
-                            val icon = if (album.id == Album.VIRTUAL_SKIPPED_ID) {
-                                Icons.Default.FastForward
-                            } else {
-                                Icons.Default.PhotoLibrary
+                            val (icon, brush, tint) = getVirtualCollectionStyle(album.id)
+                            Box(
+                                modifier = Modifier.fillMaxSize().background(brush),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = tint
+                                )
                             }
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                modifier = Modifier.padding(16.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
                         }
                     }
                     
@@ -1376,6 +1380,35 @@ fun ErrorView(error: String, onRetry: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Button(onClick = onRetry) { Text(stringResource(R.string.home_retry_button)) }
         }
+    }
+}
+
+/**
+ * Retourne le style visuel pour une collection virtuelle.
+ */
+@Composable
+private fun getVirtualCollectionStyle(albumId: String): Triple<androidx.compose.ui.graphics.vector.ImageVector, Brush, Color> {
+    return when (albumId) {
+        Album.VIRTUAL_SKIPPED_ID -> Triple(
+            Icons.Default.FastForward,
+            Brush.linearGradient(listOf(Color(0xFF667eea), Color(0xFF764ba2))),
+            Color.White
+        )
+        Album.VIRTUAL_ALL_ID -> Triple(
+            Icons.Default.AutoAwesomeMotion,
+            Brush.linearGradient(listOf(Color(0xFFf6d365), Color(0xFFfda085))),
+            Color.White
+        )
+        Album.VIRTUAL_ORPHANS_ID -> Triple(
+            Icons.Default.Extension,
+            Brush.linearGradient(listOf(Color(0xFF84fab0), Color(0xFF8fd3f4))),
+            Color.White
+        )
+        else -> Triple(
+            Icons.Default.PhotoLibrary, 
+            Brush.linearGradient(listOf(Color.Gray, Color.DarkGray)), 
+            Color.White
+        )
     }
 }
 

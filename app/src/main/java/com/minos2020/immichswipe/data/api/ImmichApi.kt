@@ -61,14 +61,18 @@ data class DeleteAssetsRequest(
 
 /**
  * Corps de la requête pour récupérer des assets.
- * Pourra contenir beaucoup d'autres paramètres si besoin !
+ * Basé sur l'endpoint /api/search/metadata
  */
 data class SearchAssetsRequest(
     val albumIds: List<String>? = null,
-    val ids: List<String>? = null,
+    val ids: List<String>? = null, // A vérifier si supporté ou si c'est 'id' unique
+    val isNotInAlbum: Boolean? = null,
     val size: Int = 1000,
     val page: Int = 1,
-    val visibility: String? = null // archive, timeline, hidden, locked
+    val visibility: String? = null, // archive, timeline, hidden, locked
+    val type: String? = null, // IMAGE, VIDEO
+    val withExif: Boolean = true,
+    val isFavorite: Boolean? = null
 )
 
 data class SearchResponse(

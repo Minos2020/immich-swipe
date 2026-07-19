@@ -201,6 +201,12 @@ class HomeViewModel(
                 // On lance la requête
                 val albums = albumRepository.refreshAlbums(_uiState.value.includeArchived)
                 
+                // On récupère le nombre total de médias pour la collection virtuelle
+                val allCount = assetRepository.getTotalAssetCount(_uiState.value.includeArchived)
+
+                // On récupère le nombre d'orphelins directement via l'API
+                val orphansCount = assetRepository.getOrphansCount(_uiState.value.includeArchived)
+
                 // On calcule combien de temps a duré la requête
                 val duration = System.currentTimeMillis() - startTime
                 // On attend le complément pour atteindre au moins 800ms
@@ -210,7 +216,9 @@ class HomeViewModel(
 
                 _uiState.update { 
                     it.copy(
-                        albums = albums, 
+                        albums = albums,
+                        allAssetsCount = allCount,
+                        orphansCount = orphansCount,
                         isRefreshing = false, 
                         error = null
                     ) 
