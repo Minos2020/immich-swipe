@@ -14,6 +14,7 @@ data class Asset(
     val isFavorite: Boolean = false,
     val isArchived: Boolean = false,
     val isLocked: Boolean = false,
+    val isTrashed: Boolean = false,
     val originalFileName: String? = null,
     @SerializedName("extension")
     val fileExtension: String? = null,
