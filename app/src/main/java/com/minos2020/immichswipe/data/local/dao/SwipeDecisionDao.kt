@@ -66,7 +66,7 @@ interface SwipeDecisionDao {
     /**
      * Marque des décisions comme synchronisées pour un utilisateur.
      */
-    @Query("UPDATE swipe_decisions SET isSynced = 1 WHERE assetId IN (:assetIds) AND userId = :userId")
+    @Query("UPDATE swipe_decisions SET isSynced = 1, wasSyncedSkip = (CASE WHEN decision = 'SKIP' THEN 1 ELSE 0 END) WHERE assetId IN (:assetIds) AND userId = :userId")
     suspend fun markAsSynced(assetIds: List<String>, userId: String)
 
     /**
@@ -78,14 +78,16 @@ interface SwipeDecisionDao {
 
     /**
      * Récupère toutes les décisions 'SKIP' déjà synchronisées pour un utilisateur.
+     * Inclut aussi les assets qui étaient SKIP et qui sont en cours de retraitement (wasSyncedSkip = 1).
+     * Trié par date de création pour maintenir l'ordre chronologique.
      */
-    @Query("SELECT * FROM swipe_decisions WHERE decision = 'SKIP' AND isSynced = 1 AND userId = :userId")
+    @Query("SELECT * FROM swipe_decisions WHERE (wasSyncedSkip = 1 OR (decision = 'SKIP' AND isSynced = 1)) AND userId = :userId ORDER BY createdAt DESC")
     fun getSyncedSkipDecisions(userId: String): Flow<List<SwipeDecisionEntity>>
 
     /**
      * Compte le nombre de décisions 'SKIP' synchronisées pour un utilisateur.
      */
-    @Query("SELECT COUNT(*) FROM swipe_decisions WHERE decision = 'SKIP' AND isSynced = 1 AND userId = :userId")
+    @Query("SELECT COUNT(*) FROM swipe_decisions WHERE (wasSyncedSkip = 1 OR (decision = 'SKIP' AND isSynced = 1)) AND userId = :userId")
     fun getSyncedSkipCount(userId: String): Flow<Int>
 
     /**
@@ -125,7 +127,7 @@ interface SwipeDecisionDao {
     @Query("""
         SELECT aa.albumId, 
                COUNT(DISTINCT sd.assetId) as totalCount, 
-               SUM(CASE WHEN sd.isSynced = 0 THEN 1 ELSE 0 END) as unsyncedCount 
+               SUM(CASE WHEN sd.isSynced = 0 AND (sd.wasSyncedSkip = 0 OR aa.albumId = 'virtual_skipped_synced') THEN 1 ELSE 0 END) as unsyncedCount
         FROM album_assets aa
         JOIN swipe_decisions sd ON aa.assetId = sd.assetId
         WHERE sd.userId = :userId

@@ -36,6 +36,7 @@
     <string name="home_album_completed">Completed</string>
     <string name="home_unsynced_changes">Contains %1$d unsynced changes</string>
     <string name="home_sorted_count">%1$d / %2$d sorted</string>
+    <string name="home_skip_count">%1$d photos</string>
     <string name="home_select_album">Select an album to start!</string>
     <string name="home_session_title">Sorting session: %1$s</string>
     <string name="home_photos_to_discover">%1$d photos to discover</string>

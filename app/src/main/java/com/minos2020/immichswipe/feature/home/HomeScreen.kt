@@ -1092,7 +1092,7 @@ fun AlbumGridItem(
     val baseUrl = remember { SessionManager.getBaseUrl()?.removeSuffix("/") }
     val apiKey = remember { SessionManager.getApiKey() ?: "" }
     val progress = if (album.assetCount > 0) treatedCount.toFloat() / album.assetCount else 0f
-    val isCompleted = album.assetCount in 1..treatedCount
+    val isCompleted = album.id != Album.VIRTUAL_SKIPPED_ID && album.assetCount in 1..treatedCount
     val hasUnsyncedChanges = unsyncedCount > 0
 
     Card(
@@ -1194,14 +1194,18 @@ fun AlbumGridItem(
                     maxLines = 1
                 )
                 Text(
-                    text = stringResource(R.string.home_sorted_count, treatedCount, album.assetCount),
+                    text = if (album.id == Album.VIRTUAL_SKIPPED_ID) {
+                        stringResource(R.string.home_skip_count, album.assetCount)
+                    } else {
+                        stringResource(R.string.home_sorted_count, treatedCount, album.assetCount)
+                    },
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 11.sp
                 )
             }
 
             // Barre de progression en haut de l'album (discrète)
-            if (progress > 0 && !isCompleted) {
+            if (progress > 0 && !isCompleted && album.id != Album.VIRTUAL_SKIPPED_ID) {
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier
@@ -1228,7 +1232,7 @@ fun AlbumItem(
     val baseUrl = remember { SessionManager.getBaseUrl()?.removeSuffix("/") }
     val apiKey = remember { SessionManager.getApiKey() ?: "" }
     val progress = if (album.assetCount > 0) treatedCount.toFloat() / album.assetCount else 0f
-    val isCompleted = album.assetCount in 1..treatedCount
+    val isCompleted = album.id != Album.VIRTUAL_SKIPPED_ID && album.assetCount in 1..treatedCount
     val isNotStarted = treatedCount == 0
     val hasUnsyncedChanges = unsyncedCount > 0
 
@@ -1331,7 +1335,11 @@ fun AlbumItem(
                         Text(text = album.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.outline, maxLines = 2)
                     }
                     Text(
-                        text = stringResource(R.string.home_sorted_count, treatedCount, album.assetCount),
+                        text = if (album.id == Album.VIRTUAL_SKIPPED_ID) {
+                            stringResource(R.string.home_skip_count, album.assetCount)
+                        } else {
+                            stringResource(R.string.home_sorted_count, treatedCount, album.assetCount)
+                        },
                         fontSize = 12.sp,
                         color = if (isCompleted) Color(0xFF388E3C) else MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
@@ -1341,7 +1349,7 @@ fun AlbumItem(
             }
 
             // Barre de progression
-            if (progress > 0 && !isCompleted) {
+            if (progress > 0 && !isCompleted && album.id != Album.VIRTUAL_SKIPPED_ID) {
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier

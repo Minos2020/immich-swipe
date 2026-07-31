@@ -19,7 +19,7 @@ import com.minos2020.immichswipe.data.local.entity.AlbumAssetEntity
  */
 @Database(
     entities = [SwipeDecisionEntity::class, SyncHistoryEntity::class, AlbumAssetEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,6 +27,17 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun albumAssetDao(): AlbumAssetDao
 
     companion object {
+        /**
+         * Migration ROOM de la version 7 vers la version 8.
+         * - Ajoute la colonne 'wasSyncedSkip' à 'swipe_decisions'.
+         */
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                AppLogger.i("Database", "Exécution Migration 7 -> 8 (Ajout wasSyncedSkip)")
+                db.execSQL("ALTER TABLE swipe_decisions ADD COLUMN wasSyncedSkip INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         /**
          * Migration ROOM de la version 6 vers la version 7.
          * - Modifie la clé primaire de 'swipe_decisions' pour retirer 'albumId'.
@@ -160,7 +171,7 @@ abstract class AppDatabase : RoomDatabase() {
                                 "immich_swipe_database"
                             )
                     // On enregistre nos scripts de migration
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration(false)
                 .build()
                 INSTANCE = instance

@@ -156,16 +156,23 @@ class SwipeViewModel(
 
                 // On charge les assets depuis l'API
                 val assets = assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId)
+                val albumAssetIds = assets.map { it.id }.toSet()
 
                 // On charge TOUTES les décisions locales de l'utilisateur (partagées entre albums)
+                // On filtre immédiatement pour ne garder que celles qui concernent l'album actuel
                 val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
-                AppLogger.d("Swipe", "${assets.size} assets trouvés, ${localDecisions.size} décisions locales")
+                    .filter { albumAssetIds.contains(it.assetId) }
+
+                AppLogger.d("Swipe", "${assets.size} assets trouvés, ${localDecisions.size} décisions locales pour cet album")
                 
-                // On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation
+                // On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation.
+                // Si wasSyncedSkip est à true, la décision synchronisée est forcément SKIP.
                 initialSyncedDecisions = localDecisions
-                    .filter { it.isSynced }
+                    .filter { it.isSynced || it.wasSyncedSkip }
                     .associate { entity ->
-                        entity.assetId to try { SwipeDecision.valueOf(entity.decision) } catch (e: Exception) { SwipeDecision.SKIP }
+                        val decision = if (entity.wasSyncedSkip) SwipeDecision.SKIP 
+                                      else try { SwipeDecision.valueOf(entity.decision) } catch (e: Exception) { SwipeDecision.SKIP }
+                        entity.assetId to decision
                     }
 
                 // Durée d'expiration en millisecondes
@@ -195,23 +202,27 @@ class SwipeViewModel(
                     }
 
                     // On met dans l'état de l'UI (Timeline/Pile) :
-                    // 1. Ce qui n'est PAS synchronisé
-                    // 2. OU ce qui est synchronisé mais dans la collection SKIP (pour permettre le retraitement)
-                    if (!entity.isSynced || (album.id == Album.VIRTUAL_SKIPPED_ID && decision == SwipeDecision.SKIP)) {
+                    // On ne met dans 'decisions' que ce qui n'est PAS synchronisé.
+                    // Ainsi, dans la collection SKIP, les assets synchronisés apparaîtront comme "à traiter" (0% au début).
+                    if (!entity.isSynced) {
                         decisionMap[entity.assetId] = decision
-                        entity.fileSize?.let { sizeMap[entity.assetId] = it }
                     }
+                    
+                    // On garde toujours la taille connue de l'asset
+                    entity.fileSize?.let { sizeMap[entity.assetId] = it }
                 }
 
                 // Filtrage de la liste des assets pour ne garder que la pile de travail
                 // Pile de travail = Assets sans décision OU Assets avec décision NON synchronisée
-                // EXCEPTION : Pour l'album virtuel des SKIP synchronisés, on veut justement les voir !
+                // EXCEPTION 1 : Pour l'album virtuel des SKIP synchronisés, on veut justement les voir !
+                // EXCEPTION 2 : Si une photo était un SKIP synchronisé, on ne veut pas qu'elle réapparaisse 
+                // ailleurs que dans la collection SKIP tant qu'elle n'est pas ré-appliquée.
                 val isVirtualSkipped = album.id == Album.VIRTUAL_SKIPPED_ID
                 
                 val syncedIds = if (isVirtualSkipped) {
                     emptySet()
                 } else {
-                    localDecisions.filter { it.isSynced }.map { it.assetId }.toSet()
+                    localDecisions.filter { it.isSynced || it.wasSyncedSkip }.map { it.assetId }.toSet()
                 }
                 
                 val workPileAssets = assets.filter { !syncedIds.contains(it.id) }
@@ -223,12 +234,9 @@ class SwipeViewModel(
                 // Ce nettoyage est déjà fait au début du chargement dans le repository.
 
                 // On cherche le premier index non traité dans la pile filtrée
-                val firstUnprocessedIndex = if (isVirtualSkipped && workPileAssets.isNotEmpty()) {
-                    0
-                } else {
-                    workPileAssets.indexOfFirst { !decisionMap.containsKey(it.id) }
+                // Pile de travail = Assets sans décision OU Assets avec décision NON synchronisée
+                val firstUnprocessedIndex = workPileAssets.indexOfFirst { !decisionMap.containsKey(it.id) }
                         .let { if (it == -1) workPileAssets.size else it }
-                }
 
                 _uiState.value = _uiState.value.copy(
                     assets = workPileAssets,

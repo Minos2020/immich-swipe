@@ -32,14 +32,22 @@ class SwipeDecisionRepository(
      * Enregistre un nouveau swipe en base locale.
      */
     suspend fun saveDecision(assetId: String, albumId: String, userId: String, decision: String, fileSize: Long? = null, isSynced: Boolean = false) {
+        val existing = swipeDecisionDao.getDecisionForAsset(assetId, userId)
+        val wasSyncedSkip = if (existing != null) {
+            (existing.decision == "SKIP" && existing.isSynced) || existing.wasSyncedSkip
+        } else {
+            false
+        }
+
         val entity = SwipeDecisionEntity(
             assetId = assetId,
             albumId = albumId,
             userId = userId,
             decision = decision,
             fileSize = fileSize,
-            createdAt = System.currentTimeMillis(),
-            isSynced = isSynced
+            createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+            isSynced = isSynced,
+            wasSyncedSkip = wasSyncedSkip
         )
         swipeDecisionDao.insertDecision(entity)
     }
@@ -61,10 +69,22 @@ class SwipeDecisionRepository(
     }
 
     /**
-     * Supprime une décision (si l'utilisateur veut annuler un swipe par exemple).
+     * Supprime une décision (pour l'undo).
+     * Si l'asset était un SKIP synchronisé avant cette session (wasSyncedSkip),
+     * on restaure son état SKIP synchronisé au lieu de supprimer l'entrée.
      */
     suspend fun removeDecision(assetId: String, userId: String) {
-        swipeDecisionDao.deleteDecision(assetId, userId)
+        val existing = swipeDecisionDao.getDecisionForAsset(assetId, userId)
+        if (existing?.wasSyncedSkip == true) {
+            swipeDecisionDao.insertDecision(existing.copy(
+                decision = "SKIP",
+                isSynced = true,
+                wasSyncedSkip = true,
+                createdAt = System.currentTimeMillis()
+            ))
+        } else {
+            swipeDecisionDao.deleteDecision(assetId, userId)
+        }
     }
 
     /**

@@ -41,6 +41,7 @@ class AssetRepository(
 
             // Fix: fetching by ID one by one (parallelized) because search/metadata ignores the 'ids' parameter
             // and returns the entire library instead.
+            // We sort by fileCreatedAt to maintain the standard timeline order.
             return coroutineScope {
                 assetIds.map { id ->
                     async {
@@ -50,7 +51,7 @@ class AssetRepository(
                             null
                         }
                     }
-                }.awaitAll().filterNotNull()
+                }.awaitAll().filterNotNull().sortedByDescending { it.fileCreatedAt }
             }
         }
 

@@ -80,7 +80,7 @@ data class SwipeUiState(
     val favoritesRemovedCount: Int get() = localFavorites.count { (id, fav) -> !fav && (assets.find { it.id == id }?.isFavorite ?: false) }
     val archiveCount: Int get() = decisions.values.count { it == SwipeDecision.ARCHIVE }
     val lockedCount: Int get() = decisions.values.count { it == SwipeDecision.LOCK }
-    
+
     private fun isProcessedKeep(assetId: String): Boolean {
         val d = decisions[assetId]
         return d == SwipeDecision.KEEP || d == SwipeDecision.ARCHIVE || d == SwipeDecision.LOCK

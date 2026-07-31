@@ -14,6 +14,8 @@ import androidx.room.Entity
  * @property decision La décision prise : "KEEP", "DELETE", "SKIP", "ARCHIVE", "LOCK".
  * @property createdAt Le moment où la décision a été prise.
  * @property isSynced Indique si cette décision a été synchronisée avec le serveur Immich.
+ * @property wasSyncedSkip Indique si l'asset était un 'SKIP' déjà synchronisé avant le swipe actuel.
+ *                         Permet de garder l'asset dans la collection SKIP pendant le retraitement.
  */
 @Entity(
     tableName = "swipe_decisions",
@@ -26,5 +28,6 @@ data class SwipeDecisionEntity(
     val decision: String,
     val fileSize: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val wasSyncedSkip: Boolean = false
 )

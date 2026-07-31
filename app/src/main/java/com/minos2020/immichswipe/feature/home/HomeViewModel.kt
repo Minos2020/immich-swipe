@@ -91,7 +91,7 @@ class HomeViewModel(
                         
                         // Injection du compte global pour "Tous les médias"
                         treatedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.size
-                        unsyncedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.count { !it.isSynced }
+                        unsyncedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.count { !it.isSynced && !it.wasSyncedSkip }
                         
                         // Note: Pour les orphelins, on se base sur les décisions prises spécifiquement sur des orphelins
                         // ou on pourra affiner le calcul plus tard.
