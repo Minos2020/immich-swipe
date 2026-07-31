@@ -156,7 +156,7 @@ class SwipeViewModel(
 
                 // On charge les assets depuis l'API
                 val assets = assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId)
-                
+
                 // On charge TOUTES les décisions locales de l'utilisateur (partagées entre albums)
                 val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
                 AppLogger.d("Swipe", "${assets.size} assets trouvés, ${localDecisions.size} décisions locales")
@@ -217,35 +217,10 @@ class SwipeViewModel(
                 val workPileAssets = assets.filter { !syncedIds.contains(it.id) }
                 AppLogger.i("Swipe", "Pile de travail: ${workPileAssets.size} assets restants à trier")
 
-                // Dans le cas de l'album virtuel, on veut aussi voir les décisions actuelles (qui sont SKIP et synchronisées)
-                // pour que l'utilisateur sache ce qu'il a déjà fait (même si au début ils sont tous SKIP)
-                if (isVirtualSkipped) {
-                    localDecisions.forEach { entity ->
-                        if (entity.decision == SwipeDecision.SKIP.name && entity.isSynced) {
-                            decisionMap[entity.assetId] = SwipeDecision.SKIP
-                            entity.fileSize?.let { sizeMap[entity.assetId] = it }
-                        }
-                    }
-                }
-
-                // NETTOYAGE : Si on a des décisions locales pour des assets qui n'existent plus
-                // dans cet album sur le serveur, on les supprime.
-                // Cela peut notamment arriver si des assets présents dans plusieurs albums ont été supprimés dans un des albums.
-                // Cela évite les compteurs incohérents (ex: 7/6 triés).
-                val serverAssetIds = assets.map { it.id }.toSet()
-                val invalidAssetIds = localDecisions.map { it.assetId }.filter { !serverAssetIds.contains(it) }
-                
-                if (invalidAssetIds.isNotEmpty()) {
-                    AppLogger.w("Swipe", "Nettoyage de ${invalidAssetIds.size} décisions orphelines")
-                    // Pour le nettoyage au chargement, on est prudent : on ne nettoie que pour CET album
-                    // car l'absence dans CET album ne veut pas dire que l'asset est mort sur Immich
-                    // (il a pu être simplement retiré de l'album).
-                    swipeDecisionRepository.removeDecisions(invalidAssetIds, config.userId)
-                    invalidAssetIds.forEach { 
-                        decisionMap.remove(it)
-                        sizeMap.remove(it)
-                    }
-                }
+                // NETTOYAGE DES LIENS : On s'assure que notre table de correspondance locale
+                // est à jour avec ce que le serveur vient de nous envoyer.
+                // Note : On ne supprime PAS les décisions globales ici, juste les liens média-album.
+                // Ce nettoyage est déjà fait au début du chargement dans le repository.
 
                 // On cherche le premier index non traité dans la pile filtrée
                 val firstUnprocessedIndex = if (isVirtualSkipped && workPileAssets.isNotEmpty()) {

@@ -63,10 +63,14 @@ data class SwipeUiState(
     fun isLocked(assetId: String): Boolean {
         return decisions[assetId] == SwipeDecision.LOCK || (assets.find { it.id == assetId }?.isLocked ?: false)
     }
-    
-    // Statistiques de tri basées sur les décisions réelles
+
+    // Statistiques de tri basées sur les décisions locales non synchronisées.
+    // 'assets' représente la pile de travail (non synchronisée).
+    // 'decisions' contient les actions déjà effectuées sur cette pile.
     val totalCount: Int get() = assets.size
     val processedCount: Int get() = decisions.size
+    val remainingCount: Int get() = totalCount - processedCount
+
     val keptCount: Int get() = decisions.values.count { it == SwipeDecision.KEEP }
     val allKeptCount: Int get() = decisions.values.count { it == SwipeDecision.KEEP || it == SwipeDecision.ARCHIVE || it == SwipeDecision.LOCK }
     val deletedCount: Int get() = decisions.values.count { it == SwipeDecision.DELETE }
@@ -76,7 +80,6 @@ data class SwipeUiState(
     val favoritesRemovedCount: Int get() = localFavorites.count { (id, fav) -> !fav && (assets.find { it.id == id }?.isFavorite ?: false) }
     val archiveCount: Int get() = decisions.values.count { it == SwipeDecision.ARCHIVE }
     val lockedCount: Int get() = decisions.values.count { it == SwipeDecision.LOCK }
-    val remainingCount: Int get() = totalCount - processedCount
     
     private fun isProcessedKeep(assetId: String): Boolean {
         val d = decisions[assetId]

@@ -26,6 +26,9 @@ class AssetRepository(
      * Récupère toutes les photos d'un album.
      */
     suspend fun getAssetsByAlbum(albumId: String, includeArchived: Boolean = false, userId: String? = null): List<Asset> {
+        // Nettoyage systématique des anciens liens pour cet album avant de les recréer
+        albumAssetDao?.clearAlbumRelations(albumId)
+
         if (albumId == Album.VIRTUAL_SKIPPED_ID && swipeDecisionDao != null && userId != null) {
             // Album virtuel : On récupère les IDs depuis la base locale pour cet utilisateur
             val skippedDecisions = swipeDecisionDao.getSyncedSkipDecisions(userId).first()
