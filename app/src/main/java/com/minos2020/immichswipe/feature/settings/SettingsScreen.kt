@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -24,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
@@ -533,53 +536,70 @@ fun SettingsScreen(
                         text = if (rawLogs.isEmpty()) androidx.compose.ui.text.AnnotatedString(stringResource(R.string.settings_logs_empty)) else annotatedLogs,
                         style = MaterialTheme.typography.labelSmall,
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        modifier = Modifier.verticalScroll(scroll)
+                        modifier = Modifier
+                            .verticalScroll(scroll)
+                            .padding(end = 16.dp) // Évite que le texte ne morde sur la barre de défilement (14dp)
                     )
 
-                    // Barre de défilement (Scrollbar)
+                    // Barre de défilement interactive (Scrollbar)
                     if (rawLogs.isNotEmpty() && scroll.maxValue > 0) {
-                        val indicatorHeightFraction = 0.1f
-                        val scrollFraction = scroll.value.toFloat() / scroll.maxValue
-                        val availableHeight = maxHeight
+                        val indicatorHeightFraction = 0.15f
+                        val trackHeightPx = with(LocalDensity.current) { this@BoxWithConstraints.maxHeight.toPx() }
                         
                         Box(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
-                                .width(4.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(2.dp))
+                                .width(14.dp) // Plus large pour le confort tactile
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                .pointerInput(scroll.maxValue) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        val scrollRange = scroll.maxValue
+                                        val dragFactor = scrollRange / (trackHeightPx * (1f - indicatorHeightFraction))
+                                        scope.launch {
+                                            scroll.scrollTo((scroll.value + dragAmount.y * dragFactor).toInt().coerceIn(0, scroll.maxValue))
+                                        }
+                                    }
+                                }
                         ) {
+                            val scrollFraction = scroll.value.toFloat() / scroll.maxValue
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight(indicatorHeightFraction)
                                     .fillMaxWidth()
-                                    .offset(y = availableHeight * (scrollFraction * (1f - indicatorHeightFraction)))
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+                                    .offset(y = this@BoxWithConstraints.maxHeight * (scrollFraction * (1f - indicatorHeightFraction)))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
                             )
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { 
-                    val logs = viewModel.getLogs()
-                    scope.launch {
-                        val clipData = android.content.ClipData.newPlainText("Immich Swipe Logs", logs)
-                        clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(clipData))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = { 
+                        viewModel.setShowClearLogsConfirmation(true)
+                    }) {
+                        Text(stringResource(R.string.settings_logs_clear), color = MaterialTheme.colorScheme.error)
                     }
-                    android.widget.Toast.makeText(context, context.getString(R.string.settings_logs_copied_toast), android.widget.Toast.LENGTH_SHORT).show()
-                }) {
-                    Text(stringResource(R.string.settings_logs_copy))
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { 
+                        val logs = viewModel.getLogs()
+                        scope.launch {
+                            val clipData = android.content.ClipData.newPlainText("Immich Swipe Logs", logs)
+                            clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(clipData))
+                        }
+                        android.widget.Toast.makeText(context, context.getString(R.string.settings_logs_copied_toast), android.widget.Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text(stringResource(R.string.settings_logs_copy))
+                    }
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { 
-                    viewModel.clearLogs()
-                    viewModel.setShowLogs(false)
-                }) {
-                    Text(stringResource(R.string.settings_logs_clear), color = MaterialTheme.colorScheme.error)
-                }
-            }
+            dismissButton = null
         )
     }
 
@@ -665,6 +685,28 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissDatabaseConfirmation() }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    // Dialogue de confirmation pour effacer les logs
+    if (uiState.showClearLogsConfirmation) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowClearLogsConfirmation(false) },
+            title = { Text(stringResource(R.string.settings_logs_confirm_clear_title)) },
+            text = { Text(stringResource(R.string.settings_logs_confirm_clear_msg)) },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.clearLogs() },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.common_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowClearLogsConfirmation(false) }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             }

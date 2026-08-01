@@ -328,8 +328,16 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(showLogsDialog = show)
     }
 
+    fun setShowClearLogsConfirmation(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showClearLogsConfirmation = show)
+    }
+
     fun clearLogs() {
         com.minos2020.immichswipe.core.AppLogger.clearLogs()
+        _uiState.value = _uiState.value.copy(
+            showClearLogsConfirmation = false,
+            showLogsDialog = false
+        )
     }
 
     fun getLogs(): String {
