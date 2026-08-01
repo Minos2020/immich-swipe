@@ -80,6 +80,8 @@
     <string name="settings_section_tri">Ordenación</string>
     <string name="settings_include_archived_label">Incluir archivados externos</string>
     <string name="settings_include_archived_desc">Mostrar y ordenar las fotos ya archivadas en Immich (fuera de Immich Swipe)</string>
+    <string name="settings_shuffle_label">Mezclar medios</string>
+    <string name="settings_shuffle_desc">Muestra las fotos en orden aleatorio en lugar de cronológico</string>
     <string name="settings_skip_lifespan_label">Duración de SKIP</string>
     <string name="settings_skip_lifespan_desc">Tras este plazo, las fotos \'omitidas\' vuelven a estar \'sin ordenar\' para reevaluarlas.</string>
     <string name="settings_skip_never">SKIP nunca vuelve</string>

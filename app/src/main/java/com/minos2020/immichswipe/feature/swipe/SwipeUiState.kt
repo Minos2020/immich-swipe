@@ -38,6 +38,7 @@ data class SwipeUiState(
     val showLockButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
+    val isShuffleEnabled: Boolean = false,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
     val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL
 ) {

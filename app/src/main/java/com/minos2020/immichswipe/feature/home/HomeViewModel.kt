@@ -1,5 +1,7 @@
 package com.minos2020.immichswipe.feature.home
 
+import kotlin.time.Duration.Companion.milliseconds
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minos2020.immichswipe.data.repository.UserRepository
@@ -15,8 +17,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.AppLogger
-import com.minos2020.immichswipe.core.PlaybackBehavior
-import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
@@ -29,12 +29,12 @@ class HomeViewModel(
     private val sessionRepository: SessionRepository,
     private val albumRepository: AlbumRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository,
-    private val assetRepository: AssetRepository
+    private val assetRepository: AssetRepository,
 ) : ViewModel() {
     
     private val userRepository by lazy { 
         UserRepository(
-            SessionManager.api ?: throw IllegalStateException("Session not initialized")
+            SessionManager.api ?: throw IllegalStateException("Session not initialized"),
         )
     }
     
@@ -62,6 +62,12 @@ class HomeViewModel(
             }
         }
 
+        viewModelScope.launch {
+            sessionRepository.shuffleAssets.collect { shuffle ->
+                _uiState.update { it.copy(isShuffleEnabled = shuffle) }
+            }
+        }
+
         // Applique le mode d'affichage par défaut au démarrage
         viewModelScope.launch {
             val isGrid = sessionRepository.defaultLayoutGrid.first()
@@ -80,14 +86,14 @@ class HomeViewModel(
         // Observe les décisions locales pour mettre à jour les barres de progression
         viewModelScope.launch {
             sessionRepository.sessionConfig.collect { config ->
-                if (config != null) {
+                config?.let { cfg ->
                     combine(
-                        swipeDecisionRepository.getAllDecisionsForUser(config.userId),
-                        swipeDecisionRepository.getAllAlbumDecisionCounts(config.userId)
+                        swipeDecisionRepository.getAllDecisionsForUser(cfg.userId),
+                        swipeDecisionRepository.getAllAlbumDecisionCounts(cfg.userId)
                     ) { allDecisions, albumStats ->
                         val uniqueDecisions = allDecisions.distinctBy { it.assetId }
-                        val treatedMap = albumStats.associate { it.albumId to it.totalCount }.toMutableMap()
-                        val unsyncedMap = albumStats.associate { it.albumId to it.unsyncedCount }.toMutableMap()
+                        val treatedMap = albumStats.associateBy { it.albumId }.mapValues { it.value.totalCount }.toMutableMap()
+                        val unsyncedMap = albumStats.associateBy { it.albumId }.mapValues { it.value.unsyncedCount }.toMutableMap()
                         
                         // Injection du compte global pour "Tous les médias"
                         treatedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.size
@@ -146,9 +152,9 @@ class HomeViewModel(
                     val totalLocked = history.sumOf { it.lockedCount }
                     
                     // Pour KEEP, ARCHIVE et SKIP, on fait : (Somme de l'historique) + (Nouveaux swipes pas encore synchronisés)
-                    val totalKept = history.sumOf { it.keptCount } + allDecisions.count { it.decision == "KEEP" && !it.isSynced }
-                    val totalArchived = history.sumOf { it.archivedCount } + allDecisions.count { it.decision == "ARCHIVE" && !it.isSynced }
-                    val totalSkipped = history.sumOf { it.skippedCount } + allDecisions.count { it.decision == "SKIP" && !it.isSynced }
+                    val totalKept = history.sumOf { it.keptCount } + allDecisions.count { (it.decision == "KEEP") && !it.isSynced }
+                    val totalArchived = history.sumOf { it.archivedCount } + allDecisions.count { (it.decision == "ARCHIVE") && !it.isSynced }
+                    val totalSkipped = history.sumOf { it.skippedCount } + allDecisions.count { (it.decision == "SKIP") && !it.isSynced }
                     
                     // Stats hebdomadaires (basées sur l'activité réelle enregistrée)
                     val weeklyDeleted = weeklyHistory.sumOf { it.deletedCount }
@@ -156,7 +162,7 @@ class HomeViewModel(
 
                     val completedCount = albums.count { album ->
                         val treated = treatedCounts[album.id] ?: 0
-                        treated >= album.assetCount && album.assetCount > 0
+                        (treated >= album.assetCount) && (album.assetCount > 0)
                     }
 
                     StatsUiData(
@@ -229,7 +235,7 @@ class HomeViewModel(
                 val duration = System.currentTimeMillis() - startTime
                 // On attend le complément pour atteindre au moins 800ms
                 if (duration < 800) {
-                    delay(800 - duration)
+                    delay((800 - duration).milliseconds)
                 }
 
                 _uiState.update { 
@@ -241,7 +247,7 @@ class HomeViewModel(
                         error = null
                     ) 
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isRefreshing = false
@@ -255,7 +261,7 @@ class HomeViewModel(
         val current = _uiState.value.currentTab
         
         // SOLUTION : Rafraîchissement systématique si on revient sur HOME
-        if (tab == HomeTab.HOME && current != HomeTab.HOME) {
+        if ((tab == HomeTab.HOME) && (current != HomeTab.HOME)) {
             refreshAlbums()
         }
 
@@ -290,12 +296,8 @@ class HomeViewModel(
         _uiState.update { it.copy(showStatsPopup = visible) }
     }
 
-    fun setPlaybackBehavior(behavior: PlaybackBehavior) = viewModelScope.launch {
-        sessionRepository.savePlaybackBehavior(behavior)
-    }
-
-    fun setThemeMode(theme: AppTheme) = viewModelScope.launch {
-        sessionRepository.saveThemeMode(theme)
+    fun setShuffleEnabled(shuffle: Boolean) = viewModelScope.launch {
+        sessionRepository.saveShuffleAssets(shuffle)
     }
 
     fun logout() = viewModelScope.launch {

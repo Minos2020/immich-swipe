@@ -34,6 +34,7 @@ data class SettingsUiState(
     val showLockButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
+    val isShuffleEnabled: Boolean = false,
     val showLogsDialog: Boolean = false,
     val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
     

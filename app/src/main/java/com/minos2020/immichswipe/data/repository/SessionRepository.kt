@@ -98,6 +98,7 @@ class SessionRepository(context: Context) {
     val showLockButton: Flow<Boolean> = dataStore.isShowLock()
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
+    val shuffleAssets: Flow<Boolean> = dataStore.isShuffleAssets()
 
     /**
      * Expose le mode d'affichage par défaut des cartes.
@@ -175,6 +176,7 @@ class SessionRepository(context: Context) {
     suspend fun saveShowLock(show: Boolean) { dataStore.saveShowLock(show) }
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
+    suspend fun saveShuffleAssets(shuffle: Boolean) { dataStore.saveShuffleAssets(shuffle) }
 
     suspend fun saveDefaultCardDisplayMode(mode: CardDisplayMode) {
         dataStore.saveDefaultCardDisplayMode(mode.name)

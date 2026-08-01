@@ -25,11 +25,16 @@ class AssetRepository(
     /**
      * Récupère toutes les photos d'un album.
      */
-    suspend fun getAssetsByAlbum(albumId: String, includeArchived: Boolean = false, userId: String? = null): List<Asset> {
+    suspend fun getAssetsByAlbum(
+        albumId: String,
+        includeArchived: Boolean = false,
+        userId: String? = null,
+        shuffle: Boolean = false
+    ): List<Asset> {
         // Nettoyage systématique des anciens liens pour cet album avant de les recréer
         albumAssetDao?.clearAlbumRelations(albumId)
 
-        if (albumId == Album.VIRTUAL_SKIPPED_ID && swipeDecisionDao != null && userId != null) {
+        val assets = if (albumId == Album.VIRTUAL_SKIPPED_ID && swipeDecisionDao != null && userId != null) {
             // Album virtuel : On récupère les IDs depuis la base locale pour cet utilisateur
             val skippedDecisions = swipeDecisionDao.getSyncedSkipDecisions(userId).first()
             val assetIds = skippedDecisions.map { it.assetId }
@@ -43,7 +48,7 @@ class AssetRepository(
             // and returns the entire library instead.
             // We sort by fileCreatedAt to maintain the standard timeline order.
             // We filter out trashed assets (they shouldn't be in the review collection).
-            return coroutineScope {
+            coroutineScope {
                 assetIds.map { id ->
                     async {
                         try {
@@ -56,10 +61,8 @@ class AssetRepository(
                     .filter { !it.isTrashed }
                     .sortedByDescending { it.fileCreatedAt }
             }
-        }
-
-        if (albumId == Album.VIRTUAL_ALL_ID) {
-            return if (includeArchived) {
+        } else if (albumId == Album.VIRTUAL_ALL_ID) {
+            if (includeArchived) {
                 // Return everything (by combining timeline + archive)
                 coroutineScope {
                     val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId) }
@@ -69,10 +72,8 @@ class AssetRepository(
             } else {
                 fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId)
             }
-        }
-
-        if (albumId == Album.VIRTUAL_ORPHANS_ID) {
-            return if (includeArchived) {
+        } else if (albumId == Album.VIRTUAL_ORPHANS_ID) {
+            if (includeArchived) {
                 coroutineScope {
                     val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId) }
                     val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId) }
@@ -81,25 +82,27 @@ class AssetRepository(
             } else {
                 fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId)
             }
+        } else {
+            if (includeArchived) {
+                coroutineScope {
+                    val timelineDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId) }
+                    val archiveDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId) }
+                    
+                    val timeline = try { timelineDeferred.await() } catch (_: Exception) { emptyList() }
+                    val archive = try { archiveDeferred.await() } catch (_: Exception) { emptyList() }
+                    
+                    (timeline + archive).sortedByDescending { it.fileCreatedAt }
+                }
+            } else {
+                try {
+                    fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            }
         }
 
-        return if (includeArchived) {
-            coroutineScope {
-                val timelineDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId) }
-                val archiveDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId) }
-                
-                val timeline = try { timelineDeferred.await() } catch (_: Exception) { emptyList() }
-                val archive = try { archiveDeferred.await() } catch (_: Exception) { emptyList() }
-                
-                (timeline + archive).sortedByDescending { it.fileCreatedAt }
-            }
-        } else {
-            try {
-                fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId)
-            } catch (_: Exception) {
-                emptyList()
-            }
-        }
+        return if (shuffle) assets.shuffled() else assets
     }
 
     suspend fun getTotalAssetCount(includeArchived: Boolean = false): Int {

@@ -29,6 +29,7 @@ class SessionDataStore(private val context: Context) {
         private val KEY_SHOW_LOCK = androidx.datastore.preferences.core.booleanPreferencesKey("show_lock")
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
         private val KEY_INCLUDE_ARCHIVED = androidx.datastore.preferences.core.booleanPreferencesKey("include_archived")
+        private val KEY_SHUFFLE_ASSETS = androidx.datastore.preferences.core.booleanPreferencesKey("shuffle_assets")
         private val KEY_DEFAULT_CARD_DISPLAY_MODE = stringPreferencesKey("default_card_display_mode")
     }
 
@@ -118,6 +119,9 @@ class SessionDataStore(private val context: Context) {
 
     fun isIncludeArchived(): Flow<Boolean> = context.dataStore.data.map { it[KEY_INCLUDE_ARCHIVED] ?: true }
     suspend fun saveIncludeArchived(include: Boolean) { context.dataStore.edit { it[KEY_INCLUDE_ARCHIVED] = include } }
+
+    fun isShuffleAssets(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHUFFLE_ASSETS] ?: false }
+    suspend fun saveShuffleAssets(shuffle: Boolean) { context.dataStore.edit { it[KEY_SHUFFLE_ASSETS] = shuffle } }
 
     fun getDefaultCardDisplayMode(): Flow<String?> = context.dataStore.data.map { it[KEY_DEFAULT_CARD_DISPLAY_MODE] }
     suspend fun saveDefaultCardDisplayMode(mode: String) { context.dataStore.edit { it[KEY_DEFAULT_CARD_DISPLAY_MODE] = mode } }

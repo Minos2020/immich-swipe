@@ -198,6 +198,19 @@ fun SettingsScreen(
                         modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 16.dp)
                     )
 
+                    SettingsToggleItemSmall(
+                        title = stringResource(R.string.settings_shuffle_label),
+                        checked = uiState.isShuffleEnabled,
+                        onCheckedChange = { viewModel.setShuffleEnabled(it) },
+                        icon = Icons.Default.Shuffle
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_shuffle_desc),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 16.dp)
+                    )
+
                     HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp), thickness = 0.5.dp)
 
                     Text(

@@ -1,5 +1,7 @@
 package com.minos2020.immichswipe.feature.swipe
 
+import kotlin.time.Duration.Companion.milliseconds
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minos2020.immichswipe.data.repository.AssetRepository
@@ -19,7 +21,7 @@ class SwipeViewModel(
     private val assetRepository: AssetRepository,
     private val sessionRepository: SessionRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository,
-    private val album: Album
+    private val album: Album,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SwipeUiState(albumName = album.albumName))
@@ -36,7 +38,22 @@ class SwipeViewModel(
         observeButtonVisibility()
         observeAutoNextOnFav()
         observeIncludeArchived()
+        observeShuffleAssets()
         observeDefaultCardDisplayMode()
+    }
+
+    private fun observeShuffleAssets() {
+        viewModelScope.launch {
+            sessionRepository.shuffleAssets.collect { shuffle ->
+                val oldShuffle = _uiState.value.isShuffleEnabled
+                _uiState.value = _uiState.value.copy(isShuffleEnabled = shuffle)
+                
+                // Si le mode shuffle change réellement après le chargement initial, on rafraîchit
+                if ((oldShuffle != shuffle) && !_uiState.value.isLoading) {
+                    loadAssetsAndDecisions()
+                }
+            }
+        }
     }
 
     private fun observeDefaultCardDisplayMode() {
@@ -97,7 +114,7 @@ class SwipeViewModel(
             _uiState.value = _uiState.value.copy(error = null)
             // On ajoute un petit délai pour éviter de spammer le serveur en cas de crash en boucle
             viewModelScope.launch {
-                delay(500)
+                delay(500.milliseconds)
                 loadAssetsAndDecisions()
             }
         }
@@ -153,9 +170,15 @@ class SwipeViewModel(
                 AppLogger.d("Swipe", "Chargement de l'album ${album.albumName} (ID: ${album.id})")
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
                 val includeArchived = sessionRepository.includeArchived.first()
+                val isShuffle = sessionRepository.shuffleAssets.first()
 
                 // On charge les assets depuis l'API
-                val assets = assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId)
+                val assets = assetRepository.getAssetsByAlbum(
+                    album.id,
+                    includeArchived,
+                    config.userId,
+                    shuffle = isShuffle,
+                )
                 val albumAssetIds = assets.map { it.id }.toSet()
 
                 // On charge TOUTES les décisions locales de l'utilisateur (partagées entre albums)
@@ -171,7 +194,7 @@ class SwipeViewModel(
                     .filter { it.isSynced || it.wasSyncedSkip }
                     .associate { entity ->
                         val decision = if (entity.wasSyncedSkip) SwipeDecision.SKIP 
-                                      else try { SwipeDecision.valueOf(entity.decision) } catch (e: Exception) { SwipeDecision.SKIP }
+                                      else try { SwipeDecision.valueOf(entity.decision) } catch (_: Exception) { SwipeDecision.SKIP }
                         entity.assetId to decision
                     }
 
@@ -196,7 +219,7 @@ class SwipeViewModel(
                         null
                     } ?: return@forEach
 
-                    if (decision == SwipeDecision.SKIP && lifespanDays > 0) {
+                    if ((decision == SwipeDecision.SKIP) && (lifespanDays > 0)) {
                         val isExpired = (currentTime - entity.createdAt) > lifespanMs
                         if (isExpired) return@forEach
                     }
@@ -335,10 +358,10 @@ class SwipeViewModel(
 
         // 3. Si TOUT est traité (Mode Revue), on passe simplement au suivant dans l'ordre de la liste
         if (nextIndex == -1) {
-            if (currentState.currentIndex + 1 < assets.size) {
-                nextIndex = currentState.currentIndex + 1
+            nextIndex = if (currentState.currentIndex + 1 < assets.size) {
+                currentState.currentIndex + 1
             } else {
-                nextIndex = assets.size // Fin réelle de l'album
+                assets.size // Fin réelle de l'album
             }
         }
 
@@ -378,7 +401,7 @@ class SwipeViewModel(
     }
 
     fun toggleDisplayMode() {
-        val nextMode = if (_uiState.value.cardDisplayMode == com.minos2020.immichswipe.core.CardDisplayMode.FILL) {
+        val nextMode = if (_uiState.value.cardDisplayMode == CardDisplayMode.FILL) {
             CardDisplayMode.FIT
         } else {
             CardDisplayMode.FILL
@@ -421,13 +444,13 @@ class SwipeViewModel(
                 val previousAssetId = currentState.assets[previousIndex].id
 
                 // On nettoie UNIQUEMENT l'actuel
-                if (currentAsset != null) {
-                    swipeDecisionRepository.removeDecision(currentAsset.id, config.userId)
+                currentAsset?.let {
+                    swipeDecisionRepository.removeDecision(it.id, config.userId)
                 }
                 
                 val newDecisions = currentState.decisions.toMutableMap()
-                if (currentAsset != null) {
-                    newDecisions.remove(currentAsset.id)
+                currentAsset?.let {
+                    newDecisions.remove(it.id)
                 }
 
                 _uiState.value = currentState.copy(
@@ -444,7 +467,7 @@ class SwipeViewModel(
      * Permet de sauter directement à un asset précis (via la timeline).
      */
     fun onMoveToAsset(index: Int) {
-        if (index in 0 until _uiState.value.assets.size) {
+        if (index in _uiState.value.assets.indices) {
             _uiState.value = _uiState.value.copy(currentIndex = index)
             loadAssetDetail(_uiState.value.assets[index].id, index)
         }
@@ -542,8 +565,7 @@ class SwipeViewModel(
                 var deltaSkip = toSkip.size
 
                 (toKeep + toArchive + toSkip + toDelete + toLock).forEach { id ->
-                    val previous = initialSyncedDecisions[id]
-                    if (previous != null) {
+                    initialSyncedDecisions[id]?.let { previous ->
                         // L'asset avait déjà une décision synchronisée : on annule l'ancienne catégorie
                         when (previous) {
                             SwipeDecision.KEEP -> deltaKeep--
@@ -580,7 +602,7 @@ class SwipeViewModel(
                         showSummary = false,
                         showSuccessAnimation = true
                     )
-                    delay(2500)
+                    delay(2500.milliseconds)
                     _uiState.value = _uiState.value.copy(showSuccessAnimation = false)
                 }
                 

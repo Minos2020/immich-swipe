@@ -14,11 +14,12 @@ import com.minos2020.immichswipe.data.local.model.DatabaseExport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val sessionRepository: SessionRepository,
-    private val swipeDecisionRepository: SwipeDecisionRepository
+    private val swipeDecisionRepository: SwipeDecisionRepository,
 ) : ViewModel() {
 
     private val userRepository by lazy {
@@ -113,6 +114,12 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.shuffleAssets.collect { shuffle ->
+                android.util.Log.d("SettingsVM", "Shuffle collected: $shuffle")
+                _uiState.update { it.copy(isShuffleEnabled = shuffle) }
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.defaultCardDisplayMode.collect { mode ->
                 _uiState.value = _uiState.value.copy(defaultCardDisplayMode = mode)
             }
@@ -181,6 +188,11 @@ class SettingsViewModel(
         viewModelScope.launch { sessionRepository.saveIncludeArchived(include) }
     }
 
+    fun setShuffleEnabled(shuffle: Boolean) {
+        android.util.Log.d("SettingsVM", "Setting shuffle: $shuffle")
+        viewModelScope.launch { sessionRepository.saveShuffleAssets(shuffle) }
+    }
+
     fun setDefaultCardDisplayMode(mode: com.minos2020.immichswipe.core.CardDisplayMode) {
         viewModelScope.launch {
             sessionRepository.saveDefaultCardDisplayMode(mode)
@@ -193,7 +205,7 @@ class SettingsViewModel(
         // On détermine si on doit afficher l'alerte :
         // 1. Si on passe de "Jamais" (0) à une durée limitée -> Alerte (car on réduit l'infini)
         // 2. Si on réduit une durée existante (ex: de 30j à 7j) -> Alerte
-        val isReduction = (currentDays == 0L && days > 0L) || (currentDays > 0L && days > 0L && days < currentDays)
+        val isReduction = (currentDays == 0L && days > 0L) || (currentDays > 0L && days in 1 until currentDays)
         
         if (isReduction) {
             _uiState.value = _uiState.value.copy(showSkipLifespanWarning = days)

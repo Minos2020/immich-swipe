@@ -114,7 +114,7 @@ fun HomeScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = MaterialTheme.colorScheme.surface,
                     )
                 )
             } else {
@@ -137,7 +137,7 @@ fun HomeScreen(
                         actions = {
                             if (isHome) {
                                 // Bouton Stats (Nouveau)
-                                IconButton(onClick = { viewModel.toggleStatsPopup(true) }) {
+                                IconButton(onClick = { viewModel.toggleStatsPopup(visible = true) }) {
                                     Icon(
                                         imageVector = Icons.Default.BarChart,
                                         contentDescription = "Statistiques"
@@ -153,6 +153,16 @@ fun HomeScreen(
                                 }
                             }
 
+                            if (uiState.currentTab == HomeTab.SWIPE) {
+                                IconButton(onClick = { viewModel.setShuffleEnabled(!uiState.isShuffleEnabled) }) {
+                                    Icon(
+                                        imageVector = if (uiState.isShuffleEnabled) Icons.Default.ShuffleOn else Icons.Default.Shuffle,
+                                        contentDescription = stringResource(R.string.settings_shuffle_label),
+                                        tint = if (uiState.isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+
                             val baseUrl = SessionManager.getBaseUrl()
                             val userId = uiState.user?.id
                             val avatarColor = getAvatarColor(uiState.user?.avatarColor)
@@ -163,7 +173,7 @@ fun HomeScreen(
                                 .border(1.dp, avatarColor, CircleShape)
                                 .padding(2.dp)
                                 .clip(CircleShape)
-                                .clickable { viewModel.toggleProfilePopup(true) }
+                                .clickable { viewModel.toggleProfilePopup(visible = true) }
 
                             Box(contentAlignment = Alignment.BottomEnd) {
                                 if ((userId != null) && (baseUrl != null)) {
@@ -172,7 +182,7 @@ fun HomeScreen(
                                         model = ImageRequest.Builder(LocalContext.current)
                                             .data("$cleanBaseUrl/api/users/$userId/profile-image")
                                             .addHeader("x-api-key", SessionManager.getApiKey() ?: "")
-                                            .crossfade(true)
+                                            .crossfade(enable = true)
                                             .build(),
                                         contentDescription = stringResource(R.string.settings_section_account),
                                         placeholder = rememberVectorPainter(Icons.Default.AccountCircle),
@@ -196,7 +206,7 @@ fun HomeScreen(
                                         .size(10.dp)
                                         .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape),
                                     color = uiState.connectionStatus.level.color,
-                                    shape = CircleShape
+                                    shape = CircleShape,
                                 ) {}
                             }
                         },
@@ -265,7 +275,7 @@ fun HomeScreen(
                     if (uiState.isLoading && uiState.albums.isEmpty()) {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     } else if (uiState.error != null) {
-                        ErrorView(error = uiState.error!!, onRetry = { viewModel.loadUser() })
+                        ErrorView(error = uiState.error!!) { viewModel.loadUser() }
                     } else if (uiState.filteredAlbums.isEmpty() && uiState.searchQuery.isNotEmpty()) {
                         // Aucun résultat de recherche
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -290,7 +300,7 @@ fun HomeScreen(
                                     isRefreshing = uiState.isRefreshing,
                                     onRefresh = { viewModel.refreshAlbums() },
                                     onAlbumClick = { viewModel.onAlbumSelected(it) },
-                                    onToggleCategory = { viewModel.toggleCategory(it) }
+                                    onToggleCategory = viewModel::toggleCategory
                                 )
                             } else {
                                 AlbumList(
@@ -301,7 +311,7 @@ fun HomeScreen(
                                     isRefreshing = uiState.isRefreshing,
                                     onRefresh = { viewModel.refreshAlbums() },
                                     onAlbumClick = { viewModel.onAlbumSelected(it) },
-                                    onToggleCategory = { viewModel.toggleCategory(it) }
+                                    onToggleCategory = viewModel::toggleCategory
                                 )
                             }
                         }
@@ -630,7 +640,7 @@ fun ProfilePopup(
                     .padding(4.dp)
                     .clip(CircleShape)
 
-                if (user != null && baseUrl != null) {
+                if (user != null && (baseUrl != null)) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data("$baseUrl/api/users/${user.id}/profile-image")
@@ -769,8 +779,10 @@ fun ProfilePopup(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW,
-                                "https://github.com/Minos2020/immich-swipe".toUri())
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                "https://github.com/Minos2020/immich-swipe".toUri()
+                            )
                             context.startActivity(intent)
                         }
                         .padding(8.dp),
@@ -902,44 +914,49 @@ fun AlbumList(
         }
 
         // Barre de défilement fluide
-        val layoutInfo = state.layoutInfo
-        if (layoutInfo.totalItemsCount > 0 && layoutInfo.visibleItemsInfo.isNotEmpty()) {
-            val firstItem = layoutInfo.visibleItemsInfo.first()
-            val totalItems = layoutInfo.totalItemsCount
-            
-            // Position absolue du haut de la vue en "unités d'items"
-            val currentPos = firstItem.index + (-firstItem.offset.toFloat() / firstItem.size.coerceAtLeast(1).toFloat())
-            val scrollFraction = currentPos / totalItems.toFloat()
-            
-            // Calcul de la taille de la barre basé sur la proportion réelle du viewport
-            val viewportHeight = layoutInfo.viewportSize.height.toFloat()
-            val averageItemSize = layoutInfo.visibleItemsInfo.sumOf { it.size }.toFloat() / layoutInfo.visibleItemsInfo.size
-            val visibleFraction = (viewportHeight / averageItemSize) / totalItems
-            
-            val animatedOffset by animateFloatAsState(targetValue = scrollFraction, label = "scrollbarOffset")
-            val animatedHeight by animateFloatAsState(targetValue = visibleFraction.coerceIn(0.05f, 1.0f), label = "scrollbarHeight")
+        val scrollFraction by remember {
+            derivedStateOf {
+                val layoutInfo = state.layoutInfo
+                if (layoutInfo.totalItemsCount > 0 && layoutInfo.visibleItemsInfo.isNotEmpty()) {
+                    val firstItem = layoutInfo.visibleItemsInfo.first()
+                    val totalItems = layoutInfo.totalItemsCount
+                    (firstItem.index + (-firstItem.offset.toFloat() / firstItem.size.coerceAtLeast(1).toFloat())) / totalItems.toFloat()
+                } else 0f
+            }
+        }
+        val visibleFraction by remember {
+            derivedStateOf {
+                val layoutInfo = state.layoutInfo
+                if (layoutInfo.totalItemsCount > 0 && layoutInfo.visibleItemsInfo.isNotEmpty()) {
+                    val viewportHeight = layoutInfo.viewportSize.height.toFloat()
+                    val averageItemSize = layoutInfo.visibleItemsInfo.sumOf { it.size }.toFloat() / layoutInfo.visibleItemsInfo.size
+                    (viewportHeight / averageItemSize) / layoutInfo.totalItemsCount
+                } else 1.0f
+            }
+        }
+        
+        val animatedOffset by animateFloatAsState(targetValue = scrollFraction, label = "scrollbarOffset")
+        val animatedHeight by animateFloatAsState(targetValue = visibleFraction.coerceIn(0.05f, 1.0f), label = "scrollbarHeight")
 
-            if (visibleFraction < 1.0f) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 4.dp, top = 16.dp, bottom = 16.dp)
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), CircleShape)
-                ) {
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val height = maxHeight * animatedHeight.coerceAtLeast(0.1f)
-                        // Le décalage est simplement proportionnel à la hauteur totale
-                        val offset = maxHeight * animatedOffset
-                        Box(
-                            modifier = Modifier
-                                .offset(y = offset.coerceAtMost(maxHeight - height))
-                                .fillMaxWidth()
-                                .height(height)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape)
-                        )
-                    }
+        if (visibleFraction < 1.0f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 4.dp, top = 16.dp, bottom = 16.dp)
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), CircleShape)
+            ) {
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val height = maxHeight * animatedHeight
+                    val offset = maxHeight * animatedOffset
+                    Box(
+                        modifier = Modifier
+                            .offset(y = offset.coerceAtMost(maxHeight - height))
+                            .fillMaxWidth()
+                            .height(height)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape)
+                    )
                 }
             }
         }
@@ -1034,46 +1051,49 @@ fun AlbumGrid(
         }
 
         // Barre de défilement fluide
-        val layoutInfo = state.layoutInfo
-        if (layoutInfo.totalItemsCount > 0 && layoutInfo.visibleItemsInfo.isNotEmpty()) {
-            val firstItem = layoutInfo.visibleItemsInfo.first()
-            val totalItems = layoutInfo.totalItemsCount
+        val scrollFraction by remember {
+            derivedStateOf {
+                val layoutInfo = state.layoutInfo
+                if (layoutInfo.totalItemsCount > 0 && layoutInfo.visibleItemsInfo.isNotEmpty()) {
+                    val firstItem = layoutInfo.visibleItemsInfo.first()
+                    val totalItems = layoutInfo.totalItemsCount
+                    (firstItem.index / 3f + (-firstItem.offset.y.toFloat() / firstItem.size.height.coerceAtLeast(1).toFloat())) / (totalItems / 3f)
+                } else 0f
+            }
+        }
+        val visibleFraction by remember {
+            derivedStateOf {
+                val layoutInfo = state.layoutInfo
+                if (layoutInfo.totalItemsCount > 0 && layoutInfo.visibleItemsInfo.isNotEmpty()) {
+                    val viewportHeight = layoutInfo.viewportSize.height.toFloat()
+                    val averageItemHeight = layoutInfo.visibleItemsInfo.sumOf { it.size.height }.toFloat() / layoutInfo.visibleItemsInfo.size
+                    (viewportHeight / averageItemHeight) / (layoutInfo.totalItemsCount / 3f)
+                } else 1.0f
+            }
+        }
 
-            // Calcul de la position précise (en se basant sur les lignes de 3)
-            val currentPos = (firstItem.index / 3f) + (-firstItem.offset.y.toFloat() / firstItem.size.height.coerceAtLeast(
-                1
-            ).toFloat())
-            val totalRows = totalItems / 3f
-            val scrollFraction = currentPos / totalRows
-            
-            // Calcul de la taille de la barre basé sur la proportion réelle du viewport
-            val viewportHeight = layoutInfo.viewportSize.height.toFloat()
-            val averageItemHeight = layoutInfo.visibleItemsInfo.sumOf { it.size.height }.toFloat() / layoutInfo.visibleItemsInfo.size
-            val visibleFraction = (viewportHeight / averageItemHeight) / totalRows
+        val animatedOffset by animateFloatAsState(targetValue = scrollFraction.coerceIn(0f, 1f), label = "scrollbarOffset")
+        val animatedHeight by animateFloatAsState(targetValue = visibleFraction.coerceIn(0.05f, 1.0f), label = "scrollbarHeight")
 
-            val animatedOffset by animateFloatAsState(targetValue = scrollFraction.coerceIn(0f, 1f), label = "scrollbarOffset")
-            val animatedHeight by animateFloatAsState(targetValue = visibleFraction.coerceIn(0.05f, 1.0f), label = "scrollbarHeight")
-
-            if (visibleFraction < 1.0f) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 4.dp, top = 16.dp, bottom = 16.dp)
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), CircleShape)
-                ) {
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val height = maxHeight * animatedHeight
-                        val offset = maxHeight * animatedOffset
-                        Box(
-                            modifier = Modifier
-                                .offset(y = offset.coerceAtMost(maxHeight - height))
-                                .fillMaxWidth()
-                                .height(height)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape)
-                        )
-                    }
+        if (visibleFraction < 1.0f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 4.dp, top = 16.dp, bottom = 16.dp)
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), CircleShape)
+            ) {
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val height = maxHeight * animatedHeight
+                    val offset = maxHeight * animatedOffset
+                    Box(
+                        modifier = Modifier
+                            .offset(y = offset.coerceAtMost(maxHeight - height))
+                            .fillMaxWidth()
+                            .height(height)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape)
+                    )
                 }
             }
         }
