@@ -117,9 +117,11 @@
     <string name="settings_display_mode_fill">Remplir</string>
     <string name="settings_display_mode_fit">Ajuster</string>
     <string name="settings_display_mode_pos_label">Position du bouton Mode d\'affichage</string>
+    <string name="settings_mute_pos_label">Position du bouton Mute (vidéos)</string>
     <string name="swipe_toggle_display">Changer le mode d\'affichage</string>
 
     <!-- Écran Swipe -->
+    <string name="swipe_toggle_mute">Activer / désactiver le son</string>
     <string name="swipe_keep">Garder</string>
     <string name="swipe_keep_upper">KEEP</string>
     <string name="swipe_delete">Supprimer</string>

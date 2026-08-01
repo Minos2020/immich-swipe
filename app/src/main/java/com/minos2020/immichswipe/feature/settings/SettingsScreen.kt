@@ -354,6 +354,15 @@ fun SettingsScreen(
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
 
+                    // Position icône Sourdine (Nouveau)
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_mute_pos_label),
+                        selectedPosition = uiState.muteButtonPosition,
+                        onPositionSelected = { viewModel.setMuteButtonPosition(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
                     // Comportement vidéo
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(

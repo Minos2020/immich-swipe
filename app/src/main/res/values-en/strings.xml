@@ -112,6 +112,7 @@
     <string name="settings_pos_bottom_right">Bottom-Right</string>
 
     <!-- Swipe Screen -->
+    <string name="swipe_toggle_mute">Toggle mute</string>
     <string name="swipe_keep">Keep</string>
     <string name="swipe_keep_upper">KEEP</string>
     <string name="swipe_delete">Delete</string>
@@ -200,4 +201,6 @@
     <string name="settings_display_mode_fit">Fit</string>
     <string name="settings_display_mode_pos_label">Display mode button position</string>
     <string name="settings_display_mode_label">Default media display</string>
+    <string name="settings_mute_pos_label">Mute button position (videos)</string>
+    <string name="swipe_toggle_display">Toggle display mode</string>
 </resources>

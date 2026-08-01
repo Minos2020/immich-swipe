@@ -25,6 +25,7 @@ data class SettingsUiState(
     val fullscreenButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
     val immichButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     val cardDisplayButtonPosition: IconPosition = IconPosition.BOTTOM_LEFT,
+    val muteButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
     val isDefaultLayoutGrid: Boolean = false,
     val skipLifespanDays: Long = 0L,
     val showSkipLifespanWarning: Long? = null, // Contient la valeur cible si le dialogue est affiché

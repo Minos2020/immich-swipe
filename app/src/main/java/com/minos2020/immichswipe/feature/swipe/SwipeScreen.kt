@@ -199,8 +199,11 @@ fun SwipeScreen(
                             fullscreenButtonPosition = uiState.fullscreenButtonPosition,
                             immichButtonPosition = uiState.immichButtonPosition,
                             cardDisplayButtonPosition = uiState.cardDisplayButtonPosition,
+                            muteButtonPosition = uiState.muteButtonPosition,
+                            isMuted = uiState.isMuted,
                             cardDisplayMode = uiState.cardDisplayMode,
-                            onToggleDisplayMode = { viewModel.toggleDisplayMode() }
+                            onToggleDisplayMode = { viewModel.toggleDisplayMode() },
+                            onToggleMute = { viewModel.toggleMute() }
                         )
                     }
                 }
@@ -758,8 +761,11 @@ fun SwipeCard(
     fullscreenButtonPosition: IconPosition,
     immichButtonPosition: IconPosition,
     cardDisplayButtonPosition: IconPosition,
+    muteButtonPosition: IconPosition,
+    isMuted: Boolean,
     cardDisplayMode: CardDisplayMode,
-    onToggleDisplayMode: () -> Unit
+    onToggleDisplayMode: () -> Unit,
+    onToggleMute: () -> Unit
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -807,6 +813,7 @@ fun SwipeCard(
                 }
 
                 repeatMode = Player.REPEAT_MODE_ONE
+                volume = if (isMuted) 0f else 1f
                 val videoUrl = "$baseUrl/api/assets/${asset.id}/video/playback"
                 val dataSourceFactory = DefaultHttpDataSource.Factory()
                     .setDefaultRequestProperties(mapOf("x-api-key" to apiKey))
@@ -817,6 +824,11 @@ fun SwipeCard(
                 playWhenReady = true
             }
         } else null
+    }
+
+    // Mise à jour du volume si le statut Mute change
+    LaunchedEffect(isMuted) {
+        exoPlayer?.volume = if (isMuted) 0f else 1f
     }
 
     // Gestion du cycle de vie pour mettre en pause la vidéo quand on quitte l'app
@@ -1023,7 +1035,12 @@ fun SwipeCard(
                         label = "ButtonsGlueAnimation"
                     )
 
-                    val distinctPositions = listOf(fullscreenButtonPosition, immichButtonPosition, cardDisplayButtonPosition).distinct()
+                    val distinctPositions = listOf(
+                        fullscreenButtonPosition, 
+                        immichButtonPosition, 
+                        cardDisplayButtonPosition,
+                        muteButtonPosition
+                    ).distinct()
                     distinctPositions.forEach { position ->
                         Column(
                             modifier = Modifier
@@ -1050,6 +1067,13 @@ fun SwipeCard(
                                         Icons.Default.FitScreen else Icons.Default.AspectRatio,
                                     contentDescription = stringResource(R.string.swipe_toggle_display),
                                     onClick = onToggleDisplayMode
+                                )
+                            }
+                            if (muteButtonPosition == position && asset.type == "VIDEO") {
+                                SwipeActionIconButton(
+                                    icon = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                                    contentDescription = stringResource(R.string.swipe_toggle_mute),
+                                    onClick = onToggleMute
                                 )
                             }
                             if (immichButtonPosition == position) {

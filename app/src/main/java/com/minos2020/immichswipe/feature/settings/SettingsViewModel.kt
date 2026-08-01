@@ -78,6 +78,11 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.muteButtonPosition.collect { pos ->
+                _uiState.value = _uiState.value.copy(muteButtonPosition = pos)
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.defaultLayoutGrid.collect { isGrid ->
                 _uiState.value = _uiState.value.copy(isDefaultLayoutGrid = isGrid)
             }
@@ -152,6 +157,12 @@ class SettingsViewModel(
     fun setCardDisplayButtonPosition(pos: IconPosition) {
         viewModelScope.launch {
             sessionRepository.saveCardDisplayButtonPosition(pos)
+        }
+    }
+
+    fun setMuteButtonPosition(pos: IconPosition) {
+        viewModelScope.launch {
+            sessionRepository.saveMuteButtonPosition(pos)
         }
     }
 

@@ -32,6 +32,7 @@ class SwipeViewModel(
         observeFullscreenButtonPosition()
         observeImmichButtonPosition()
         observeCardDisplayButtonPosition()
+        observeMuteButtonPosition()
         observeSkipLifespan()
         observeButtonVisibility()
         observeAutoNextOnFav()
@@ -139,6 +140,14 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.cardDisplayButtonPosition.collect { pos ->
                 _uiState.value = _uiState.value.copy(cardDisplayButtonPosition = pos)
+            }
+        }
+    }
+
+    private fun observeMuteButtonPosition() {
+        viewModelScope.launch {
+            sessionRepository.muteButtonPosition.collect { pos ->
+                _uiState.value = _uiState.value.copy(muteButtonPosition = pos)
             }
         }
     }
@@ -384,6 +393,10 @@ class SwipeViewModel(
             CardDisplayMode.FILL
         }
         _uiState.value = _uiState.value.copy(cardDisplayMode = nextMode)
+    }
+
+    fun toggleMute() {
+        _uiState.value = _uiState.value.copy(isMuted = !_uiState.value.isMuted)
     }
 
     fun undo() {

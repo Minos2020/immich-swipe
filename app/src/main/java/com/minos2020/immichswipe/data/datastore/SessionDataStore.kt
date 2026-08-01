@@ -22,6 +22,7 @@ class SessionDataStore(private val context: Context) {
         private val KEY_FULLSCREEN_ICON_POS = stringPreferencesKey("fullscreen_icon_pos")
         private val KEY_IMMICH_ICON_POS = stringPreferencesKey("immich_icon_pos")
         private val KEY_CARD_DISPLAY_ICON_POS = stringPreferencesKey("card_display_icon_pos")
+        private val KEY_MUTE_ICON_POS = stringPreferencesKey("mute_icon_pos")
         private val KEY_DEFAULT_LAYOUT_GRID = androidx.datastore.preferences.core.booleanPreferencesKey("default_layout_grid")
         private val KEY_SKIP_LIFESPAN = androidx.datastore.preferences.core.longPreferencesKey("skip_lifespan")
         private val KEY_SHOW_FAVORITE = androidx.datastore.preferences.core.booleanPreferencesKey("show_favorite")
@@ -90,6 +91,12 @@ class SessionDataStore(private val context: Context) {
 
     suspend fun saveCardDisplayIconPosition(pos: String) {
         context.dataStore.edit { it[KEY_CARD_DISPLAY_ICON_POS] = pos }
+    }
+
+    fun getMuteIconPosition(): Flow<String?> = context.dataStore.data.map { it[KEY_MUTE_ICON_POS] }
+
+    suspend fun saveMuteIconPosition(pos: String) {
+        context.dataStore.edit { it[KEY_MUTE_ICON_POS] = pos }
     }
 
     fun isDefaultLayoutGrid(): Flow<Boolean> = context.dataStore.data.map { it[KEY_DEFAULT_LAYOUT_GRID] ?: false }

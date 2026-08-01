@@ -32,6 +32,8 @@ data class SwipeUiState(
     val fullscreenButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
     val immichButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     val cardDisplayButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
+    val muteButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
+    val isMuted: Boolean = false,
     val skipLifespanDays: Long = 0L,
     val showFavoriteButton: Boolean = true,
     val showArchiveButton: Boolean = true,

@@ -84,6 +84,13 @@ class SessionRepository(context: Context) {
     }
 
     /**
+     * Expose la position de l'icône de sourdine (vidéo).
+     */
+    val muteButtonPosition: Flow<IconPosition> = dataStore.getMuteIconPosition().map {
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
+    }
+
+    /**
      * Expose la préférence du mode d'affichage par défaut.
      */
     val defaultLayoutGrid: Flow<Boolean> = dataStore.isDefaultLayoutGrid()
@@ -154,6 +161,13 @@ class SessionRepository(context: Context) {
      */
     suspend fun saveCardDisplayButtonPosition(pos: IconPosition) {
         dataStore.saveCardDisplayIconPosition(pos.name)
+    }
+
+    /**
+     * Sauvegarde la position de l'icône de sourdine (vidéo).
+     */
+    suspend fun saveMuteButtonPosition(pos: IconPosition) {
+        dataStore.saveMuteIconPosition(pos.name)
     }
 
     /**

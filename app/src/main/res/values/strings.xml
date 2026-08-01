@@ -116,7 +116,9 @@
     <string name="settings_display_mode_fill">Fill</string>
     <string name="settings_display_mode_fit">Fit</string>
     <string name="settings_display_mode_pos_label">Display mode button position</string>
+    <string name="settings_mute_pos_label">Mute button position (videos)</string>
     <string name="swipe_toggle_display">Toggle display mode</string>
+    <string name="swipe_toggle_mute">Toggle mute</string>
 
     <!-- Swipe Screen -->
     <string name="swipe_keep">Keep</string>
