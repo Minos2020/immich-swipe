@@ -764,31 +764,55 @@ fun ProfilePopup(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Lien Code Source
+                // Lien Code Source et Version
                 Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW,
-                                "https://github.com/Minos2020/immich-swipe".toUri())
-                            context.startActivity(intent)
-                        }
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        painter = rememberVectorPainter(Icons.Default.Code),
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.profile_source_code),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                val intent = Intent(Intent.ACTION_VIEW,
+                                    "https://github.com/Minos2020/immich-swipe".toUri())
+                                context.startActivity(intent)
+                            }
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = rememberVectorPainter(Icons.Default.Code),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.profile_source_code),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    val packageInfo = remember {
+                        try {
+                            context.packageManager.getPackageInfo(context.packageName, 0)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    val versionName = packageInfo?.versionName ?: ""
+
+                    if (versionName.isNotEmpty()) {
+                        Text(
+                            text = "v$versionName",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(start = 100.dp)
+                        )
+                    }
                 }
             }
         }
