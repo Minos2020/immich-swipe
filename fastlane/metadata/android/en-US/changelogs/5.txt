@@ -1,0 +1,13 @@
+Immich Swipe v2.1.0
+
+- Added 2 new collections : All assets and Orphans (assets that are not in any album)
+- Added option to choose how images are displayed (fill or fit), both with a default parameter AND a quick button on the card.
+- Added pinch-to-zoom in all scenarios (directly in the card, in full screen, for both photos and videos)
+
+- Added animation to album title in swipe screen, to enhance readability especially in light mode.
+- Enhanced UI in swipe card, with buttons automatically moving when opening metadata panel.
+
+- Fixed SKIP collection, now showing only skipped assets, and not interfering with other albums or collections.
+- Fixed deletion for skipped assets
+- Fixed sorting progress synchronization through all albums and collections
+- Fixed wrong counts in global stats

@@ -36,12 +36,16 @@
     <string name="home_album_completed">Completed</string>
     <string name="home_unsynced_changes">Contains %1$d unsynced changes</string>
     <string name="home_sorted_count">%1$d / %2$d sorted</string>
+    <string name="home_skip_count">%1$d photos</string>
     <string name="home_select_album">Select an album to start!</string>
     <string name="home_session_title">Sorting session: %1$s</string>
     <string name="home_photos_to_discover">%1$d photos to discover</string>
     <string name="home_new_badge">NEW</string>
     <string name="home_unsynced_badge">NOT SYNCED</string>
     <string name="home_virtual_skipped_synced_desc">Collection of all assets previously skipped and synced</string>
+    <string name="home_virtual_all_assets_desc">Collection of all assets in your library (depending on your access rights)</string>
+    <string name="home_virtual_orphans">Orphans</string>
+    <string name="home_virtual_orphans_desc">Collection of assets that are not in any album</string>
     <string name="home_user_fallback">User</string>
 
     <!-- Profile Popup & Diag -->
@@ -192,4 +196,8 @@
     <string name="settings_logs_clear">Clear logs</string>
     <string name="settings_logs_empty">No logs available at the moment.</string>
     <string name="settings_logs_copied_toast">Logs copied to clipboard</string>
+    <string name="settings_display_mode_fill">Fill</string>
+    <string name="settings_display_mode_fit">Fit</string>
+    <string name="settings_display_mode_pos_label">Display mode button position</string>
+    <string name="settings_display_mode_label">Default media display</string>
 </resources>
