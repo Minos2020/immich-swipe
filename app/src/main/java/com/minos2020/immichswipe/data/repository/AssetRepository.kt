@@ -9,6 +9,7 @@ import com.minos2020.immichswipe.data.local.dao.AlbumAssetDao
 import com.minos2020.immichswipe.data.local.entity.AlbumAssetEntity
 import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.domain.model.Asset
+import com.minos2020.immichswipe.core.SortOrder
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -29,7 +30,7 @@ class AssetRepository(
         albumId: String,
         includeArchived: Boolean = false,
         userId: String? = null,
-        shuffle: Boolean = false
+        sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC
     ): List<Asset> {
         // Nettoyage systématique des anciens liens pour cet album avant de les recréer
         albumAssetDao?.clearAlbumRelations(albumId)
@@ -46,7 +47,6 @@ class AssetRepository(
 
             // Fix: fetching by ID one by one (parallelized) because search/metadata ignores the 'ids' parameter
             // and returns the entire library instead.
-            // We sort by fileCreatedAt to maintain the standard timeline order.
             // We filter out trashed assets (they shouldn't be in the review collection).
             coroutineScope {
                 assetIds.map { id ->
@@ -59,7 +59,6 @@ class AssetRepository(
                     }
                 }.awaitAll().filterNotNull()
                     .filter { !it.isTrashed }
-                    .sortedByDescending { it.fileCreatedAt }
             }
         } else if (albumId == Album.VIRTUAL_ALL_ID) {
             if (includeArchived) {
@@ -67,7 +66,7 @@ class AssetRepository(
                 coroutineScope {
                     val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId) }
                     val archive = async { fetchAllAssets(SearchAssetsRequest(visibility = "archive"), albumId) }
-                    (timeline.await() + archive.await()).sortedByDescending { it.fileCreatedAt }
+                    (timeline.await() + archive.await())
                 }
             } else {
                 fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId)
@@ -77,7 +76,7 @@ class AssetRepository(
                 coroutineScope {
                     val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId) }
                     val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId) }
-                    (timeline.await() + archive.await()).sortedByDescending { it.fileCreatedAt }
+                    (timeline.await() + archive.await())
                 }
             } else {
                 fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId)
@@ -91,7 +90,7 @@ class AssetRepository(
                     val timeline = try { timelineDeferred.await() } catch (_: Exception) { emptyList() }
                     val archive = try { archiveDeferred.await() } catch (_: Exception) { emptyList() }
                     
-                    (timeline + archive).sortedByDescending { it.fileCreatedAt }
+                    (timeline + archive)
                 }
             } else {
                 try {
@@ -102,7 +101,11 @@ class AssetRepository(
             }
         }
 
-        return if (shuffle) assets.shuffled() else assets
+        return when (sortOrder) {
+            SortOrder.CHRONOLOGICAL_DESC -> assets.sortedByDescending { it.fileCreatedAt }
+            SortOrder.CHRONOLOGICAL_ASC -> assets.sortedBy { it.fileCreatedAt }
+            SortOrder.SHUFFLED -> assets.shuffled()
+        }
     }
 
     suspend fun getTotalAssetCount(includeArchived: Boolean = false): Int {

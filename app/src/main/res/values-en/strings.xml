@@ -84,8 +84,11 @@
     <string name="settings_section_tri">Sorting</string>
     <string name="settings_include_archived_label">Include external archives</string>
     <string name="settings_include_archived_desc">View and sort photos that have been archived in Immich (outside of Immich Swipe)</string>
-    <string name="settings_shuffle_label">Shuffle assets</string>
-    <string name="settings_shuffle_desc">Display photos in random order instead of chronological order</string>
+    <string name="settings_sort_order_label">Sort order</string>
+    <string name="settings_sort_desc">Choose the order in which media is presented</string>
+    <string name="settings_sort_newest">Newest first</string>
+    <string name="settings_sort_oldest">Oldest first</string>
+    <string name="settings_sort_shuffled">Random (Shuffle)</string>
     <string name="settings_skip_lifespan_label">SKIP lifespan</string>
     <string name="settings_skip_lifespan_desc">After this delay, \'skipped\' photos become \'unsorted\' again and reappear in albums for re-evaluation. You can always review them via the SKIPs collection.</string>
     <string name="settings_skip_never">SKIP never return</string>

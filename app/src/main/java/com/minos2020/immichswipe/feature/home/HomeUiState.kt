@@ -5,6 +5,7 @@ import com.minos2020.immichswipe.domain.model.User
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.ConnectionStatus
+import com.minos2020.immichswipe.core.SortOrder
 
 /**
  * Les différents onglets disponibles dans l'application.
@@ -39,7 +40,7 @@ data class HomeUiState(
     val allAssetsCount: Int = 0, // Nombre total de médias
     val orphansCount: Int = 0, // Nombre de médias orphelins (sans album)
     val includeArchived: Boolean = false, // Inclure ou non les archives externes
-    val isShuffleEnabled: Boolean = false, // Shuffle actif ou non
+    val sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC, // Ordre de tri
     val virtualNames: Map<String, String> = emptyMap(), // Noms localisés des albums virtuels
     val virtualDescriptions: Map<String, String> = emptyMap(), // Descriptions localisées
     val showStatsPopup: Boolean = false, // Visibilité de la popup stats

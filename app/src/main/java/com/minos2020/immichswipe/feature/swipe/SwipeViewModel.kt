@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.CardDisplayMode
+import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.domain.model.Album
@@ -38,18 +39,18 @@ class SwipeViewModel(
         observeButtonVisibility()
         observeAutoNextOnFav()
         observeIncludeArchived()
-        observeShuffleAssets()
+        observeSortOrder()
         observeDefaultCardDisplayMode()
     }
 
-    private fun observeShuffleAssets() {
+    private fun observeSortOrder() {
         viewModelScope.launch {
-            sessionRepository.shuffleAssets.collect { shuffle ->
-                val oldShuffle = _uiState.value.isShuffleEnabled
-                _uiState.value = _uiState.value.copy(isShuffleEnabled = shuffle)
+            sessionRepository.sortOrder.collect { order ->
+                val oldOrder = _uiState.value.sortOrder
+                _uiState.value = _uiState.value.copy(sortOrder = order)
                 
-                // Si le mode shuffle change réellement après le chargement initial, on rafraîchit
-                if ((oldShuffle != shuffle) && !_uiState.value.isLoading) {
+                // Si le mode de tri change réellement après le chargement initial, on rafraîchit
+                if ((oldOrder != order) && !_uiState.value.isLoading) {
                     loadAssetsAndDecisions()
                 }
             }
@@ -170,14 +171,14 @@ class SwipeViewModel(
                 AppLogger.d("Swipe", "Chargement de l'album ${album.albumName} (ID: ${album.id})")
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
                 val includeArchived = sessionRepository.includeArchived.first()
-                val isShuffle = sessionRepository.shuffleAssets.first()
+                val currentSortOrder = sessionRepository.sortOrder.first()
 
                 // On charge les assets depuis l'API
                 val assets = assetRepository.getAssetsByAlbum(
                     album.id,
                     includeArchived,
                     config.userId,
-                    shuffle = isShuffle,
+                    sortOrder = currentSortOrder,
                 )
                 val albumAssetIds = assets.map { it.id }.toSet()
 

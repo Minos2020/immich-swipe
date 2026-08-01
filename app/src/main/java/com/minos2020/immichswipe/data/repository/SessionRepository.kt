@@ -7,6 +7,7 @@ import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.SessionConfig
 import com.minos2020.immichswipe.core.CardDisplayMode
+import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.data.datastore.SessionDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -98,7 +99,10 @@ class SessionRepository(context: Context) {
     val showLockButton: Flow<Boolean> = dataStore.isShowLock()
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
-    val shuffleAssets: Flow<Boolean> = dataStore.isShuffleAssets()
+    
+    val sortOrder: Flow<SortOrder> = dataStore.getSortOrder().map {
+        it?.let { try { SortOrder.valueOf(it) } catch(e: Exception) { SortOrder.CHRONOLOGICAL_DESC } } ?: SortOrder.CHRONOLOGICAL_DESC
+    }
 
     /**
      * Expose le mode d'affichage par défaut des cartes.
@@ -176,7 +180,7 @@ class SessionRepository(context: Context) {
     suspend fun saveShowLock(show: Boolean) { dataStore.saveShowLock(show) }
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
-    suspend fun saveShuffleAssets(shuffle: Boolean) { dataStore.saveShuffleAssets(shuffle) }
+    suspend fun saveSortOrder(order: SortOrder) { dataStore.saveSortOrder(order.name) }
 
     suspend fun saveDefaultCardDisplayMode(mode: CardDisplayMode) {
         dataStore.saveDefaultCardDisplayMode(mode.name)

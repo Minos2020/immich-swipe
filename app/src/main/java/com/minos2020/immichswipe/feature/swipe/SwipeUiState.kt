@@ -4,6 +4,7 @@ import com.minos2020.immichswipe.domain.model.Asset
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.CardDisplayMode
+import com.minos2020.immichswipe.core.SortOrder
 
 /**
  * Les différentes décisions possibles pour un asset.
@@ -38,7 +39,7 @@ data class SwipeUiState(
     val showLockButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
-    val isShuffleEnabled: Boolean = false,
+    val sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
     val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL
 ) {

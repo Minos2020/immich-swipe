@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.AppLogger
+import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
@@ -63,8 +64,8 @@ class HomeViewModel(
         }
 
         viewModelScope.launch {
-            sessionRepository.shuffleAssets.collect { shuffle ->
-                _uiState.update { it.copy(isShuffleEnabled = shuffle) }
+            sessionRepository.sortOrder.collect { order ->
+                _uiState.update { it.copy(sortOrder = order) }
             }
         }
 
@@ -296,8 +297,8 @@ class HomeViewModel(
         _uiState.update { it.copy(showStatsPopup = visible) }
     }
 
-    fun setShuffleEnabled(shuffle: Boolean) = viewModelScope.launch {
-        sessionRepository.saveShuffleAssets(shuffle)
+    fun setSortOrder(order: SortOrder) = viewModelScope.launch {
+        sessionRepository.saveSortOrder(order)
     }
 
     fun logout() = viewModelScope.launch {

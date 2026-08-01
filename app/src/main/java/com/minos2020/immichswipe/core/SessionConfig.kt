@@ -31,3 +31,12 @@ enum class CardDisplayMode {
     FILL, // Remplit toute la carte (Crop)
     FIT   // Affiche l'image entière (Fit)
 }
+
+/**
+ * Ordre de tri des médias.
+ */
+enum class SortOrder {
+    CHRONOLOGICAL_DESC, // Nouveau -> Ancien (Par défaut)
+    CHRONOLOGICAL_ASC,  // Ancien -> Nouveau
+    SHUFFLED            // Aléatoire
+}

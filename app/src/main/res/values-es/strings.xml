@@ -36,12 +36,18 @@
     <string name="home_album_completed">Completado</string>
     <string name="home_unsynced_changes">Contiene %1$d eliminaciones sin sincronizar</string>
     <string name="home_sorted_count">%1$d / %2$d ordenadas</string>
+    <string name="home_skip_count">%1$d fotos</string>
     <string name="home_select_album">¡Selecciona un álbum para empezar!</string>
     <string name="home_session_title">Sesión de ordenación: %1$s</string>
     <string name="home_photos_to_discover">%1$d fotos por descubrir</string>
     <string name="home_new_badge">NUEVO</string>
     <string name="home_unsynced_badge">SIN SINCRONIZAR</string>
     <string name="home_virtual_skipped_synced">SKIPs</string>
+    <string name="home_virtual_skipped_synced_desc">Colección de todos los elementos marcados como SKIP y sincronizados</string>
+    <string name="home_virtual_all_assets">Todos los medios</string>
+    <string name="home_virtual_all_assets_desc">Colección de toda su biblioteca (según sus derechos de acceso)</string>
+    <string name="home_virtual_orphans">Huérfanos</string>
+    <string name="home_virtual_orphans_desc">Colección de medios que no están en ningún álbum</string>
     <string name="home_user_fallback">Usuario</string>
 
     <!-- Ventana de perfil y diagnóstico -->
@@ -80,12 +86,15 @@
     <string name="settings_section_tri">Ordenación</string>
     <string name="settings_include_archived_label">Incluir archivados externos</string>
     <string name="settings_include_archived_desc">Mostrar y ordenar las fotos ya archivadas en Immich (fuera de Immich Swipe)</string>
-    <string name="settings_shuffle_label">Mezclar medios</string>
-    <string name="settings_shuffle_desc">Muestra las fotos en orden aleatorio en lugar de cronológico</string>
+    <string name="settings_sort_order_label">Orden de clasificación</string>
+    <string name="settings_sort_desc">Elija el orden en que se presentan los medios</string>
+    <string name="settings_sort_newest">Más recientes primero</string>
+    <string name="settings_sort_oldest">Más antiguos primero</string>
+    <string name="settings_sort_shuffled">Aleatorio (Mezclar)</string>
     <string name="settings_skip_lifespan_label">Duración de SKIP</string>
     <string name="settings_skip_lifespan_desc">Tras este plazo, las fotos \'omitidas\' vuelven a estar \'sin ordenar\' para reevaluarlas.</string>
     <string name="settings_skip_never">SKIP nunca vuelve</string>
-    <string name="settings_skip_hint">Mayor precisión para duraciones cortas</string>
+    <string name="settings_skip_hint">Mayor précision para duraciones cortas</string>
     <string name="settings_skip_warning_title">Modificar duración de SKIP</string>
     <string name="settings_skip_warning_msg">Al cambiar esta duración, algunas fotos que habías \'omitido\' podrían reaparecer de inmediato en tu cola de ordenación si superan el nuevo límite.</string>
     <string name="settings_section_interaction">Interacción</string>
@@ -108,7 +117,7 @@
     <string name="settings_pos_top_right">Arriba a la derecha</string>
     <string name="settings_pos_bottom_left">Abajo a la izquierda</string>
     <string name="settings_pos_bottom_right">Abajo a la derecha</string>
-    <string name="settings_display_mode_label">Visualización predeterminada</string>
+    <string name="settings_display_mode_label">Visualización predeterminada de los medios</string>
     <string name="settings_display_mode_fill">Rellenar</string>
     <string name="settings_display_mode_fit">Ajustar</string>
     <string name="settings_display_mode_pos_label">Posición del botón de modo de visualización</string>
@@ -132,7 +141,7 @@
     <string name="swipe_metadata_title">Detalles de la imagen</string>
     <string name="swipe_metadata_file">Archivo</string>
     <string name="swipe_metadata_date">Fecha</string>
-    <string name="swipe_metadata_format">Formato</string>
+    <string name="swipe_metadata_format">Format</string>
     <string name="swipe_metadata_size">Tamaño</string>
     <string name="swipe_metadata_resolution">Resolución</string>
     <string name="swipe_loading">Cargando…</string>
@@ -161,7 +170,6 @@
     <string name="common_retry">Reintentar</string>
     <string name="common_close">Cerrar</string>
     <string name="common_loading">Cargando…</string>
-    <string name="home_virtual_skipped_synced_desc">Colección de todos los elementos marcados como SKIP y sincronizados</string>
 
     <!-- Estadísticas -->
     <string name="stats_popup_title">Estadísticas de uso</string>

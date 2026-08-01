@@ -87,8 +87,11 @@
     <string name="settings_section_tri">Tri</string>
     <string name="settings_include_archived_label">Inclure les archives externes</string>
     <string name="settings_include_archived_desc">Afficher et trier les photos déjà archivées dans Immich (hors de Immich Swipe)</string>
-    <string name="settings_shuffle_label">Mélanger les médias</string>
-    <string name="settings_shuffle_desc">Affiche les photos dans un ordre aléatoire plutôt que chronologique</string>
+    <string name="settings_sort_order_label">Ordre de tri</string>
+    <string name="settings_sort_desc">Choisir l\'ordre dans lequel les médias sont présentés</string>
+    <string name="settings_sort_newest">Plus récents d\'abord</string>
+    <string name="settings_sort_oldest">Plus anciens d\'abord</string>
+    <string name="settings_sort_shuffled">Aléatoire (Mélange)</string>
     <string name="settings_skip_lifespan_label">Durée de vie des SKIP</string>
     <string name="settings_skip_lifespan_desc">Au bout de ce délai, les photos marquées SKIP redeviennent \'non triées\' et réaparaissent dans l\'album pour vous permettre de les réévaluer. Vous pouvez toujours revoir les SKIP dans la collection SKIPs.</string>
     <string name="settings_skip_never">Les SKIP ne reviennent jamais</string>

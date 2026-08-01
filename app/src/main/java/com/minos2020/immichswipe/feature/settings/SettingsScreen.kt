@@ -36,6 +36,7 @@ import com.minos2020.immichswipe.R
 import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
+import com.minos2020.immichswipe.core.SortOrder
 
 @Composable
 fun SettingsScreen(
@@ -198,20 +199,38 @@ fun SettingsScreen(
                         modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 16.dp)
                     )
 
-                    SettingsToggleItemSmall(
-                        title = stringResource(R.string.settings_shuffle_label),
-                        checked = uiState.isShuffleEnabled,
-                        onCheckedChange = { viewModel.setShuffleEnabled(it) },
-                        icon = Icons.Default.Shuffle
+                    HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp), thickness = 0.5.dp)
+
+                    Text(
+                        text = stringResource(R.string.settings_sort_order_label),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = stringResource(R.string.settings_shuffle_desc),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 16.dp)
+                        text = stringResource(R.string.settings_sort_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
                     )
+                    Spacer(Modifier.height(12.dp))
+                    Column(Modifier.selectableGroup()) {
+                        SortOption(
+                            text = stringResource(R.string.settings_sort_newest),
+                            selected = uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC,
+                            onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC) }
+                        )
+                        SortOption(
+                            text = stringResource(R.string.settings_sort_oldest),
+                            selected = uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC,
+                            onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC) }
+                        )
+                        SortOption(
+                            text = stringResource(R.string.settings_sort_shuffled),
+                            selected = uiState.sortOrder == SortOrder.SHUFFLED,
+                            onClick = { viewModel.setSortOrder(SortOrder.SHUFFLED) }
+                        )
+                    }
 
-                    HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp), thickness = 0.5.dp)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
 
                     Text(
                         text = stringResource(R.string.settings_skip_lifespan_label),
@@ -958,6 +977,32 @@ fun PlaybackOption(text: String, selected: Boolean, onClick: () -> Unit) {
         RadioButton(
             selected = selected,
             onClick = null // null car le clic est géré par la Row
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 16.dp)
+        )
+    }
+}
+
+@Composable
+fun SortOption(text: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.RadioButton
+            )
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = null
         )
         Text(
             text = text,

@@ -4,6 +4,7 @@ import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
+import com.minos2020.immichswipe.core.SortOrder
 
 enum class DatabaseScope {
     ALL, USER
@@ -34,7 +35,7 @@ data class SettingsUiState(
     val showLockButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
-    val isShuffleEnabled: Boolean = false,
+    val sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
     val showLogsDialog: Boolean = false,
     val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
     

@@ -7,6 +7,7 @@ import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.SessionManager
+import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.UserRepository
@@ -114,9 +115,8 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
-            sessionRepository.shuffleAssets.collect { shuffle ->
-                android.util.Log.d("SettingsVM", "Shuffle collected: $shuffle")
-                _uiState.update { it.copy(isShuffleEnabled = shuffle) }
+            sessionRepository.sortOrder.collect { order ->
+                _uiState.update { it.copy(sortOrder = order) }
             }
         }
         viewModelScope.launch {
@@ -188,9 +188,8 @@ class SettingsViewModel(
         viewModelScope.launch { sessionRepository.saveIncludeArchived(include) }
     }
 
-    fun setShuffleEnabled(shuffle: Boolean) {
-        android.util.Log.d("SettingsVM", "Setting shuffle: $shuffle")
-        viewModelScope.launch { sessionRepository.saveShuffleAssets(shuffle) }
+    fun setSortOrder(order: SortOrder) {
+        viewModelScope.launch { sessionRepository.saveSortOrder(order) }
     }
 
     fun setDefaultCardDisplayMode(mode: com.minos2020.immichswipe.core.CardDisplayMode) {

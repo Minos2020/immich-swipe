@@ -59,6 +59,7 @@ import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.domain.model.Album
+import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.feature.settings.SettingsScreen
 import com.minos2020.immichswipe.feature.settings.SettingsViewModel
 import com.minos2020.immichswipe.feature.settings.SettingsViewModelFactory
@@ -76,6 +77,8 @@ fun HomeScreen(
     val uiState: HomeUiState by viewModel.uiState.collectAsState()
     val isSettings = uiState.currentTab == HomeTab.SETTINGS
     val isHome = uiState.currentTab == HomeTab.HOME
+    
+    var showSortMenu by remember { mutableStateOf(false) }
 
     // Charger l'utilisateur et les albums au premier affichage
     LaunchedEffect(Unit) {
@@ -154,12 +157,51 @@ fun HomeScreen(
                             }
 
                             if (uiState.currentTab == HomeTab.SWIPE) {
-                                IconButton(onClick = { viewModel.setShuffleEnabled(!uiState.isShuffleEnabled) }) {
-                                    Icon(
-                                        imageVector = if (uiState.isShuffleEnabled) Icons.Default.ShuffleOn else Icons.Default.Shuffle,
-                                        contentDescription = stringResource(R.string.settings_shuffle_label),
-                                        tint = if (uiState.isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                    )
+                                Box {
+                                    IconButton(onClick = { showSortMenu = true }) {
+                                        val icon = when (uiState.sortOrder) {
+                                            SortOrder.SHUFFLED -> Icons.Default.Shuffle
+                                            SortOrder.CHRONOLOGICAL_ASC -> Icons.Default.ArrowUpward
+                                            SortOrder.CHRONOLOGICAL_DESC -> Icons.Default.ArrowDownward
+                                        }
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = stringResource(R.string.settings_sort_order_label),
+                                            tint = if (uiState.sortOrder != SortOrder.CHRONOLOGICAL_DESC) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = showSortMenu,
+                                        onDismissRequest = { showSortMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.settings_sort_newest)) },
+                                            onClick = {
+                                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC)
+                                                showSortMenu = false
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.ArrowDownward, null) },
+                                            trailingIcon = { if (uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC) Icon(Icons.Default.Check, null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.settings_sort_oldest)) },
+                                            onClick = {
+                                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC)
+                                                showSortMenu = false
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.ArrowUpward, null) },
+                                            trailingIcon = { if (uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC) Icon(Icons.Default.Check, null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.settings_sort_shuffled)) },
+                                            onClick = {
+                                                viewModel.setSortOrder(SortOrder.SHUFFLED)
+                                                showSortMenu = false
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Shuffle, null) },
+                                            trailingIcon = { if (uiState.sortOrder == SortOrder.SHUFFLED) Icon(Icons.Default.Check, null) }
+                                        )
+                                    }
                                 }
                             }
 
