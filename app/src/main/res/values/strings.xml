@@ -204,4 +204,6 @@
     <string name="settings_logs_clear">Clear logs</string>
     <string name="settings_logs_empty">No logs available at the moment.</string>
     <string name="settings_logs_copied_toast">Logs copied to clipboard</string>
+    <string name="settings_logs_confirm_clear_title">Clear logs</string>
+    <string name="settings_logs_confirm_clear_msg">Are you sure you want to clear all app logs?\nThis action is irreversible.</string>
 </resources>

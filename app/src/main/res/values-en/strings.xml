@@ -203,4 +203,6 @@
     <string name="settings_display_mode_label">Default media display</string>
     <string name="settings_mute_pos_label">Mute button position (videos)</string>
     <string name="swipe_toggle_display">Toggle display mode</string>
+    <string name="settings_logs_confirm_clear_title">Clear logs</string>
+    <string name="settings_logs_confirm_clear_msg">Are you sure you want to clear all app logs?\nThis action is irreversible.</string>
 </resources>

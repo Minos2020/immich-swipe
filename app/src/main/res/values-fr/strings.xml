@@ -205,4 +205,6 @@
     <string name="settings_logs_clear">Effacer les logs</string>
     <string name="settings_logs_empty">Aucun journal disponible pour le moment.</string>
     <string name="settings_logs_copied_toast">Logs copiés dans le presse-papier</string>
+    <string name="settings_logs_confirm_clear_title">Effacer les journaux</string>
+    <string name="settings_logs_confirm_clear_msg">Êtes-vous certain de vouloir effacer les journaux de l\'application ?\nCette action est irréversible.</string>
 </resources>

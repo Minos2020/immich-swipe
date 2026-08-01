@@ -36,6 +36,7 @@ data class SettingsUiState(
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val showLogsDialog: Boolean = false,
+    val showClearLogsConfirmation: Boolean = false,
     val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
     
     // Database actions
