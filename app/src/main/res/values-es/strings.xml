@@ -121,6 +121,8 @@
     <string name="settings_display_mode_fill">Rellenar</string>
     <string name="settings_display_mode_fit">Ajustar</string>
     <string name="settings_display_mode_pos_label">Posición del botón de modo de visualización</string>
+    <string name="settings_show_swipe_buttons_label">Mostrar botones Keep/Delete</string>
+    <string name="settings_show_swipe_buttons_desc">Mostrar grandes botones rojo y verde para clasificar con un solo toque</string>
     <string name="swipe_toggle_display">Cambiar modo de visualización</string>
 
     <!-- Pantalla de swipe -->

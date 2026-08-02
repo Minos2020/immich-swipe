@@ -95,10 +95,9 @@ class SessionRepository(context: Context) {
     val skipLifespanDays: Flow<Long> = dataStore.getSkipLifespan()
 
     val showFavoriteButton: Flow<Boolean> = dataStore.isShowFavorite()
-    val showArchiveButton: Flow<Boolean> = dataStore.isShowArchive()
-    val showLockButton: Flow<Boolean> = dataStore.isShowLock()
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
+    val showSwipeButtons: Flow<Boolean> = dataStore.isShowSwipeButtons()
     
     val sortOrder: Flow<SortOrder> = dataStore.getSortOrder().map {
         it?.let { try { SortOrder.valueOf(it) } catch(e: Exception) { SortOrder.CHRONOLOGICAL_DESC } } ?: SortOrder.CHRONOLOGICAL_DESC
@@ -176,10 +175,9 @@ class SessionRepository(context: Context) {
     }
 
     suspend fun saveShowFavorite(show: Boolean) { dataStore.saveShowFavorite(show) }
-    suspend fun saveShowArchive(show: Boolean) { dataStore.saveShowArchive(show) }
-    suspend fun saveShowLock(show: Boolean) { dataStore.saveShowLock(show) }
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
+    suspend fun saveShowSwipeButtons(show: Boolean) { dataStore.saveShowSwipeButtons(show) }
     suspend fun saveSortOrder(order: SortOrder) { dataStore.saveSortOrder(order.name) }
 
     suspend fun saveDefaultCardDisplayMode(mode: CardDisplayMode) {

@@ -122,6 +122,8 @@
     <string name="settings_display_mode_fill">Remplir</string>
     <string name="settings_display_mode_fit">Ajuster</string>
     <string name="settings_display_mode_pos_label">Position du bouton Mode d\'affichage</string>
+    <string name="settings_show_swipe_buttons_label">Afficher les boutons Keep/Delete</string>
+    <string name="settings_show_swipe_buttons_desc">Afficher les gros boutons rouge et vert pour trier d\'un simple clic</string>
     <string name="swipe_toggle_display">Changer le mode d\'affichage</string>
 
     <!-- Écran Swipe -->

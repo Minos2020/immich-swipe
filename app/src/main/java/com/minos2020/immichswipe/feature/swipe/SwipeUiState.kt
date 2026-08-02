@@ -35,13 +35,12 @@ data class SwipeUiState(
     val cardDisplayButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
     val skipLifespanDays: Long = 0L,
     val showFavoriteButton: Boolean = true,
-    val showArchiveButton: Boolean = true,
-    val showLockButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
-    val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL
+    val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
+    val showSwipeButtons: Boolean = false
 ) {
     val currentAsset: Asset? get() = assets.getOrNull(currentIndex)
     

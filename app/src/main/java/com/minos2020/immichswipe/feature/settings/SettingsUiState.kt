@@ -31,13 +31,12 @@ data class SettingsUiState(
     val showSkipLifespanWarning: Long? = null, // Contient la valeur cible si le dialogue est affiché
     val showCustomSkipDialog: Boolean = false, // Gère l'affichage du slider personnalisé
     val showFavoriteButton: Boolean = true,
-    val showArchiveButton: Boolean = true,
-    val showLockButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
     val showLogsDialog: Boolean = false,
     val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
+    val showSwipeButtons: Boolean = false,
     
     // Database actions
     val pendingDatabaseAction: DatabaseAction? = null,

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
@@ -41,26 +42,49 @@ class SwipeViewModel(
         observeIncludeArchived()
         observeSortOrder()
         observeDefaultCardDisplayMode()
+        observeShowSwipeButtons()
     }
 
     private fun observeSortOrder() {
         viewModelScope.launch {
             sessionRepository.sortOrder.collect { order ->
                 val oldOrder = _uiState.value.sortOrder
-                _uiState.value = _uiState.value.copy(sortOrder = order)
+                _uiState.update { it.copy(sortOrder = order) }
                 
-                // Si le mode de tri change réellement après le chargement initial, on rafraîchit
-                if ((oldOrder != order) && !_uiState.value.isLoading) {
-                    loadAssetsAndDecisions()
+                // Si le mode de tri change réellement, on réinitialise éventuellement le seed
+                if (oldOrder != order) {
+                    if (order == SortOrder.SHUFFLED) {
+                        currentShuffleSeed = System.currentTimeMillis()
+                    } else {
+                        currentShuffleSeed = null
+                    }
+                    
+                    if (!_uiState.value.isLoading) {
+                        loadAssetsAndDecisions()
+                    }
                 }
             }
+        }
+    }
+
+    fun setSortOrder(order: SortOrder) {
+        viewModelScope.launch {
+            sessionRepository.saveSortOrder(order)
         }
     }
 
     private fun observeDefaultCardDisplayMode() {
         viewModelScope.launch {
             sessionRepository.defaultCardDisplayMode.collect { mode ->
-                _uiState.value = _uiState.value.copy(cardDisplayMode = mode)
+                _uiState.update { it.copy(cardDisplayMode = mode) }
+            }
+        }
+    }
+
+    private fun observeShowSwipeButtons() {
+        viewModelScope.launch {
+            sessionRepository.showSwipeButtons.collect { show ->
+                _uiState.update { it.copy(showSwipeButtons = show) }
             }
         }
     }
@@ -68,7 +92,7 @@ class SwipeViewModel(
     private fun observeIncludeArchived() {
         viewModelScope.launch {
             sessionRepository.includeArchived.collect { include ->
-                _uiState.value = _uiState.value.copy(includeArchived = include)
+                _uiState.update { it.copy(includeArchived = include) }
             }
         }
     }
@@ -76,7 +100,7 @@ class SwipeViewModel(
     private fun observeAutoNextOnFav() {
         viewModelScope.launch {
             sessionRepository.autoNextOnFav.collect { autoNextOnFav ->
-                _uiState.value = _uiState.value.copy(autoNextOnFav = autoNextOnFav)
+                _uiState.update { it.copy(autoNextOnFav = autoNextOnFav) }
             }
         }
     }
@@ -84,17 +108,7 @@ class SwipeViewModel(
     private fun observeButtonVisibility() {
         viewModelScope.launch {
             sessionRepository.showFavoriteButton.collect { show ->
-                _uiState.value = _uiState.value.copy(showFavoriteButton = show)
-            }
-        }
-        viewModelScope.launch {
-            sessionRepository.showArchiveButton.collect { show ->
-                _uiState.value = _uiState.value.copy(showArchiveButton = show)
-            }
-        }
-        viewModelScope.launch {
-            sessionRepository.showLockButton.collect { show ->
-                _uiState.value = _uiState.value.copy(showLockButton = show)
+                _uiState.update { it.copy(showFavoriteButton = show) }
             }
         }
     }
@@ -102,7 +116,7 @@ class SwipeViewModel(
     private fun observeSkipLifespan() {
         viewModelScope.launch {
             sessionRepository.skipLifespanDays.collect { days ->
-                _uiState.value = _uiState.value.copy(skipLifespanDays = days)
+                _uiState.update { it.copy(skipLifespanDays = days) }
             }
         }
     }
@@ -112,7 +126,7 @@ class SwipeViewModel(
      */
     fun retryLoading() {
         if (!_uiState.value.isLoading) {
-            _uiState.value = _uiState.value.copy(error = null)
+            _uiState.update { it.copy(error = null) }
             // On ajoute un petit délai pour éviter de spammer le serveur en cas de crash en boucle
             viewModelScope.launch {
                 delay(500.milliseconds)
@@ -124,7 +138,7 @@ class SwipeViewModel(
     private fun observePlaybackBehavior() {
         viewModelScope.launch {
             sessionRepository.playbackBehavior.collect { behavior ->
-                _uiState.value = _uiState.value.copy(playbackBehavior = behavior)
+                _uiState.update { it.copy(playbackBehavior = behavior) }
             }
         }
     }
@@ -132,7 +146,7 @@ class SwipeViewModel(
     private fun observeSwipeInversion() {
         viewModelScope.launch {
             sessionRepository.swipeInverted.collect { inverted ->
-                _uiState.value = _uiState.value.copy(isSwipeInverted = inverted)
+                _uiState.update { it.copy(isSwipeInverted = inverted) }
             }
         }
     }
@@ -140,7 +154,7 @@ class SwipeViewModel(
     private fun observeFullscreenButtonPosition() {
         viewModelScope.launch {
             sessionRepository.fullscreenButtonPosition.collect { pos ->
-                _uiState.value = _uiState.value.copy(fullscreenButtonPosition = pos)
+                _uiState.update { it.copy(fullscreenButtonPosition = pos) }
             }
         }
     }
@@ -148,7 +162,7 @@ class SwipeViewModel(
     private fun observeImmichButtonPosition() {
         viewModelScope.launch {
             sessionRepository.immichButtonPosition.collect { pos ->
-                _uiState.value = _uiState.value.copy(immichButtonPosition = pos)
+                _uiState.update { it.copy(immichButtonPosition = pos) }
             }
         }
     }
@@ -156,22 +170,28 @@ class SwipeViewModel(
     private fun observeCardDisplayButtonPosition() {
         viewModelScope.launch {
             sessionRepository.cardDisplayButtonPosition.collect { pos ->
-                _uiState.value = _uiState.value.copy(cardDisplayButtonPosition = pos)
+                _uiState.update { it.copy(cardDisplayButtonPosition = pos) }
             }
         }
     }
 
     // On garde en mémoire les décisions qui étaient déjà synchronisées au début de la session
     private var initialSyncedDecisions = mapOf<String, SwipeDecision>()
+    private var currentShuffleSeed: Long? = null
 
     private fun loadAssetsAndDecisions() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.update { it.copy(isLoading = true) }
             try {
                 AppLogger.d("Swipe", "Chargement de l'album ${album.albumName} (ID: ${album.id})")
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
                 val includeArchived = sessionRepository.includeArchived.first()
                 val currentSortOrder = sessionRepository.sortOrder.first()
+
+                // Si on est en mode SHUFFLE mais qu'on n'a pas encore de seed, on en crée un
+                if (currentSortOrder == SortOrder.SHUFFLED && currentShuffleSeed == null) {
+                    currentShuffleSeed = System.currentTimeMillis()
+                }
 
                 // On charge les assets depuis l'API
                 val assets = assetRepository.getAssetsByAlbum(
@@ -179,6 +199,7 @@ class SwipeViewModel(
                     includeArchived,
                     config.userId,
                     sortOrder = currentSortOrder,
+                    shuffleSeed = currentShuffleSeed
                 )
                 val albumAssetIds = assets.map { it.id }.toSet()
 
@@ -262,15 +283,17 @@ class SwipeViewModel(
                 val firstUnprocessedIndex = workPileAssets.indexOfFirst { !decisionMap.containsKey(it.id) }
                         .let { if (it == -1) workPileAssets.size else it }
 
-                _uiState.value = _uiState.value.copy(
-                    assets = workPileAssets,
-                    decisions = decisionMap,
-                    assetSizes = sizeMap,
-                    history = emptyList(),
-                    localFavorites = emptyMap(),
-                    currentIndex = firstUnprocessedIndex,
-                    isLoading = false
-                )
+                _uiState.update {
+                    it.copy(
+                        assets = workPileAssets,
+                        decisions = decisionMap,
+                        assetSizes = sizeMap,
+                        history = emptyList(),
+                        localFavorites = emptyMap(),
+                        currentIndex = firstUnprocessedIndex,
+                        isLoading = false
+                    )
+                }
                 
                 // On charge les détails de l'asset actuel
                 if (firstUnprocessedIndex < workPileAssets.size) {
@@ -295,10 +318,12 @@ class SwipeViewModel(
                     currentAssets[index] = detail
                     val newSizes = _uiState.value.assetSizes.toMutableMap()
                     detail.exifInfo?.fileSizeInBytes?.let { newSizes[assetId] = it }
-                    _uiState.value = _uiState.value.copy(
-                        assets = currentAssets,
-                        assetSizes = newSizes
-                    )
+                    _uiState.update {
+                        it.copy(
+                            assets = currentAssets,
+                            assetSizes = newSizes
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 // Erreur silencieuse pour les détails
@@ -366,12 +391,14 @@ class SwipeViewModel(
             }
         }
 
-        _uiState.value = currentState.copy(
-            currentIndex = nextIndex,
-            decisions = newDecisions,
-            assetSizes = newSizes,
-            history = newHistory
-        )
+        _uiState.update {
+            it.copy(
+                currentIndex = nextIndex,
+                decisions = newDecisions,
+                assetSizes = newSizes,
+                history = newHistory
+            )
+        }
 
         // Anticipation : charge les détails du prochain
         if (nextIndex < assets.size) {
@@ -387,7 +414,7 @@ class SwipeViewModel(
         val currentStatus = currentState.isFavorite(currentAsset.id)
         newFavorites[currentAsset.id] = !currentStatus
         
-        _uiState.value = currentState.copy(localFavorites = newFavorites)
+        _uiState.update { it.copy(localFavorites = newFavorites) }
         if (currentState.autoNextOnFav) {
             onSwipe(SwipeDecision.KEEP) // Avance à la suivante
         }
@@ -407,7 +434,7 @@ class SwipeViewModel(
         } else {
             CardDisplayMode.FILL
         }
-        _uiState.value = _uiState.value.copy(cardDisplayMode = nextMode)
+        _uiState.update { it.copy(cardDisplayMode = nextMode) }
     }
 
     fun undo() {
@@ -428,11 +455,13 @@ class SwipeViewModel(
 
                 val previousIndex = currentState.assets.indexOfFirst { it.id == lastAssetIdFromHistory }
 
-                _uiState.value = currentState.copy(
-                    currentIndex = if (previousIndex != -1) previousIndex else currentState.currentIndex,
-                    decisions = newDecisions,
-                    history = newHistory
-                )
+                _uiState.update {
+                    it.copy(
+                        currentIndex = if (previousIndex != -1) previousIndex else currentState.currentIndex,
+                        decisions = newDecisions,
+                        history = newHistory
+                    )
+                }
                 
                 if (previousIndex != -1) {
                     loadAssetDetail(lastAssetIdFromHistory, previousIndex)
@@ -454,10 +483,12 @@ class SwipeViewModel(
                     newDecisions.remove(it.id)
                 }
 
-                _uiState.value = currentState.copy(
-                    currentIndex = previousIndex,
-                    decisions = newDecisions
-                )
+                _uiState.update {
+                    it.copy(
+                        currentIndex = previousIndex,
+                        decisions = newDecisions
+                    )
+                }
                 
                 loadAssetDetail(previousAssetId, previousIndex)
             }
@@ -469,7 +500,7 @@ class SwipeViewModel(
      */
     fun onMoveToAsset(index: Int) {
         if (index in _uiState.value.assets.indices) {
-            _uiState.value = _uiState.value.copy(currentIndex = index)
+            _uiState.update { it.copy(currentIndex = index) }
             loadAssetDetail(_uiState.value.assets[index].id, index)
         }
     }
@@ -478,7 +509,7 @@ class SwipeViewModel(
      * Affiche ou cache l'écran de résumé.
      */
     fun toggleSummary(visible: Boolean) {
-        _uiState.value = _uiState.value.copy(showSummary = visible)
+        _uiState.update { it.copy(showSummary = visible) }
     }
 
     /**
@@ -498,10 +529,12 @@ class SwipeViewModel(
             val newHistory = currentState.history.toMutableList()
             newHistory.remove(assetId)
             
-            _uiState.value = currentState.copy(
-                decisions = newDecisions,
-                history = newHistory
-            )
+            _uiState.update {
+                it.copy(
+                    decisions = newDecisions,
+                    history = newHistory
+                )
+            }
         }
     }
 
@@ -525,7 +558,7 @@ class SwipeViewModel(
 
         viewModelScope.launch {
             AppLogger.i("Swipe", "Application des changements : DELETE(${toDelete.size}), ARCHIVE(${toArchive.size}), LOCK(${toLock.size}), KEEP(${toKeep.size}), SKIP(${toSkip.size})")
-            _uiState.value = _uiState.value.copy(isSyncing = true)
+            _uiState.update { it.copy(isSyncing = true) }
             try {
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
                 // 1. Appels API
@@ -592,29 +625,35 @@ class SwipeViewModel(
                 // 4. Feedback utilisateur et rechargement
                 if (failedDeletionsCount > 0) {
                     AppLogger.w("Swipe", "$failedDeletionsCount échecs de suppression détectés après vérification")
-                    _uiState.value = _uiState.value.copy(
-                        isSyncing = false,
-                        showSummary = false,
-                        error = "Attention : $failedDeletionsCount photos n'ont pas pu être supprimées. Vérifiez votre connexion ou vos droits."
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            showSummary = false,
+                            error = "Attention : $failedDeletionsCount photos n'ont pas pu être supprimées. Vérifiez votre connexion ou vos droits."
+                        )
+                    }
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        isSyncing = false,
-                        showSummary = false,
-                        showSuccessAnimation = true
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            showSummary = false,
+                            showSuccessAnimation = true
+                        )
+                    }
                     delay(2500.milliseconds)
-                    _uiState.value = _uiState.value.copy(showSuccessAnimation = false)
+                    _uiState.update { it.copy(showSuccessAnimation = false) }
                 }
                 
                 loadAssetsAndDecisions()
                 
             } catch (e: Exception) {
                 AppLogger.e("Swipe", "Échec lors de l'application des changements", e)
-                _uiState.value = _uiState.value.copy(
-                    isSyncing = false,
-                    error = "Erreur lors de la synchronisation : ${e.message}"
-                )
+                _uiState.update {
+                    it.copy(
+                        isSyncing = false,
+                        error = "Erreur lors de la synchronisation : ${e.message}"
+                    )
+                }
             }
         }
     }

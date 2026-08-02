@@ -30,7 +30,8 @@ class AssetRepository(
         albumId: String,
         includeArchived: Boolean = false,
         userId: String? = null,
-        sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC
+        sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
+        shuffleSeed: Long? = null
     ): List<Asset> {
         // Nettoyage systématique des anciens liens pour cet album avant de les recréer
         albumAssetDao?.clearAlbumRelations(albumId)
@@ -104,7 +105,13 @@ class AssetRepository(
         return when (sortOrder) {
             SortOrder.CHRONOLOGICAL_DESC -> assets.sortedByDescending { it.fileCreatedAt }
             SortOrder.CHRONOLOGICAL_ASC -> assets.sortedBy { it.fileCreatedAt }
-            SortOrder.SHUFFLED -> assets.shuffled()
+            SortOrder.SHUFFLED -> {
+                if (shuffleSeed != null) {
+                    assets.shuffled(java.util.Random(shuffleSeed))
+                } else {
+                    assets.shuffled()
+                }
+            }
         }
     }
 

@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
@@ -59,7 +58,6 @@ import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.domain.model.Album
-import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.feature.settings.SettingsScreen
 import com.minos2020.immichswipe.feature.settings.SettingsViewModel
 import com.minos2020.immichswipe.feature.settings.SettingsViewModelFactory
@@ -75,10 +73,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState: HomeUiState by viewModel.uiState.collectAsState()
-    val isSettings = uiState.currentTab == HomeTab.SETTINGS
     val isHome = uiState.currentTab == HomeTab.HOME
-    
-    var showSortMenu by remember { mutableStateOf(false) }
 
     // Charger l'utilisateur et les albums au premier affichage
     LaunchedEffect(Unit) {
@@ -107,203 +102,143 @@ fun HomeScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            if (isSettings) {
-                // Barre de titre pour les paramètres
+            // Barre principale avec logo et profil
+            Column {
                 TopAppBar(
-                    title = { Text(stringResource(R.string.settings_title)) },
-                    navigationIcon = {
-                        IconButton(onClick = { viewModel.goBack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
+                    title = {
+                        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                        val logoRes = if (isDark) R.drawable.immichswipe_logo_colors_dark else R.drawable.immichswipe_logo_colors_light
+                        
+                        Image(
+                            painter = painterResource(id = logoRes),
+                            contentDescription = stringResource(R.string.app_name),
+                            modifier = Modifier
+                                .height(32.dp)
+                                .padding(vertical = 2.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    },
+                    actions = {
+                        if (isHome) {
+                            // Bouton Stats (Nouveau)
+                            IconButton(onClick = { viewModel.toggleStatsPopup(visible = true) }) {
+                                Icon(
+                                    imageVector = Icons.Default.BarChart,
+                                    contentDescription = "Statistiques"
+                                )
+                            }
+
+                            // Bouton pour basculer le layout
+                            IconButton(onClick = { viewModel.toggleLayoutMode() }) {
+                                Icon(
+                                    imageVector = if (uiState.isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                    contentDescription = stringResource(R.string.settings_layout_label)
+                                )
+                            }
+                        }
+
+                        val baseUrl = SessionManager.getBaseUrl()
+                        val userId = uiState.user?.id
+                        val avatarColor = getAvatarColor(uiState.user?.avatarColor)
+                        
+                        val profileModifier = Modifier
+                            .padding(end = 16.dp)
+                            .size(32.dp)
+                            .border(1.dp, avatarColor, CircleShape)
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .clickable { viewModel.toggleProfilePopup(visible = true) }
+
+                        Box(contentAlignment = Alignment.BottomEnd) {
+                            if ((userId != null) && (baseUrl != null)) {
+                                val cleanBaseUrl = baseUrl.removeSuffix("/")
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data("$cleanBaseUrl/api/users/$userId/profile-image")
+                                        .addHeader("x-api-key", SessionManager.getApiKey() ?: "")
+                                        .crossfade(enable = true)
+                                        .build(),
+                                    contentDescription = stringResource(R.string.settings_section_account),
+                                    placeholder = rememberVectorPainter(Icons.Default.AccountCircle),
+                                    error = rememberVectorPainter(Icons.Default.AccountCircle),
+                                    modifier = profileModifier,
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = stringResource(R.string.settings_section_account),
+                                    modifier = profileModifier,
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                            }
+
+                            // Indicateur de connexion (Badge tricolore)
+                            Surface(
+                                modifier = Modifier
+                                    .padding(end = 16.dp, bottom = 1.dp)
+                                    .size(8.dp)
+                                    .border(1.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                                color = uiState.connectionStatus.level.color,
+                                shape = CircleShape,
+                            ) {}
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                     )
                 )
-            } else {
-                // Barre principale avec logo et profil
-                Column {
-                    TopAppBar(
-                        title = {
-                            val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                            val logoRes = if (isDark) R.drawable.immichswipe_logo_colors_dark else R.drawable.immichswipe_logo_colors_light
-                            
-                            Image(
-                                painter = painterResource(id = logoRes),
-                                contentDescription = stringResource(R.string.app_name),
-                                modifier = Modifier
-                                    .height(35.dp)
-                                    .padding(vertical = 4.dp),
-                                contentScale = ContentScale.Fit
-                            )
-                        },
-                        actions = {
-                            if (isHome) {
-                                // Bouton Stats (Nouveau)
-                                IconButton(onClick = { viewModel.toggleStatsPopup(visible = true) }) {
-                                    Icon(
-                                        imageVector = Icons.Default.BarChart,
-                                        contentDescription = "Statistiques"
-                                    )
+
+                // Barre de recherche (uniquement sur Home)
+                if (isHome) {
+                    OutlinedTextField(
+                        value = uiState.searchQuery,
+                        onValueChange = { viewModel.onSearchQueryChanged(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .height(48.dp),
+                        placeholder = { Text(stringResource(R.string.home_search_placeholder), fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        trailingIcon = {
+                            if (uiState.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_cancel), modifier = Modifier.size(18.dp))
                                 }
-
-                                // Bouton pour basculer le layout
-                                IconButton(onClick = { viewModel.toggleLayoutMode() }) {
-                                    Icon(
-                                        imageVector = if (uiState.isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                                        contentDescription = stringResource(R.string.settings_layout_label)
-                                    )
-                                }
-                            }
-
-                            if (uiState.currentTab == HomeTab.SWIPE) {
-                                Box {
-                                    IconButton(onClick = { showSortMenu = true }) {
-                                        val icon = when (uiState.sortOrder) {
-                                            SortOrder.SHUFFLED -> Icons.Default.Shuffle
-                                            SortOrder.CHRONOLOGICAL_ASC -> Icons.Default.ArrowUpward
-                                            SortOrder.CHRONOLOGICAL_DESC -> Icons.Default.ArrowDownward
-                                        }
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = stringResource(R.string.settings_sort_order_label),
-                                            tint = if (uiState.sortOrder != SortOrder.CHRONOLOGICAL_DESC) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                    DropdownMenu(
-                                        expanded = showSortMenu,
-                                        onDismissRequest = { showSortMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.settings_sort_newest)) },
-                                            onClick = {
-                                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC)
-                                                showSortMenu = false
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.ArrowDownward, null) },
-                                            trailingIcon = { if (uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC) Icon(Icons.Default.Check, null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.settings_sort_oldest)) },
-                                            onClick = {
-                                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC)
-                                                showSortMenu = false
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.ArrowUpward, null) },
-                                            trailingIcon = { if (uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC) Icon(Icons.Default.Check, null) }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.settings_sort_shuffled)) },
-                                            onClick = {
-                                                viewModel.setSortOrder(SortOrder.SHUFFLED)
-                                                showSortMenu = false
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.Shuffle, null) },
-                                            trailingIcon = { if (uiState.sortOrder == SortOrder.SHUFFLED) Icon(Icons.Default.Check, null) }
-                                        )
-                                    }
-                                }
-                            }
-
-                            val baseUrl = SessionManager.getBaseUrl()
-                            val userId = uiState.user?.id
-                            val avatarColor = getAvatarColor(uiState.user?.avatarColor)
-                            
-                            val profileModifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(36.dp)
-                                .border(1.dp, avatarColor, CircleShape)
-                                .padding(2.dp)
-                                .clip(CircleShape)
-                                .clickable { viewModel.toggleProfilePopup(visible = true) }
-
-                            Box(contentAlignment = Alignment.BottomEnd) {
-                                if ((userId != null) && (baseUrl != null)) {
-                                    val cleanBaseUrl = baseUrl.removeSuffix("/")
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data("$cleanBaseUrl/api/users/$userId/profile-image")
-                                            .addHeader("x-api-key", SessionManager.getApiKey() ?: "")
-                                            .crossfade(enable = true)
-                                            .build(),
-                                        contentDescription = stringResource(R.string.settings_section_account),
-                                        placeholder = rememberVectorPainter(Icons.Default.AccountCircle),
-                                        error = rememberVectorPainter(Icons.Default.AccountCircle),
-                                        modifier = profileModifier,
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.AccountCircle,
-                                        contentDescription = stringResource(R.string.settings_section_account),
-                                        modifier = profileModifier,
-                                        tint = MaterialTheme.colorScheme.outline
-                                    )
-                                }
-
-                                // Indicateur de connexion (Badge tricolore)
-                                Surface(
-                                    modifier = Modifier
-                                        .padding(end = 16.dp, bottom = 2.dp)
-                                        .size(10.dp)
-                                        .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape),
-                                    color = uiState.connectionStatus.level.color,
-                                    shape = CircleShape,
-                                ) {}
                             }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        )
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent
+                        ),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp)
                     )
-
-                    // Barre de recherche (uniquement sur Home)
-                    if (isHome) {
-                        OutlinedTextField(
-                            value = uiState.searchQuery,
-                            onValueChange = { viewModel.onSearchQueryChanged(it) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            placeholder = { Text(stringResource(R.string.home_search_placeholder), fontSize = 14.sp) },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                            trailingIcon = {
-                                if (uiState.searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                                        Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_cancel), modifier = Modifier.size(20.dp))
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent
-                            )
-                        )
-                    }
                 }
             }
         },
         bottomBar = {
-            // On n'affiche la barre du bas QUE si on n'est pas dans les paramètres
-            if (!isSettings) {
-                NavigationBar {
-                    NavigationBarItem(
-                        selected = uiState.currentTab == HomeTab.HOME,
-                        onClick = { viewModel.onTabSelected(HomeTab.HOME) },
-                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                        label = { Text(stringResource(R.string.nav_home)) }
-                    )
-                    NavigationBarItem(
-                        selected = uiState.currentTab == HomeTab.SWIPE,
-                        onClick = { viewModel.onTabSelected(HomeTab.SWIPE) },
-                        icon = { Icon(Icons.Default.Swipe, contentDescription = null) },
-                        label = { Text(stringResource(R.string.nav_swipe)) }
-                    )
-                }
+            NavigationBar(
+                modifier = Modifier.height(68.dp).padding(top = 12.dp),
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 3.dp,
+                windowInsets = NavigationBarDefaults.windowInsets
+            ) {
+                NavigationBarItem(
+                    selected = uiState.currentTab == HomeTab.HOME,
+                    onClick = { viewModel.onTabSelected(HomeTab.HOME) },
+                    icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.nav_home), modifier = Modifier.size(24.dp)) },
+                    alwaysShowLabel = false
+                )
+                NavigationBarItem(
+                    selected = uiState.currentTab == HomeTab.SWIPE,
+                    onClick = { viewModel.onTabSelected(HomeTab.SWIPE) },
+                    icon = { Icon(Icons.Default.Swipe, contentDescription = stringResource(R.string.nav_swipe), modifier = Modifier.size(24.dp)) },
+                    alwaysShowLabel = false
+                )
             }
         }
     ) { innerPadding ->
@@ -391,8 +326,11 @@ fun HomeScreen(
         ProfilePopup(
             user = uiState.user,
             connectionStatus = uiState.connectionStatus,
-            onClose = { viewModel.toggleProfilePopup(false) },
-            onSettingsClick = { viewModel.onTabSelected(HomeTab.SETTINGS) },
+            onClose = { viewModel.toggleProfilePopup(visible = false) },
+            onSettingsClick = { 
+                viewModel.onTabSelected(HomeTab.SETTINGS)
+                viewModel.toggleProfilePopup(false)
+            },
             onLogout = { viewModel.logout() }
         )
     }

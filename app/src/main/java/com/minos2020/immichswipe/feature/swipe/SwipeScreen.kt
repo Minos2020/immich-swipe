@@ -75,6 +75,7 @@ import com.minos2020.immichswipe.R
 import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
+import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.data.repository.SessionRepository
@@ -118,6 +119,8 @@ fun SwipeScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     
+    var showSortMenu by remember { mutableStateOf(false) }
+
     // On observe la santé globale de la connexion
     val connectionStatus by SessionManager.connectionStatus.collectAsState()
 
@@ -218,87 +221,151 @@ fun SwipeScreen(
             }
         }
 
-        // 3. Barre d'actions en bas
-        Row(
+        // 3. Barre d'actions en bas (Version compacte sans boutons KEEP/DELETE)
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 24.dp)
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+                .height(80.dp),
+            contentAlignment = Alignment.Center
         ) {
-            // BOUTON SUPPRIMER (DELETE)
-            FloatingActionButton(
-                onClick = { viewModel.onSwipe(SwipeDecision.DELETE) },
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                shape = CircleShape,
-                modifier = Modifier.size(56.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = if (uiState.showSwipeButtons) 16.dp else 24.dp),
+                horizontalArrangement = if (uiState.showSwipeButtons) Arrangement.SpaceEvenly else Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.swipe_delete))
-            }
-
-            // UNDO
-            IconButton(
-                onClick = { viewModel.undo() },
-                enabled = uiState.currentIndex > 0 || uiState.history.isNotEmpty(),
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.nav_back))
-            }
-
-            // ARCHIVE (Optionnel)
-            if (uiState.showArchiveButton) {
-                IconButton(
-                    onClick = { viewModel.toggleArchive() },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(Icons.Default.Archive, contentDescription = stringResource(R.string.swipe_archive), tint = MaterialTheme.colorScheme.primary)
+                // BOUTON SUPPRIMER (DELETE)
+                if (uiState.showSwipeButtons) {
+                    FloatingActionButton(
+                        onClick = { viewModel.onSwipe(SwipeDecision.DELETE) },
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.swipe_delete))
+                    }
                 }
-            }
 
-            // FAVORITE (Optionnel - Coeur)
-            if (uiState.showFavoriteButton) {
-                val isFav = uiState.currentAsset?.let { uiState.isFavorite(it.id) } ?: false
+                // UNDO
                 IconButton(
-                    onClick = { viewModel.toggleFavorite() },
-                    modifier = Modifier.size(40.dp)
+                    onClick = { viewModel.undo() },
+                    enabled = uiState.currentIndex > 0 || uiState.history.isNotEmpty(),
+                    modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
                 ) {
                     Icon(
-                        imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = stringResource(R.string.swipe_favorite),
-                        tint = if (isFav) Color.Red else MaterialTheme.colorScheme.onBackground
+                        imageVector = Icons.AutoMirrored.Filled.Undo,
+                        contentDescription = stringResource(R.string.nav_back),
+                        modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
                     )
                 }
-            }
 
-            // LOCK (Optionnel)
-            if (uiState.showLockButton) {
+                // SUMMARY
                 IconButton(
-                    onClick = { viewModel.toggleLock() },
-                    modifier = Modifier.size(40.dp)
+                    onClick = { viewModel.toggleSummary(true) },
+                    modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
                 ) {
-                    Icon(Icons.Default.Lock, contentDescription = stringResource(R.string.swipe_locked), tint = MaterialTheme.colorScheme.outline)
+                    Icon(
+                        imageVector = Icons.Default.Assessment,
+                        contentDescription = stringResource(R.string.swipe_summary_title),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
+                    )
                 }
-            }
 
-            // SKIP
-            IconButton(
-                onClick = { viewModel.onSwipe(SwipeDecision.SKIP) },
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Forward, contentDescription = stringResource(R.string.swipe_skip))
-            }
+                // FAVORITE (Optionnel - Coeur)
+                if (uiState.showFavoriteButton) {
+                    val isFav = uiState.currentAsset?.let { uiState.isFavorite(it.id) } ?: false
+                    IconButton(
+                        onClick = { viewModel.toggleFavorite() },
+                        modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = stringResource(R.string.swipe_favorite),
+                            tint = if (isFav) Color.Red else MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
+                        )
+                    }
+                }
 
-            // BOUTON GARDER (KEEP)
-            FloatingActionButton(
-                onClick = { viewModel.onSwipe(SwipeDecision.KEEP) },
-                containerColor = MaterialGreen,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(Icons.Default.Check, contentDescription = stringResource(R.string.swipe_keep))
+                // SORT MENU
+                Box {
+                    IconButton(
+                        onClick = { showSortMenu = true },
+                        modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
+                    ) {
+                        val icon = when (uiState.sortOrder) {
+                            SortOrder.SHUFFLED -> Icons.Default.Shuffle
+                            SortOrder.CHRONOLOGICAL_ASC -> Icons.Default.ArrowUpward
+                            SortOrder.CHRONOLOGICAL_DESC -> Icons.Default.ArrowDownward
+                        }
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = stringResource(R.string.settings_sort_order_label),
+                            tint = if (uiState.sortOrder != SortOrder.CHRONOLOGICAL_DESC) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.settings_sort_newest)) },
+                            onClick = {
+                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC)
+                                showSortMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.ArrowDownward, null) },
+                            trailingIcon = { if (uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC) Icon(Icons.Default.Check, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.settings_sort_oldest)) },
+                            onClick = {
+                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC)
+                                showSortMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.ArrowUpward, null) },
+                            trailingIcon = { if (uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC) Icon(Icons.Default.Check, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.settings_sort_shuffled)) },
+                            onClick = {
+                                viewModel.setSortOrder(SortOrder.SHUFFLED)
+                                showSortMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.Shuffle, null) },
+                            trailingIcon = { if (uiState.sortOrder == SortOrder.SHUFFLED) Icon(Icons.Default.Check, null) }
+                        )
+                    }
+                }
+
+                // SKIP
+                IconButton(
+                    onClick = { viewModel.onSwipe(SwipeDecision.SKIP) },
+                    modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Forward,
+                        contentDescription = stringResource(R.string.swipe_skip),
+                        modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
+                    )
+                }
+
+                // BOUTON GARDER (KEEP)
+                if (uiState.showSwipeButtons) {
+                    FloatingActionButton(
+                        onClick = { viewModel.onSwipe(SwipeDecision.KEEP) },
+                        containerColor = MaterialGreen,
+                        contentColor = Color.White,
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.swipe_keep))
+                    }
+                }
             }
         }
     }
@@ -318,7 +385,6 @@ fun SwipeScreen(
         SuccessAnimationOverlay()
     }
 }
-
 
 @Composable
 fun SuccessAnimationOverlay() {
@@ -1012,56 +1078,78 @@ fun SwipeCard(
                 // Boutons d'action (Plein écran, Immich, Mode d'affichage)
                 // Placés à la fin pour être dessinés AU-DESSUS du dégradé et du panneau de métadonnées
                 if (!isNext) {
-                    // Calcul de l'état "aimanté" vers le haut : si le panneau est tiré à plus de 10%
-                    val isMetadataPulled = offsetY.value < -metadataHeightPx * 0.1f
-                    val buttonsTranslationY by animateFloatAsState(
-                        targetValue = if (isMetadataPulled) -metadataHeightPx else 0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        label = "ButtonsGlueAnimation"
-                    )
+                    val density = LocalDensity.current
+                    val panelPushDp = with(density) { (-offsetY.value).toDp() }
 
-                    val distinctPositions = listOf(fullscreenButtonPosition, immichButtonPosition, cardDisplayButtonPosition).distinct()
-                    distinctPositions.forEach { position ->
+                    listOf(Alignment.Start, Alignment.End).forEach { side ->
                         Column(
                             modifier = Modifier
-                                .align(position.toAlignment())
-                                .padding(8.dp)
-                                .graphicsLayer {
-                                    if (position == IconPosition.BOTTOM_LEFT || position == IconPosition.BOTTOM_RIGHT) {
-                                        translationY = buttonsTranslationY
-                                    }
-                                },
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = position.toHorizontalAlignment()
+                                .align(if (side == Alignment.Start) Alignment.TopStart else Alignment.TopEnd)
+                                .fillMaxHeight()
+                                .padding(8.dp),
+                            horizontalAlignment = side
                         ) {
-                            if (fullscreenButtonPosition == position) {
-                                SwipeActionIconButton(
-                                    icon = Icons.Default.Fullscreen,
-                                    contentDescription = stringResource(R.string.settings_fullscreen_pos_label),
-                                    onClick = { isFullscreenOpen = true }
-                                )
+                            // Groupe du HAUT
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (fullscreenButtonPosition.toHorizontalAlignment() == side && (fullscreenButtonPosition == IconPosition.TOP_LEFT || fullscreenButtonPosition == IconPosition.TOP_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = Icons.Default.Fullscreen,
+                                        contentDescription = stringResource(R.string.settings_fullscreen_pos_label),
+                                        onClick = { isFullscreenOpen = true }
+                                    )
+                                }
+                                if (cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.TOP_LEFT || cardDisplayButtonPosition == IconPosition.TOP_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = if (cardDisplayMode == CardDisplayMode.FILL) 
+                                            Icons.Default.FitScreen else Icons.Default.AspectRatio,
+                                        contentDescription = stringResource(R.string.swipe_toggle_display),
+                                        onClick = onToggleDisplayMode
+                                    )
+                                }
+                                if (immichButtonPosition.toHorizontalAlignment() == side && (immichButtonPosition == IconPosition.TOP_LEFT || immichButtonPosition == IconPosition.TOP_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = Icons.AutoMirrored.Filled.OpenInNew,
+                                        contentDescription = stringResource(R.string.settings_immich_pos_label),
+                                        onClick = {
+                                            val intent = Intent(Intent.ACTION_VIEW, "$baseUrl/photos/${asset.id}".toUri())
+                                            context.startActivity(intent)
+                                        }
+                                    )
+                                }
                             }
-                            if (cardDisplayButtonPosition == position) {
-                                SwipeActionIconButton(
-                                    icon = if (cardDisplayMode == CardDisplayMode.FILL) 
-                                        Icons.Default.FitScreen else Icons.Default.AspectRatio,
-                                    contentDescription = stringResource(R.string.swipe_toggle_display),
-                                    onClick = onToggleDisplayMode
-                                )
+
+                            Spacer(Modifier.weight(1f))
+
+                            // Groupe du BAS
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (fullscreenButtonPosition.toHorizontalAlignment() == side && (fullscreenButtonPosition == IconPosition.BOTTOM_LEFT || fullscreenButtonPosition == IconPosition.BOTTOM_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = Icons.Default.Fullscreen,
+                                        contentDescription = stringResource(R.string.settings_fullscreen_pos_label),
+                                        onClick = { isFullscreenOpen = true }
+                                    )
+                                }
+                                if (cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.BOTTOM_LEFT || cardDisplayButtonPosition == IconPosition.BOTTOM_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = if (cardDisplayMode == CardDisplayMode.FILL) 
+                                            Icons.Default.FitScreen else Icons.Default.AspectRatio,
+                                        contentDescription = stringResource(R.string.swipe_toggle_display),
+                                        onClick = onToggleDisplayMode
+                                    )
+                                }
+                                if (immichButtonPosition.toHorizontalAlignment() == side && (immichButtonPosition == IconPosition.BOTTOM_LEFT || immichButtonPosition == IconPosition.BOTTOM_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = Icons.AutoMirrored.Filled.OpenInNew,
+                                        contentDescription = stringResource(R.string.settings_immich_pos_label),
+                                        onClick = {
+                                            val intent = Intent(Intent.ACTION_VIEW, "$baseUrl/photos/${asset.id}".toUri())
+                                            context.startActivity(intent)
+                                        }
+                                    )
+                                }
                             }
-                            if (immichButtonPosition == position) {
-                                SwipeActionIconButton(
-                                    icon = Icons.AutoMirrored.Filled.OpenInNew,
-                                    contentDescription = stringResource(R.string.settings_immich_pos_label),
-                                    onClick = {
-                                        val intent = Intent(Intent.ACTION_VIEW, "$baseUrl/photos/${asset.id}".toUri())
-                                        context.startActivity(intent)
-                                    }
-                                )
-                            }
+
+                            Spacer(Modifier.height(panelPushDp))
                         }
                     }
                 }
@@ -1608,13 +1696,6 @@ fun DeletedAssetThumbnail(
             }
         }
     }
-}
-
-private fun IconPosition.toAlignment(): Alignment = when (this) {
-    IconPosition.TOP_LEFT -> Alignment.TopStart
-    IconPosition.TOP_RIGHT -> Alignment.TopEnd
-    IconPosition.BOTTOM_LEFT -> Alignment.BottomStart
-    IconPosition.BOTTOM_RIGHT -> Alignment.BottomEnd
 }
 
 private fun IconPosition.toHorizontalAlignment(): Alignment.Horizontal = when (this) {

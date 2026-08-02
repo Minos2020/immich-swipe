@@ -205,4 +205,6 @@
     <string name="settings_display_mode_fit">Fit</string>
     <string name="settings_display_mode_pos_label">Display mode button position</string>
     <string name="settings_display_mode_label">Default media display</string>
+    <string name="settings_show_swipe_buttons_label">Show Keep/Delete buttons</string>
+    <string name="settings_show_swipe_buttons_desc">Display large red and green buttons for one-tap sorting</string>
 </resources>

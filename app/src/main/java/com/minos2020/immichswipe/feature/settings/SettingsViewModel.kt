@@ -95,16 +95,6 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
-            sessionRepository.showArchiveButton.collect { show ->
-                _uiState.value = _uiState.value.copy(showArchiveButton = show)
-            }
-        }
-        viewModelScope.launch {
-            sessionRepository.showLockButton.collect { show ->
-                _uiState.value = _uiState.value.copy(showLockButton = show)
-            }
-        }
-        viewModelScope.launch {
             sessionRepository.autoNextOnFav.collect { autoNextOnFav ->
                 _uiState.value = _uiState.value.copy(autoNextOnFav = autoNextOnFav)
             }
@@ -121,7 +111,12 @@ class SettingsViewModel(
         }
         viewModelScope.launch {
             sessionRepository.defaultCardDisplayMode.collect { mode ->
-                _uiState.value = _uiState.value.copy(defaultCardDisplayMode = mode)
+                _uiState.update { it.copy(defaultCardDisplayMode = mode) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showSwipeButtons.collect { show ->
+                _uiState.update { it.copy(showSwipeButtons = show) }
             }
         }
     }
@@ -172,14 +167,6 @@ class SettingsViewModel(
         viewModelScope.launch { sessionRepository.saveShowFavorite(show) }
     }
 
-    fun setShowArchive(show: Boolean) {
-        viewModelScope.launch { sessionRepository.saveShowArchive(show) }
-    }
-
-    fun setShowLock(show: Boolean) {
-        viewModelScope.launch { sessionRepository.saveShowLock(show) }
-    }
-
     fun setAutoNextOnFav(autoNextOnFav: Boolean) {
         viewModelScope.launch { sessionRepository.saveAutoNextOnFav(autoNextOnFav) }
     }
@@ -195,6 +182,12 @@ class SettingsViewModel(
     fun setDefaultCardDisplayMode(mode: com.minos2020.immichswipe.core.CardDisplayMode) {
         viewModelScope.launch {
             sessionRepository.saveDefaultCardDisplayMode(mode)
+        }
+    }
+
+    fun setShowSwipeButtons(show: Boolean) {
+        viewModelScope.launch {
+            sessionRepository.saveShowSwipeButtons(show)
         }
     }
 

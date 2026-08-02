@@ -332,17 +332,19 @@ fun SettingsScreen(
                             }
                         }
 
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+
                         SettingsToggleItemSmall(
-                            title = stringResource(R.string.settings_tri_archive),
-                            checked = uiState.showArchiveButton,
-                            onCheckedChange = { viewModel.setShowArchive(it) },
-                            icon = Icons.Default.Archive
+                            title = stringResource(R.string.settings_show_swipe_buttons_label),
+                            checked = uiState.showSwipeButtons,
+                            onCheckedChange = { viewModel.setShowSwipeButtons(it) },
+                            icon = Icons.Default.AdsClick
                         )
-                        SettingsToggleItemSmall(
-                            title = stringResource(R.string.settings_tri_lock),
-                            checked = uiState.showLockButton,
-                            onCheckedChange = { viewModel.setShowLock(it) },
-                            icon = Icons.Default.Lock
+                        Text(
+                            text = stringResource(R.string.settings_show_swipe_buttons_desc),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
                         )
                     }
 
