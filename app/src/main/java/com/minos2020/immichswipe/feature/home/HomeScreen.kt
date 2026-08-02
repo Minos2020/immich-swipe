@@ -1,7 +1,7 @@
 package com.minos2020.immichswipe.feature.home
 
 import android.content.Intent
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -101,6 +101,7 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = Color.Transparent,
         topBar = {
             // Barre principale avec logo et profil
             Column {
@@ -113,8 +114,8 @@ fun HomeScreen(
                             painter = painterResource(id = logoRes),
                             contentDescription = stringResource(R.string.app_name),
                             modifier = Modifier
-                                .height(32.dp)
-                                .padding(vertical = 2.dp),
+                                .height(22.dp)
+                                .padding(vertical = 1.dp),
                             contentScale = ContentScale.Fit
                         )
                     },
@@ -143,9 +144,9 @@ fun HomeScreen(
                         
                         val profileModifier = Modifier
                             .padding(end = 16.dp)
-                            .size(32.dp)
+                            .size(24.dp)
                             .border(1.dp, avatarColor, CircleShape)
-                            .padding(2.dp)
+                            .padding(1.5.dp)
                             .clip(CircleShape)
                             .clickable { viewModel.toggleProfilePopup(visible = true) }
 
@@ -197,7 +198,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 4.dp)
-                            .height(48.dp),
+                            .height(52.dp),
                         placeholder = { Text(stringResource(R.string.home_search_placeholder), fontSize = 13.sp) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         trailingIcon = {
@@ -220,102 +221,147 @@ fun HomeScreen(
                 }
             }
         },
-        bottomBar = {
-            NavigationBar(
-                modifier = Modifier.height(68.dp).padding(top = 12.dp),
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 3.dp,
-                windowInsets = NavigationBarDefaults.windowInsets
-            ) {
-                NavigationBarItem(
-                    selected = uiState.currentTab == HomeTab.HOME,
-                    onClick = { viewModel.onTabSelected(HomeTab.HOME) },
-                    icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.nav_home), modifier = Modifier.size(24.dp)) },
-                    alwaysShowLabel = false
-                )
-                NavigationBarItem(
-                    selected = uiState.currentTab == HomeTab.SWIPE,
-                    onClick = { viewModel.onTabSelected(HomeTab.SWIPE) },
-                    icon = { Icon(Icons.Default.Swipe, contentDescription = stringResource(R.string.nav_swipe), modifier = Modifier.size(24.dp)) },
-                    alwaysShowLabel = false
-                )
-            }
-        }
+        bottomBar = {} // Use empty bottomBar so Scaffold doesn't reserve space or draw background
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
-            when (uiState.currentTab) {
-                HomeTab.HOME -> {
-                    if (uiState.isLoading && uiState.albums.isEmpty()) {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    } else if (uiState.error != null) {
-                        ErrorView(error = uiState.error!!) { viewModel.loadUser() }
-                    } else if (uiState.filteredAlbums.isEmpty() && uiState.searchQuery.isNotEmpty()) {
-                        // Aucun résultat de recherche
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.SearchOff, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outline)
-                                Spacer(Modifier.height(8.dp))
-                                Text(stringResource(R.string.home_no_results), color = MaterialTheme.colorScheme.outline)
+            Box(modifier = Modifier.fillMaxSize()) {
+                AnimatedContent(
+                    targetState = uiState.currentTab,
+                    transitionSpec = {
+                        val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                        (slideInHorizontally(animationSpec = tween(300)) { width -> direction * width } + fadeIn(tween(300)))
+                            .togetherWith(slideOutHorizontally(animationSpec = tween(300)) { width -> -direction * width } + fadeOut(tween(300)))
+                            .using(SizeTransform(clip = false))
+                    },
+                    label = "TabTransition",
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.TopStart
+                ) { targetTab ->
+                    when (targetTab) {
+                        HomeTab.HOME -> {
+                            if (uiState.isLoading && uiState.albums.isEmpty()) {
+                                Box(Modifier.fillMaxSize()) {
+                                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                                }
+                            } else if (uiState.error != null) {
+                                ErrorView(error = uiState.error!!) { viewModel.loadUser() }
+                            } else if (uiState.filteredAlbums.isEmpty() && uiState.searchQuery.isNotEmpty()) {
+                                // Aucun résultat de recherche
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Default.SearchOff, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outline)
+                                        Spacer(Modifier.height(8.dp))
+                                        Text(stringResource(R.string.home_no_results), color = MaterialTheme.colorScheme.outline)
+                                    }
+                                }
+                            } else {
+                                Crossfade(
+                                    targetState = uiState.isGridView,
+                                    animationSpec = tween(durationMillis = 500),
+                                    label = "LayoutSwitch"
+                                ) { isGrid ->
+                                    if (isGrid) {
+                                        AlbumGrid(
+                                            groupedAlbums = uiState.groupedAlbums,
+                                            treatedCounts = uiState.albumTreatedCounts,
+                                            unsyncedChanges = uiState.albumUnsyncedChanges,
+                                            collapsedCategories = uiState.collapsedCategories,
+                                            isRefreshing = uiState.isRefreshing,
+                                            onRefresh = { viewModel.refreshAlbums() },
+                                            onAlbumClick = { viewModel.onAlbumSelected(it) },
+                                            onToggleCategory = viewModel::toggleCategory
+                                        )
+                                    } else {
+                                        AlbumList(
+                                            groupedAlbums = uiState.groupedAlbums,
+                                            treatedCounts = uiState.albumTreatedCounts,
+                                            unsyncedChanges = uiState.albumUnsyncedChanges,
+                                            collapsedCategories = uiState.collapsedCategories,
+                                            isRefreshing = uiState.isRefreshing,
+                                            onRefresh = { viewModel.refreshAlbums() },
+                                            onAlbumClick = { viewModel.onAlbumSelected(it) },
+                                            onToggleCategory = viewModel::toggleCategory
+                                        )
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        Crossfade(
-                            targetState = uiState.isGridView,
-                            animationSpec = tween(durationMillis = 500),
-                            label = "LayoutSwitch"
-                        ) { isGrid ->
-                            if (isGrid) {
-                                AlbumGrid(
-                                    groupedAlbums = uiState.groupedAlbums,
-                                    treatedCounts = uiState.albumTreatedCounts,
-                                    unsyncedChanges = uiState.albumUnsyncedChanges,
-                                    collapsedCategories = uiState.collapsedCategories,
-                                    isRefreshing = uiState.isRefreshing,
-                                    onRefresh = { viewModel.refreshAlbums() },
-                                    onAlbumClick = { viewModel.onAlbumSelected(it) },
-                                    onToggleCategory = viewModel::toggleCategory
+                        HomeTab.SWIPE -> {
+                            if (uiState.selectedAlbum != null) {
+                                SwipeScreen(
+                                    album = uiState.selectedAlbum!!,
+                                    assetRepository = assetRepository,
+                                    swipeDecisionRepository = swipeDecisionRepository,
+                                    sessionRepository = viewModel.getSessionRepository()
                                 )
                             } else {
-                                AlbumList(
-                                    groupedAlbums = uiState.groupedAlbums,
-                                    treatedCounts = uiState.albumTreatedCounts,
-                                    unsyncedChanges = uiState.albumUnsyncedChanges,
-                                    collapsedCategories = uiState.collapsedCategories,
-                                    isRefreshing = uiState.isRefreshing,
-                                    onRefresh = { viewModel.refreshAlbums() },
-                                    onAlbumClick = { viewModel.onAlbumSelected(it) },
-                                    onToggleCategory = viewModel::toggleCategory
-                                )
+                                SwipePlaceholder(selectedAlbum = null)
                             }
+                        }
+                        HomeTab.SETTINGS -> {
+                            val settingsViewModel: SettingsViewModel = viewModel(
+                                factory = SettingsViewModelFactory(
+                                    viewModel.getSessionRepository(),
+                                    swipeDecisionRepository
+                                )
+                            )
+                            SettingsScreen(
+                                viewModel = settingsViewModel
+                            )
                         }
                     }
                 }
-                HomeTab.SWIPE -> {
-                    if (uiState.selectedAlbum != null) {
-                        SwipeScreen(
-                            album = uiState.selectedAlbum!!,
-                            assetRepository = assetRepository,
-                            swipeDecisionRepository = swipeDecisionRepository,
-                            sessionRepository = viewModel.getSessionRepository()
-                        )
-                    } else {
-                        SwipePlaceholder(selectedAlbum = null)
+
+                // Floating Navigation Bar
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 64.dp, vertical = 24.dp)
+                        .navigationBarsPadding()
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                        shape = CircleShape,
+                        shadowElevation = 8.dp,
+                        tonalElevation = 4.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        NavigationBar(
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp,
+                            modifier = Modifier.height(52.dp),
+                            windowInsets = WindowInsets(0, 0, 0, 0)
+                        ) {
+                            NavigationBarItem(
+                                selected = uiState.currentTab == HomeTab.HOME,
+                                onClick = { viewModel.onTabSelected(HomeTab.HOME) },
+                                icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.nav_home), modifier = Modifier.size(24.dp)) },
+                                alwaysShowLabel = false,
+                                colors = NavigationBarItemDefaults.colors(
+                                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            )
+                            NavigationBarItem(
+                                selected = uiState.currentTab == HomeTab.SWIPE,
+                                onClick = { viewModel.onTabSelected(HomeTab.SWIPE) },
+                                icon = { Icon(Icons.Default.Swipe, contentDescription = stringResource(R.string.nav_swipe), modifier = Modifier.size(24.dp)) },
+                                alwaysShowLabel = false,
+                                colors = NavigationBarItemDefaults.colors(
+                                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            )
+                        }
                     }
-                }
-                HomeTab.SETTINGS -> {
-                    val settingsViewModel: SettingsViewModel = viewModel(
-                        factory = SettingsViewModelFactory(
-                            viewModel.getSessionRepository(),
-                            swipeDecisionRepository
-                        )
-                    )
-                    SettingsScreen(
-                        viewModel = settingsViewModel
-                    )
                 }
             }
         }
@@ -829,7 +875,7 @@ fun AlbumList(
             LazyColumn(
                 state = state,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // On définit l'ordre d'affichage des catégories
@@ -966,7 +1012,7 @@ fun AlbumGrid(
                 state = state,
                 columns = GridCells.Fixed(3),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {

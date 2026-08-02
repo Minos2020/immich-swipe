@@ -158,7 +158,7 @@ fun SwipeScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             contentAlignment = Alignment.Center
         ) {
             if (uiState.isLoading) {
@@ -222,12 +222,15 @@ fun SwipeScreen(
         }
 
         // 3. Barre d'actions en bas (Version compacte sans boutons KEEP/DELETE)
-        Box(
+        // On utilise une Column de hauteur fixe avec des Spacers pour centrer les boutons entre l'image et la barre de navigation
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp),
-            contentAlignment = Alignment.Center
+                .height(150.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(Modifier.weight(1f)) // Espace au-dessus des boutons
+            
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -367,6 +370,10 @@ fun SwipeScreen(
                     }
                 }
             }
+            
+            Spacer(Modifier.weight(1f)) // Espace en-dessous des boutons pour l'équilibre
+            
+            Spacer(Modifier.height(100.dp)) // Zone réservée augmentée pour la barre de navigation flottante
         }
     }
 
@@ -499,15 +506,15 @@ fun SwipeHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Barre de progression avec nom de l'album
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .height(28.dp)
+                .clip(RoundedCornerShape(14.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable { onSummaryClick() },
             contentAlignment = Alignment.CenterStart
@@ -685,8 +692,8 @@ fun AssetTimeline(
         state = listState,
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp)
-            .padding(vertical = 8.dp),
+            .height(60.dp)
+            .padding(vertical = 2.dp),
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -699,7 +706,7 @@ fun AssetTimeline(
 
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .border(
                         width = if (isCurrent) 2.dp else 0.dp,
