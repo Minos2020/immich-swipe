@@ -129,7 +129,7 @@ interface SwipeDecisionDao {
                COUNT(DISTINCT sd.assetId) as totalCount, 
                SUM(CASE WHEN sd.isSynced = 0 AND (sd.wasSyncedSkip = 0 OR aa.albumId = 'virtual_skipped_synced') THEN 1 ELSE 0 END) as unsyncedCount
         FROM album_assets aa
-        JOIN swipe_decisions sd ON aa.assetId = sd.assetId
+        JOIN swipe_decisions sd ON aa.assetId = sd.assetId AND aa.userId = sd.userId
         WHERE sd.userId = :userId
         GROUP BY aa.albumId
     """)

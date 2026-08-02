@@ -54,7 +54,10 @@ class MainActivity : ComponentActivity() {
         
         // Initialisation de la base de données Room et du Repository
         val database = AppDatabase.getDatabase(applicationContext)
-        val swipeDecisionRepository = SwipeDecisionRepository(database.swipeDecisionDao())
+        val swipeDecisionRepository = SwipeDecisionRepository(
+            database.swipeDecisionDao(),
+            database.albumAssetDao()
+        )
 
         setContent {
             val appViewModel: AppViewModel = viewModel(
@@ -99,10 +102,11 @@ class MainActivity : ComponentActivity() {
                                     // le rafraîchissement si l'utilisateur change (même serveur, autre clé).
                                     val sessionKey = "$baseUrl-$apiKey"
                                     
-                                    val albumRepository = remember(sessionKey) { AlbumRepository(api) }
+                                    val albumRepository = remember(sessionKey) { 
+                                        AlbumRepository(database.albumAssetDao()) 
+                                    }
                                     val assetRepository = remember(sessionKey) { 
                                         AssetRepository(
-                                            api, 
                                             database.swipeDecisionDao(),
                                             database.albumAssetDao()
                                         ) 

@@ -10,10 +10,11 @@ import androidx.room.Index
  */
 @Entity(
     tableName = "album_assets",
-    primaryKeys = ["albumId", "assetId"],
-    indices = [Index(value = ["assetId"])] // Index pour accélérer les jointures
+    primaryKeys = ["albumId", "assetId", "userId"],
+    indices = [Index(value = ["assetId"]), Index(value = ["userId"])]
 )
 data class AlbumAssetEntity(
     val albumId: String,
-    val assetId: String
+    val assetId: String,
+    val userId: String
 )
