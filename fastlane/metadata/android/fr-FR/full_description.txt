@@ -22,4 +22,4 @@ Pour utiliser l'application, vous n'avez besoin que du domaine/adresse de votre 
 
 Avertissement : Ce projet est indépendant et n'est affilié d'aucune façon avec le projet officiel Immich.
 
-Code source : https://github.com/Minos2020/immich-swipe-android
+Code source : https://github.com/markvoronin354/immich-swipe-android

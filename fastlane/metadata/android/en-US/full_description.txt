@@ -23,4 +23,4 @@ To use the application, you only need the address/domain of your Immich server a
 
 Disclaimer: Immich Swipe is an independent community project and is not affiliated with or endorsed by the Immich project.
 
-Source code : https://github.com/Minos2020/immich-swipe-android
+Source code : https://github.com/markvoronin354/immich-swipe-android

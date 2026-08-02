@@ -114,8 +114,8 @@ fun HomeScreen(
                             painter = painterResource(id = logoRes),
                             contentDescription = stringResource(R.string.app_name),
                             modifier = Modifier
-                                .height(22.dp)
-                                .padding(vertical = 1.dp),
+                                .height(32.dp)
+                                .padding(vertical = 2.dp),
                             contentScale = ContentScale.Fit
                         )
                     },
@@ -144,9 +144,9 @@ fun HomeScreen(
                         
                         val profileModifier = Modifier
                             .padding(end = 16.dp)
-                            .size(24.dp)
+                            .size(32.dp)
                             .border(1.dp, avatarColor, CircleShape)
-                            .padding(1.5.dp)
+                            .padding(2.dp)
                             .clip(CircleShape)
                             .clickable { viewModel.toggleProfilePopup(visible = true) }
 
@@ -807,7 +807,7 @@ fun ProfilePopup(
                         .clickable {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                "https://github.com/Minos2020/immich-swipe".toUri()
+                                "https://github.com/markvoronin354/immich-swipe-android".toUri()
                             )
                             context.startActivity(intent)
                         }
