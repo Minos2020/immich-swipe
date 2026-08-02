@@ -123,7 +123,8 @@ class MainActivity : ComponentActivity() {
                                             )
                                         ),
                                         assetRepository = assetRepository,
-                                        swipeDecisionRepository = swipeDecisionRepository
+                                        swipeDecisionRepository = swipeDecisionRepository,
+                                        sessionKey = sessionKey
                                     )
                                 } else {
                                     // Sécurité : si l'API n'est plus là mais qu'on est noté connecté,

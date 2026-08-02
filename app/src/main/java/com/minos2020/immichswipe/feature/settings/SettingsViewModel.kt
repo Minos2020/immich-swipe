@@ -14,32 +14,40 @@ import com.minos2020.immichswipe.data.local.model.DatabaseExport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 class SettingsViewModel(
     private val sessionRepository: SessionRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository
 ) : ViewModel() {
 
-    private val userRepository by lazy {
-        UserRepository(
-            SessionManager.api ?: throw IllegalStateException("Session not initialized")
-        )
+    private fun getUserRepository(): UserRepository? {
+        return SessionManager.api?.let { UserRepository(it) }
     }
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
-        loadUserData()
         observeSettings()
+        loadUserData()
     }
 
     private fun loadUserData() {
         viewModelScope.launch {
+            // SÉCURITÉ : On attend que le SessionManager soit prêt (max 3 secondes)
+            var attempts = 0
+            while (SessionManager.api == null && attempts < 30) {
+                delay(100)
+                attempts++
+            }
+
             try {
-                val user = userRepository.getCurrentUser()
-                _uiState.value = _uiState.value.copy(userName = user.name ?: "")
+                val userRepo = getUserRepository() ?: throw IllegalStateException("Session not initialized after wait")
+                val user = userRepo.getCurrentUser()
+                _uiState.update { it.copy(userName = user.name ?: "") }
             } catch (e: Exception) {
                 android.util.Log.e("SettingsVM", "Erreur chargement user: ${e.message}")
             }
@@ -49,77 +57,77 @@ class SettingsViewModel(
     private fun observeSettings() {
         viewModelScope.launch {
             sessionRepository.playbackBehavior.collect { behavior ->
-                _uiState.value = _uiState.value.copy(playbackBehavior = behavior)
+                _uiState.update { it.copy(playbackBehavior = behavior) }
             }
         }
         viewModelScope.launch {
             sessionRepository.themeMode.collect { theme ->
-                _uiState.value = _uiState.value.copy(themeMode = theme)
+                _uiState.update { it.copy(themeMode = theme) }
             }
         }
         viewModelScope.launch {
             sessionRepository.swipeInverted.collect { inverted ->
-                _uiState.value = _uiState.value.copy(isSwipeInverted = inverted)
+                _uiState.update { it.copy(isSwipeInverted = inverted) }
             }
         }
         viewModelScope.launch {
             sessionRepository.fullscreenButtonPosition.collect { pos ->
-                _uiState.value = _uiState.value.copy(fullscreenButtonPosition = pos)
+                _uiState.update { it.copy(fullscreenButtonPosition = pos) }
             }
         }
         viewModelScope.launch {
             sessionRepository.immichButtonPosition.collect { pos ->
-                _uiState.value = _uiState.value.copy(immichButtonPosition = pos)
+                _uiState.update { it.copy(immichButtonPosition = pos) }
             }
         }
         viewModelScope.launch {
             sessionRepository.cardDisplayButtonPosition.collect { pos ->
-                _uiState.value = _uiState.value.copy(cardDisplayButtonPosition = pos)
+                _uiState.update { it.copy(cardDisplayButtonPosition = pos) }
             }
         }
         viewModelScope.launch {
             sessionRepository.muteButtonPosition.collect { pos ->
-                _uiState.value = _uiState.value.copy(muteButtonPosition = pos)
+                _uiState.update { it.copy(muteButtonPosition = pos) }
             }
         }
         viewModelScope.launch {
             sessionRepository.defaultLayoutGrid.collect { isGrid ->
-                _uiState.value = _uiState.value.copy(isDefaultLayoutGrid = isGrid)
+                _uiState.update { it.copy(isDefaultLayoutGrid = isGrid) }
             }
         }
         viewModelScope.launch {
             sessionRepository.skipLifespanDays.collect { days ->
-                _uiState.value = _uiState.value.copy(skipLifespanDays = days)
+                _uiState.update { it.copy(skipLifespanDays = days) }
             }
         }
         viewModelScope.launch {
             sessionRepository.showFavoriteButton.collect { show ->
-                _uiState.value = _uiState.value.copy(showFavoriteButton = show)
+                _uiState.update { it.copy(showFavoriteButton = show) }
             }
         }
         viewModelScope.launch {
             sessionRepository.showArchiveButton.collect { show ->
-                _uiState.value = _uiState.value.copy(showArchiveButton = show)
+                _uiState.update { it.copy(showArchiveButton = show) }
             }
         }
         viewModelScope.launch {
             sessionRepository.showLockButton.collect { show ->
-                _uiState.value = _uiState.value.copy(showLockButton = show)
+                _uiState.update { it.copy(showLockButton = show) }
             }
         }
         viewModelScope.launch {
             sessionRepository.autoNextOnFav.collect { autoNextOnFav ->
-                _uiState.value = _uiState.value.copy(autoNextOnFav = autoNextOnFav)
+                _uiState.update { it.copy(autoNextOnFav = autoNextOnFav) }
             }
         }
         viewModelScope.launch {
             sessionRepository.includeArchived.collect { include ->
-                _uiState.value = _uiState.value.copy(includeArchived = include)
+                _uiState.update { it.copy(includeArchived = include) }
             }
         }
         viewModelScope.launch {
             sessionRepository.defaultCardDisplayMode.collect { mode ->
-                _uiState.value = _uiState.value.copy(defaultCardDisplayMode = mode)
+                _uiState.update { it.copy(defaultCardDisplayMode = mode) }
             }
         }
     }
@@ -207,7 +215,7 @@ class SettingsViewModel(
         val isReduction = (currentDays == 0L && days > 0L) || (currentDays > 0L && days > 0L && days < currentDays)
         
         if (isReduction) {
-            _uiState.value = _uiState.value.copy(showSkipLifespanWarning = days)
+            _uiState.update { it.copy(showSkipLifespanWarning = days) }
         } else {
             // Sinon, on applique directement
             viewModelScope.launch {
@@ -226,12 +234,12 @@ class SettingsViewModel(
             if (targetDays > 0) {
                 swipeDecisionRepository.cleanExpiredSkips(targetDays)
             }
-            _uiState.value = _uiState.value.copy(showSkipLifespanWarning = null)
+            _uiState.update { it.copy(showSkipLifespanWarning = null) }
         }
     }
 
     fun dismissSkipLifespanWarning() {
-        _uiState.value = _uiState.value.copy(showSkipLifespanWarning = null)
+        _uiState.update { it.copy(showSkipLifespanWarning = null) }
     }
 
     fun logout() {
@@ -243,17 +251,17 @@ class SettingsViewModel(
     // --- Gestion de la Base de Données ---
 
     fun requestDatabaseAction(action: DatabaseAction, scope: DatabaseScope) {
-        _uiState.value = _uiState.value.copy(
+        _uiState.update { it.copy(
             pendingDatabaseAction = action,
             pendingDatabaseScope = scope
-        )
+        ) }
     }
 
     fun dismissDatabaseConfirmation() {
-        _uiState.value = _uiState.value.copy(
+        _uiState.update { it.copy(
             pendingDatabaseAction = null,
             pendingDatabaseScope = null
-        )
+        ) }
     }
 
     fun executeDelete(scope: DatabaseScope) {
@@ -265,7 +273,7 @@ class SettingsViewModel(
                 userId?.let { swipeDecisionRepository.clearUserData(it) }
             }
             dismissDatabaseConfirmation()
-            _uiState.value = _uiState.value.copy(databaseActionStatus = "Données supprimées avec succès")
+            _uiState.update { it.copy(databaseActionStatus = "Données supprimées avec succès") }
         }
     }
 
@@ -294,9 +302,9 @@ class SettingsViewModel(
                 val json = com.google.gson.Gson().toJson(export)
                 outputStream.use { it.write(json.toByteArray()) }
 
-                _uiState.value = _uiState.value.copy(databaseActionStatus = "Export terminé (${decisions.size} décisions)")
+                _uiState.update { it.copy(databaseActionStatus = "Export terminé (${decisions.size} décisions)") }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(databaseActionStatus = "Erreur export: ${e.message}")
+                _uiState.update { it.copy(databaseActionStatus = "Erreur export: ${e.message}") }
             } finally {
                 dismissDatabaseConfirmation()
             }
@@ -311,9 +319,9 @@ class SettingsViewModel(
 
                 swipeDecisionRepository.importData(export.swipeDecisions, export.syncHistory)
 
-                _uiState.value = _uiState.value.copy(databaseActionStatus = "Import réussi (${export.swipeDecisions.size} décisions)")
+                _uiState.update { it.copy(databaseActionStatus = "Import réussi (${export.swipeDecisions.size} décisions)") }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(databaseActionStatus = "Erreur import: ${e.message}")
+                _uiState.update { it.copy(databaseActionStatus = "Erreur import: ${e.message}") }
             } finally {
                 dismissDatabaseConfirmation()
             }
@@ -321,23 +329,23 @@ class SettingsViewModel(
     }
 
     fun clearDatabaseActionStatus() {
-        _uiState.value = _uiState.value.copy(databaseActionStatus = null)
+        _uiState.update { it.copy(databaseActionStatus = null) }
     }
 
     fun setShowLogs(show: Boolean) {
-        _uiState.value = _uiState.value.copy(showLogsDialog = show)
+        _uiState.update { it.copy(showLogsDialog = show) }
     }
 
     fun setShowClearLogsConfirmation(show: Boolean) {
-        _uiState.value = _uiState.value.copy(showClearLogsConfirmation = show)
+        _uiState.update { it.copy(showClearLogsConfirmation = show) }
     }
 
     fun clearLogs() {
         com.minos2020.immichswipe.core.AppLogger.clearLogs()
-        _uiState.value = _uiState.value.copy(
+        _uiState.update { it.copy(
             showClearLogsConfirmation = false,
             showLogsDialog = false
-        )
+        ) }
     }
 
     fun getLogs(): String {
