@@ -675,7 +675,14 @@ fun SettingsScreen(
                         when(action) {
                             DatabaseAction.DELETE -> viewModel.executeDelete(scope)
                             DatabaseAction.EXPORT -> {
-                                val fileName = "immich_swipe_backup_${if(scope == DatabaseScope.ALL) "total" else "user"}_${System.currentTimeMillis()}.json"
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm", java.util.Locale.getDefault())
+                                val dateStr = sdf.format(java.util.Date())
+                                val scopeName = if (scope == DatabaseScope.ALL) "ALL_USERS" else {
+                                    uiState.userName.ifBlank { "user" }
+                                        .replace("\\s+".toRegex(), "-") // Remplace espaces par tirets
+                                        .replace("[^a-zA-Z0-9-]".toRegex(), "") // Garde que l'alpha-numérique
+                                }
+                                val fileName = "immich_swipe_backup_${scopeName}_$dateStr.json"
                                 exportLauncher.launch(fileName)
                             }
                             DatabaseAction.IMPORT -> importLauncher.launch("application/json")
