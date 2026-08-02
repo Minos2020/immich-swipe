@@ -18,6 +18,9 @@ interface ImmichApi {
     @GET("api/albums")
     suspend fun getAlbums(): List<Album>
 
+    @GET("api/albums")
+    suspend fun getAlbumsForAsset(@retrofit2.http.Query("assetId") assetId: String): List<Album>
+
 //    @GET("api/albums/{id}")
 //    suspend fun getAlbumInfo(@Path("id") albumId: String): AlbumWithAssets
 

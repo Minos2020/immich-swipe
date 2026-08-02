@@ -1,5 +1,6 @@
 package com.minos2020.immichswipe.data.repository
 
+import com.minos2020.immichswipe.data.local.dao.AlbumAssetDao
 import com.minos2020.immichswipe.data.local.dao.AlbumDecisionCount
 import com.minos2020.immichswipe.data.local.dao.SwipeDecisionDao
 import com.minos2020.immichswipe.data.local.entity.SwipeDecisionEntity
@@ -11,7 +12,8 @@ import kotlinx.coroutines.flow.Flow
  * Il fait le lien entre le ViewModel et le DAO (la base Room).
  */
 class SwipeDecisionRepository(
-    private val swipeDecisionDao: SwipeDecisionDao
+    private val swipeDecisionDao: SwipeDecisionDao,
+    private val albumAssetDao: AlbumAssetDao? = null
 ) {
     /**
      * Observe le compte des décisions pour tous les albums d'un utilisateur.
@@ -172,11 +174,13 @@ class SwipeDecisionRepository(
     suspend fun clearAllData() {
         swipeDecisionDao.deleteAllDecisions()
         swipeDecisionDao.deleteAllSyncHistory()
+        albumAssetDao?.clearAll()
     }
 
     suspend fun clearUserData(userId: String) {
         swipeDecisionDao.deleteAllDecisionsForUser(userId)
         swipeDecisionDao.deleteAllSyncHistoryForUser(userId)
+        albumAssetDao?.clearAllForUser(userId)
     }
 
     suspend fun getAllDecisionsRaw() = swipeDecisionDao.getAllDecisionsRaw()

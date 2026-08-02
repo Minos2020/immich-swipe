@@ -15,6 +15,7 @@ data class Asset(
     val isArchived: Boolean = false,
     val isLocked: Boolean = false,
     val isTrashed: Boolean = false,
+    val albumIds: List<String> = emptyList(),
     val originalFileName: String? = null,
     @SerializedName("extension")
     val fileExtension: String? = null,

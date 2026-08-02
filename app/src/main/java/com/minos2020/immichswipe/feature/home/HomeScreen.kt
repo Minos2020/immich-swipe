@@ -71,6 +71,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     assetRepository: AssetRepository,
     swipeDecisionRepository: SwipeDecisionRepository,
+    sessionKey: String,
     modifier: Modifier = Modifier,
 ) {
     val uiState: HomeUiState by viewModel.uiState.collectAsState()
@@ -321,6 +322,7 @@ fun HomeScreen(
                 }
                 HomeTab.SETTINGS -> {
                     val settingsViewModel: SettingsViewModel = viewModel(
+                        key = "settings-$sessionKey",
                         factory = SettingsViewModelFactory(
                             viewModel.getSessionRepository(),
                             swipeDecisionRepository

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -532,14 +533,16 @@ fun SettingsScreen(
                         .padding(8.dp)
                 ) {
                     val scroll = rememberScrollState()
-                    Text(
-                        text = if (rawLogs.isEmpty()) androidx.compose.ui.text.AnnotatedString(stringResource(R.string.settings_logs_empty)) else annotatedLogs,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        modifier = Modifier
-                            .verticalScroll(scroll)
-                            .padding(end = 16.dp) // Évite que le texte ne morde sur la barre de défilement (14dp)
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = if (rawLogs.isEmpty()) androidx.compose.ui.text.AnnotatedString(stringResource(R.string.settings_logs_empty)) else annotatedLogs,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            modifier = Modifier
+                                .verticalScroll(scroll)
+                                .padding(end = 16.dp) // Évite que le texte ne morde sur la barre de défilement (14dp)
+                        )
+                    }
 
                     // Barre de défilement interactive (Scrollbar)
                     if (rawLogs.isNotEmpty() && scroll.maxValue > 0) {
@@ -581,13 +584,13 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = { 
+                    TextButton(onClick = {
                         viewModel.setShowClearLogsConfirmation(true)
                     }) {
                         Text(stringResource(R.string.settings_logs_clear), color = MaterialTheme.colorScheme.error)
                     }
                     Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = { 
+                    TextButton(onClick = {
                         val logs = viewModel.getLogs()
                         scope.launch {
                             val clipData = android.content.ClipData.newPlainText("Immich Swipe Logs", logs)
@@ -672,7 +675,14 @@ fun SettingsScreen(
                         when(action) {
                             DatabaseAction.DELETE -> viewModel.executeDelete(scope)
                             DatabaseAction.EXPORT -> {
-                                val fileName = "immich_swipe_backup_${if(scope == DatabaseScope.ALL) "total" else "user"}_${System.currentTimeMillis()}.json"
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm", java.util.Locale.getDefault())
+                                val dateStr = sdf.format(java.util.Date())
+                                val scopeName = if (scope == DatabaseScope.ALL) "ALL_USERS" else {
+                                    uiState.userName.ifBlank { "user" }
+                                        .replace("\\s+".toRegex(), "-") // Remplace espaces par tirets
+                                        .replace("[^a-zA-Z0-9-]".toRegex(), "") // Garde que l'alpha-numérique
+                                }
+                                val fileName = "immich_swipe_backup_${scopeName}_$dateStr.json"
                                 exportLauncher.launch(fileName)
                             }
                             DatabaseAction.IMPORT -> importLauncher.launch("application/json")

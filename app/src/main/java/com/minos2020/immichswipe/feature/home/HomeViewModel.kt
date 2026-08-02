@@ -32,8 +32,8 @@ class HomeViewModel(
     private val assetRepository: AssetRepository
 ) : ViewModel() {
     
-    private val userRepository by lazy { 
-        UserRepository(
+    private fun getUserRepository(): UserRepository {
+        return UserRepository(
             SessionManager.api ?: throw IllegalStateException("Session not initialized")
         )
     }
@@ -128,6 +128,9 @@ class HomeViewModel(
             sessionRepository.sessionConfig.collect { config ->
                 if (config == null) return@collect
                 
+                // Lancement de la découverte des albums en arrière-plan
+                launchDiscoveryTask(config.userId)
+
                 combine(
                     swipeDecisionRepository.getSyncHistory(config.userId),
                     swipeDecisionRepository.getAllDecisionsForUser(config.userId),
@@ -183,16 +186,21 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 AppLogger.d("Home", "Chargement des données utilisateur et albums")
-                val user = userRepository.getCurrentUser()
+                val user = getUserRepository().getCurrentUser()
                 // SOLUTION : Migration des anciennes données (v3 -> v4) vers l'ID utilisateur réel
                 swipeDecisionRepository.migrateLegacyDecisions(user.id)
 
                 val albums = albumRepository.refreshAlbums(_uiState.value.includeArchived)
+                val allCount = assetRepository.getTotalAssetCount(_uiState.value.includeArchived)
+                val orphansCount = assetRepository.getOrphansCount(_uiState.value.includeArchived)
+
                 AppLogger.i("Home", "Utilisateur chargé: ${user.name}, ${albums.size} albums trouvés")
                 _uiState.update { 
                     it.copy(
                         user = user, 
-                        albums = albums, 
+                        albums = albums,
+                        allAssetsCount = allCount,
+                        orphansCount = orphansCount,
                         isLoading = false, 
                         error = null
                     )
@@ -213,6 +221,7 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             try {
+                val config = sessionRepository.sessionConfig.first()
                 // On mémorise l'heure de début
                 val startTime = System.currentTimeMillis()
                 
@@ -224,6 +233,12 @@ class HomeViewModel(
 
                 // On récupère le nombre d'orphelins directement via l'API
                 val orphansCount = assetRepository.getOrphansCount(_uiState.value.includeArchived)
+
+                // En cas de refresh manuel, on force le redémarrage de la tâche de découverte
+                // pour s'assurer que les compteurs d'albums sont à jour (indexation)
+                if (config != null) {
+                    launchDiscoveryTask(config.userId)
+                }
 
                 // On calcule combien de temps a duré la requête
                 val duration = System.currentTimeMillis() - startTime
@@ -299,7 +314,8 @@ class HomeViewModel(
     }
 
     fun logout() = viewModelScope.launch {
-        _uiState.update { it.copy(currentTab = HomeTab.HOME) }
+        discoveryJob?.cancel()
+        _uiState.value = HomeUiState() // Reset COMPLET de l'état
         sessionRepository.clearSession()
     }
 
@@ -328,6 +344,60 @@ class HomeViewModel(
                 newCollapsed.add(status)
             }
             state.copy(collapsedCategories = newCollapsed)
+        }
+    }
+
+    private var discoveryJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Lance une tâche de fond qui parcourt les albums pour indexer les photos.
+     * Cela permet de synchroniser les compteurs entre "Tous les médias" et les albums.
+     */
+    private fun launchDiscoveryTask(userId: String) {
+        discoveryJob?.cancel()
+        discoveryJob = viewModelScope.launch {
+            try {
+                // On attend un peu que l'UI initiale soit affichée
+                delay(2000)
+                
+                // On récupère la liste des albums réels
+                val albumsToScan = _uiState.value.albums.toMutableList()
+                val orphansCount = _uiState.value.orphansCount
+                
+                if (albumsToScan.isEmpty() && orphansCount == 0) return@launch
+
+                // On ajoute manuellement la collection des Orphelins à scanner
+                // car elle nécessite aussi une indexation pour la synchro inter-collections.
+                if (orphansCount > 0) {
+                    val virtualOrphans = Album(
+                        id = Album.VIRTUAL_ORPHANS_ID,
+                        albumName = _uiState.value.virtualNames[Album.VIRTUAL_ORPHANS_ID] ?: "Orphans",
+                        assetCount = orphansCount,
+                        albumThumbnailAssetId = null
+                    )
+                    albumsToScan.add(virtualOrphans)
+                }
+
+                AppLogger.d("Home", "--------------------------------------")
+                AppLogger.d("Home", "Démarrage de la découverte des albums (${albumsToScan.size} à scanner)")
+
+                for (album in albumsToScan) {
+                    // Si le nombre de mappings locaux est différent du nombre serveur, on rescanne
+                    val count = albumRepository.getMappingCount(album.id, userId)
+                    if (count == album.assetCount && album.assetCount > 0) continue
+
+                    AppLogger.d("Home", "Scan de l'album : ${album.albumName} ($count/${album.assetCount})")
+                    // fetchAllAssets va automatiquement remplir la table album_assets avec le userId
+                    assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = userId)
+                    
+                    // Petite pause pour ne pas saturer le serveur
+                    delay(500)
+                }
+                AppLogger.i("Home", "Découverte des albums terminée")
+                AppLogger.d("Home", "--------------------------------------")
+            } catch (e: Exception) {
+                AppLogger.e("Home", "Erreur lors de la découverte", e)
+            }
         }
     }
 
