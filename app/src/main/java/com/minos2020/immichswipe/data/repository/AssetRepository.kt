@@ -13,7 +13,9 @@ import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 
 /**
  * Repository gérant les photos et vidéos (Assets).
@@ -25,81 +27,74 @@ class AssetRepository(
     private val api: ImmichApi get() = SessionManager.api ?: throw IllegalStateException("API not initialized")
 
     /**
-     * Récupère toutes les photos d'un album.
+     * Récupère les photos d'un album de manière incrémentale (Flow).
+     * Émet la liste cumulative à chaque page reçue du serveur.
      */
-    suspend fun getAssetsByAlbum(albumId: String, includeArchived: Boolean = false, userId: String? = null): List<Asset> {
+    fun getAssetsByAlbum(albumId: String, includeArchived: Boolean = false, userId: String? = null): Flow<List<Asset>> = flow {
         // Nettoyage systématique des anciens liens pour cet album avant de les recréer (pour cet utilisateur uniquement)
         if (userId != null) albumAssetDao?.clearAlbumRelations(albumId, userId)
 
+        val allAssets = mutableListOf<Asset>()
+
+        // Cas particulier : Album virtuel "SKIP" (données locales)
         if (albumId == Album.VIRTUAL_SKIPPED_ID && swipeDecisionDao != null && userId != null) {
-            // Album virtuel : On récupère les IDs depuis la base locale pour cet utilisateur
+            // Album virtuel : On récupère les IDs des assets skipped depuis la base locale pour cet utilisateur
             val skippedDecisions = swipeDecisionDao.getSyncedSkipDecisions(userId).first()
             val assetIds = skippedDecisions.map { it.assetId }
             
-            if (assetIds.isEmpty()) return emptyList()
-
-            // Mise à jour de la table de correspondance
-            albumAssetDao?.insertAlbumAssets(assetIds.map { AlbumAssetEntity(albumId, it, userId) })
-
-            // Fix: fetching by ID one by one (parallelized) because search/metadata ignores the 'ids' parameter
-            // and returns the entire library instead.
-            // We sort by fileCreatedAt to maintain the standard timeline order.
-            // We filter out trashed assets (they shouldn't be in the review collection).
-            return coroutineScope {
-                assetIds.map { id ->
-                    async {
-                        try {
-                            getAssetDetail(id, userId)
-                        } catch (_: Exception) {
-                            null
-                        }
+            if (assetIds.isNotEmpty()) {
+                albumAssetDao?.insertAlbumAssets(assetIds.map { AlbumAssetEntity(albumId, it, userId) })
+                
+                // On charge par paquets de 50 pour simuler un chargement progressif
+                assetIds.chunked(50).forEach { batch ->
+                    val detailedBatch = coroutineScope {
+                        batch.map { id ->
+                            async {
+                                try { getAssetDetail(id, userId) } catch (_: Exception) { null }
+                            }
+                        }.awaitAll().filterNotNull()
+                            .filter { !it.isTrashed }
                     }
-                }.awaitAll().filterNotNull()
-                    .filter { !it.isTrashed }
-                    .sortedByDescending { it.fileCreatedAt }
-            }
-        }
-
-        if (albumId == Album.VIRTUAL_ALL_ID) {
-            return if (includeArchived) {
-                // Return everything (by combining timeline + archive)
-                coroutineScope {
-                    val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId, userId) }
-                    val archive = async { fetchAllAssets(SearchAssetsRequest(visibility = "archive"), albumId, userId) }
-                    (timeline.await() + archive.await()).sortedByDescending { it.fileCreatedAt }
+                    allAssets.addAll(detailedBatch)
+                    emit(allAssets.sortedByDescending { it.fileCreatedAt })
                 }
-            } else {
-                fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId, userId)
             }
+            return@flow
         }
 
-        if (albumId == Album.VIRTUAL_ORPHANS_ID) {
-            return if (includeArchived) {
-                coroutineScope {
-                    val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId) }
-                    val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId, userId) }
-                    (timeline.await() + archive.await()).sortedByDescending { it.fileCreatedAt }
+        // Cas général : Albums Immich ou Collections virtuelles (Search API)
+        val baseRequest = when (albumId) {
+            Album.VIRTUAL_ALL_ID -> SearchAssetsRequest()
+            Album.VIRTUAL_ORPHANS_ID -> SearchAssetsRequest(isNotInAlbum = true)
+            else -> SearchAssetsRequest(albumIds = listOf(albumId))
+        }
+
+        // On définit les types de visibilité à charger
+        val visibilities = mutableListOf("timeline")
+        if (includeArchived) visibilities.add("archive")
+
+        for (visibility in visibilities) {
+            var nextToFetch: String? = "1"
+            while (nextToFetch != null) {
+                val response = api.searchAssets(
+                    baseRequest.copy(
+                        visibility = visibility,
+                        size = 1000,
+                        page = nextToFetch.toIntOrNull() ?: 1
+                    )
+                )
+                val newItems = response.assets.items
+                if (newItems.isNotEmpty()) {
+                    allAssets.addAll(newItems)
+                    // Mise à jour de l'indexation locale pour les compteurs du Home
+                    if (albumAssetDao != null && userId != null) {
+                        albumAssetDao.insertAlbumAssets(newItems.map { AlbumAssetEntity(albumId, it.id, userId) })
+                    }
+                    // On émet la liste triée chronologiquement au fur et à mesure
+                    emit(allAssets.sortedByDescending { it.fileCreatedAt })
                 }
-            } else {
-                fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId)
-            }
-        }
-
-        return if (includeArchived) {
-            coroutineScope {
-                val timelineDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId) }
-                val archiveDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId, userId) }
-                
-                val timeline = try { timelineDeferred.await() } catch (_: Exception) { emptyList() }
-                val archive = try { archiveDeferred.await() } catch (_: Exception) { emptyList() }
-                
-                (timeline + archive).sortedByDescending { it.fileCreatedAt }
-            }
-        } else {
-            try {
-                fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId)
-            } catch (_: Exception) {
-                emptyList()
+                nextToFetch = response.assets.nextPage
+                if (allAssets.size > 500000) break
             }
         }
     }
@@ -151,37 +146,6 @@ class AssetRepository(
         } catch (_: Exception) {
             0
         }
-    }
-
-    /**
-     * Récupère TOUS les assets correspondant à une requête en gérant la pagination.
-     */
-    private suspend fun fetchAllAssets(baseRequest: SearchAssetsRequest, albumIdForMapping: String? = null, userId: String? = null): List<Asset> {
-        val allItems = mutableListOf<Asset>()
-        var nextToFetch: String? = "1" // On commence à la page 1
-
-        while (nextToFetch != null) {
-            val response = api.searchAssets(
-                baseRequest.copy(
-                    size = 1000,
-                    page = nextToFetch.toIntOrNull() ?: 1
-                )
-            )
-            val newAssets = response.assets.items
-            allItems.addAll(newAssets)
-            
-            // Mise à jour de la table de correspondance en arrière-plan
-            if (albumIdForMapping != null && albumAssetDao != null && newAssets.isNotEmpty() && userId != null) {
-                albumAssetDao.insertAlbumAssets(newAssets.map { AlbumAssetEntity(albumIdForMapping, it.id, userId) })
-            }
-
-            // Le serveur nous dit quelle est la prochaine page à charger
-            nextToFetch = response.assets.nextPage
-
-            // Sécurité : évite les boucles infinies
-            if (allItems.size > 500000) break
-        }
-        return allItems
     }
 
     /**

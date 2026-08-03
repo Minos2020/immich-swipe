@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
@@ -154,112 +155,124 @@ class SwipeViewModel(
 
     // On garde en mémoire les décisions qui étaient déjà synchronisées au début de la session
     private var initialSyncedDecisions = mapOf<String, SwipeDecision>()
+    private var lastLoadedUserId: String? = null
 
     private fun loadAssetsAndDecisions() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                AppLogger.d("Swipe", "Chargement de l'album ${album.albumName} (ID: ${album.id})")
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
+                
+                // SECURITÉ ANTI-FUITE : Si on change d'utilisateur, on vide tout l'état précédent immédiatement
+                if (lastLoadedUserId != null && lastLoadedUserId != config.userId) {
+                    AppLogger.w("Swipe", "Changement d'utilisateur détecté, purge de l'état de tri")
+                    _uiState.value = SwipeUiState(albumName = album.albumName)
+                }
+                lastLoadedUserId = config.userId
+
+                _uiState.value = _uiState.value.copy(isLoading = true)
                 val includeArchived = sessionRepository.includeArchived.first()
 
-                // On charge les assets depuis l'API
-                val assets = assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId)
-                val albumAssetIds = assets.map { it.id }.toSet()
-
-                // On charge TOUTES les décisions locales de l'utilisateur (partagées entre albums)
-                // On filtre immédiatement pour ne garder que celles qui concernent l'album actuel
-                val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
-                    .filter { albumAssetIds.contains(it.assetId) }
-
-                AppLogger.d("Swipe", "${assets.size} assets trouvés, ${localDecisions.size} décisions locales pour cet album")
+                // 1. On charge d'abord TOUTES les décisions locales de l'utilisateur
+                val allDecisionsFromDb = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
                 
-                // On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation.
-                // Si wasSyncedSkip est à true, la décision synchronisée est forcément SKIP.
-                initialSyncedDecisions = localDecisions
-                    .filter { it.isSynced || it.wasSyncedSkip }
-                    .associate { entity ->
-                        val decision = if (entity.wasSyncedSkip) SwipeDecision.SKIP 
-                                      else try { SwipeDecision.valueOf(entity.decision) } catch (e: Exception) { SwipeDecision.SKIP }
-                        entity.assetId to decision
-                    }
-
-                // Durée d'expiration en millisecondes
+                // Durée d'expiration des SKIP
                 val lifespanDays = sessionRepository.skipLifespanDays.first()
                 val lifespanMs = lifespanDays * 24 * 60 * 60 * 1000L
                 val currentTime = System.currentTimeMillis()
 
-                // On nettoie réellement la base de données pour les SKIP expirés
+                // Filtrage des SKIP expirés pour qu'ils retournent dans la pile de tri
+                val localDecisions = allDecisionsFromDb.filter { entity ->
+                    if (lifespanDays > 0 && entity.decision == SwipeDecision.SKIP.name) {
+                        val isExpired = (currentTime - entity.createdAt) > lifespanMs
+                        !isExpired
+                    } else {
+                        true
+                    }
+                }
+                
+                // Nettoyage de la base de données pour les SKIP expirés
                 if (lifespanDays > 0) {
                     swipeDecisionRepository.cleanExpiredSkips(lifespanDays)
                 }
 
-                // On transforme la liste de SwipeDecisionEntity en Map<String, SwipeDecision>
-                val decisionMap = mutableMapOf<String, SwipeDecision>()
+                // 2. On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation.
+                initialSyncedDecisions = localDecisions
+                    .filter { it.isSynced || it.wasSyncedSkip }
+                    .associate { entity ->
+                        val decision = if (entity.wasSyncedSkip) SwipeDecision.SKIP 
+                                      else try { SwipeDecision.valueOf(entity.decision) } catch (_: Exception) { SwipeDecision.SKIP }
+                        entity.assetId to decision
+                    }
+
+                // 3. On prépare la Map des décisions locales (non synchronisées)
+                val allLocalDecisions = mutableMapOf<String, SwipeDecision>()
                 val sizeMap = mutableMapOf<String, Long>()
-
                 localDecisions.forEach { entity ->
-                    val decision = try {
-                        SwipeDecision.valueOf(entity.decision)
-                    } catch (e: Exception) {
-                        null
-                    } ?: return@forEach
-
-                    if (decision == SwipeDecision.SKIP && lifespanDays > 0) {
-                        val isExpired = (currentTime - entity.createdAt) > lifespanMs
-                        if (isExpired) return@forEach
-                    }
-
-                    // On met dans l'état de l'UI (Timeline/Pile) :
-                    // On ne met dans 'decisions' que ce qui n'est PAS synchronisé.
-                    // Ainsi, dans la collection SKIP, les assets synchronisés apparaîtront comme "à traiter" (0% au début).
                     if (!entity.isSynced) {
-                        decisionMap[entity.assetId] = decision
+                        try { allLocalDecisions[entity.assetId] = SwipeDecision.valueOf(entity.decision) } catch(_: Exception) {}
                     }
-                    
+
                     // On garde toujours la taille connue de l'asset
                     entity.fileSize?.let { sizeMap[entity.assetId] = it }
                 }
 
-                // Filtrage de la liste des assets pour ne garder que la pile de travail
-                // Pile de travail = Assets sans décision OU Assets avec décision NON synchronisée
-                // EXCEPTION 1 : Pour l'album virtuel des SKIP synchronisés, on veut justement les voir !
-                // EXCEPTION 2 : Si une photo était un SKIP synchronisé, on ne veut pas qu'elle réapparaisse 
-                // ailleurs que dans la collection SKIP tant qu'elle n'est pas ré-appliquée.
-                val isVirtualSkipped = album.id == Album.VIRTUAL_SKIPPED_ID
-                
-                val syncedIds = if (isVirtualSkipped) {
-                    emptySet()
-                } else {
-                    localDecisions.filter { it.isSynced || it.wasSyncedSkip }.map { it.assetId }.toSet()
-                }
-                
-                val workPileAssets = assets.filter { !syncedIds.contains(it.id) }
-                AppLogger.i("Swipe", "Pile de travail: ${workPileAssets.size} assets restants à trier")
+                // 4. On lance le chargement incrémental des assets
+                AppLogger.d("Swipe", "Chargement de l'album ${album.albumName} (ID: ${album.id})")
+                assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId).collect { allAssetsFound ->
+                    val currentState = _uiState.value
+                    
+                    // Filtrage de la pile de travail (Exclut les synchronisés sauf pour l'album SKIP)
+                    val isVirtualSkipped = album.id == Album.VIRTUAL_SKIPPED_ID
+                    val syncedIds = if (isVirtualSkipped) emptySet() else initialSyncedDecisions.keys
+                    val workPile = allAssetsFound.filter { !syncedIds.contains(it.id) }
+                    val workPileIds = workPile.map { it.id }.toSet()
 
-                // NETTOYAGE DES LIENS : On s'assure que notre table de correspondance locale
-                // est à jour avec ce que le serveur vient de nous envoyer.
-                // Note : On ne supprime PAS les décisions globales ici, juste les liens média-album.
-                // Ce nettoyage est déjà fait au début du chargement dans le repository.
+                    // FUSION INTELLIGENTE : On garde les décisions de la session actuelle 
+                    // et on ajoute celles du pool initial pour les nouveaux assets découverts
+                    val mergedDecisions = currentState.decisions.toMutableMap()
+                    val mergedSizes = currentState.assetSizes.toMutableMap()
 
-                // On cherche le premier index non traité dans la pile filtrée
-                // Pile de travail = Assets sans décision OU Assets avec décision NON synchronisée
-                val firstUnprocessedIndex = workPileAssets.indexOfFirst { !decisionMap.containsKey(it.id) }
-                        .let { if (it == -1) workPileAssets.size else it }
+                    workPileIds.forEach { id ->
+                        // On n'ajoute la décision de la DB que si on n'a pas encore touché à la photo cette session
+                        if (!mergedDecisions.containsKey(id)) {
+                            allLocalDecisions[id]?.let { mergedDecisions[id] = it }
+                        }
+                        // Idem pour les tailles de fichiers
+                        if (!mergedSizes.containsKey(id)) {
+                            sizeMap[id]?.let { mergedSizes[id] = it }
+                        }
+                    }
 
-                _uiState.value = _uiState.value.copy(
-                    assets = workPileAssets,
-                    decisions = decisionMap,
-                    assetSizes = sizeMap,
-                    history = emptyList(),
-                    localFavorites = emptyMap(),
-                    currentIndex = firstUnprocessedIndex,
-                    isLoading = false
-                )
-                
-                // On charge les détails de l'asset actuel
-                if (firstUnprocessedIndex < workPileAssets.size) {
-                    loadAssetDetail(workPileAssets[firstUnprocessedIndex].id, firstUnprocessedIndex)
+                    // Nettoyage : on ne garde que les décisions des assets présents dans la pile
+                    mergedDecisions.keys.retainAll(workPileIds)
+
+                    // Recherche du premier index non traité (si on ne l'a pas encore trouvé)
+                    var newIndex = currentState.currentIndex
+                    var newIsLoading = currentState.isLoading
+                    
+                    if (newIsLoading || currentState.assets.isEmpty()) {
+                        val firstFound = workPile.indexOfFirst { !mergedDecisions.containsKey(it.id) }
+                        if (firstFound != -1) {
+                            newIndex = firstFound
+                            newIsLoading = false 
+                        } else if (workPile.isNotEmpty()) {
+                            // Si tout est déjà traité dans ce qui a été chargé, on se met à la fin
+                            newIndex = workPile.size
+                        }
+                    }
+
+                    _uiState.value = currentState.copy(
+                        assets = workPile,
+                        decisions = mergedDecisions,
+                        assetSizes = mergedSizes,
+                        currentIndex = newIndex,
+                        isLoading = newIsLoading
+                    )
+
+                    // Anticipation : charge les détails de l'asset actuel si besoin
+                    if (!newIsLoading && newIndex < workPile.size) {
+                        loadAssetDetail(workPile[newIndex].id, newIndex)
+                    }
                 }
             } catch (e: Exception) {
                 AppLogger.e("Swipe", "Erreur lors du chargement de l'album", e)
@@ -525,7 +538,7 @@ class SwipeViewModel(
                 if (toLock.isNotEmpty()) assetRepository.updateAssets(toLock, visibility = "locked")
 
                 // 2. Vérification et mise à jour de la base locale
-                val freshAssets = assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = config.userId)
+                val freshAssets = assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = config.userId).last()
                 val freshIds = freshAssets.map { it.id }.toSet()
 
                 // - Identification des succès (ceux qui ont disparu de l'album)
