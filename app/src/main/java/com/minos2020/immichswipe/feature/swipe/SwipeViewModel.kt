@@ -277,6 +277,11 @@ class SwipeViewModel(
                         loadAssetDetail(workPile[newIndex].id, newIndex)
                     }
                 }
+                
+                // SÉCURITÉ : Une fois que le flux est terminé (tout est chargé), 
+                // on force l'arrêt du loader quoi qu'il arrive.
+                _uiState.value = _uiState.value.copy(isLoading = false)
+
             } catch (e: Exception) {
                 AppLogger.e("Swipe", "Erreur lors du chargement de l'album", e)
                 _uiState.value = _uiState.value.copy(
