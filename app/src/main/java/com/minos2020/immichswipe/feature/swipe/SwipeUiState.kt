@@ -41,7 +41,12 @@ data class SwipeUiState(
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
-    val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL
+    val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
+
+    // Statistiques pré-calculées pour le Review Screen (Performance)
+    val summaryDeletedAssets: List<Asset> = emptyList(),
+    val summaryCounts: Map<SwipeDecision, Int> = emptyMap(),
+    val summarySizes: Map<SwipeDecision, Long> = emptyMap()
 ) {
     val currentAsset: Asset? get() = assets.getOrNull(currentIndex)
     
@@ -66,56 +71,39 @@ data class SwipeUiState(
         return decisions[assetId] == SwipeDecision.LOCK || (assets.find { it.id == assetId }?.isLocked ?: false)
     }
 
-    // Statistiques de tri basées sur les décisions locales non synchronisées.
-    // 'assets' représente la pile de travail (non synchronisée).
-    // 'decisions' contient les actions déjà effectuées sur cette pile.
+    // Statistiques de tri
     val totalCount: Int get() = assets.size
     val processedCount: Int get() = decisions.size
     val remainingCount: Int get() = totalCount - processedCount
 
-    val keptCount: Int get() = decisions.values.count { it == SwipeDecision.KEEP }
-    val allKeptCount: Int get() = decisions.values.count { it == SwipeDecision.KEEP || it == SwipeDecision.ARCHIVE || it == SwipeDecision.LOCK }
-    val deletedCount: Int get() = decisions.values.count { it == SwipeDecision.DELETE }
-    val skippedCount: Int get() = decisions.values.count { it == SwipeDecision.SKIP }
-    val favoriteCount: Int get() = assets.count { isFavorite(it.id) && isProcessedKeep(it.id) }
+    val keptCount: Int get() = summaryCounts[SwipeDecision.KEEP] ?: 0
+    val deletedCount: Int get() = summaryCounts[SwipeDecision.DELETE] ?: 0
+    val skippedCount: Int get() = summaryCounts[SwipeDecision.SKIP] ?: 0
+    val archiveCount: Int get() = summaryCounts[SwipeDecision.ARCHIVE] ?: 0
+    val lockedCount: Int get() = summaryCounts[SwipeDecision.LOCK] ?: 0
+    val allKeptCount: Int get() = keptCount + archiveCount + lockedCount
+
+    // Favoris (Cas particulier car non lié à une décision de swipe unique)
     val favoritesAddedCount: Int get() = localFavorites.count { (id, fav) -> fav && !(assets.find { it.id == id }?.isFavorite ?: false) }
     val favoritesRemovedCount: Int get() = localFavorites.count { (id, fav) -> !fav && (assets.find { it.id == id }?.isFavorite ?: false) }
-    val archiveCount: Int get() = decisions.values.count { it == SwipeDecision.ARCHIVE }
-    val lockedCount: Int get() = decisions.values.count { it == SwipeDecision.LOCK }
-
-    private fun isProcessedKeep(assetId: String): Boolean {
-        val d = decisions[assetId]
-        return d == SwipeDecision.KEEP || d == SwipeDecision.ARCHIVE || d == SwipeDecision.LOCK
-    }
-    
-    private fun getEffectiveSize(assetId: String): Long {
-        return assetSizes[assetId] ?: assets.find { it.id == assetId }?.exifInfo?.fileSizeInBytes ?: 0L
-    }
-
-    /**
-     * Calcule la taille moyenne des assets dont le poids est connu.
-     */
-    private val averageKnownSize: Long get() {
-        val knownSizes = assetSizes.values.filter { it > 0 }
-        return if (knownSizes.isEmpty()) 0L else knownSizes.sum() / knownSizes.size
-    }
     
     // Calcul des poids (en bytes)
-    val keptSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.KEEP }.sumOf { getEffectiveSize(it.id) }
-    val deletedSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.DELETE }.sumOf { getEffectiveSize(it.id) }
-    val skippedSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.SKIP }.sumOf { getEffectiveSize(it.id) }
-    val favoriteSize: Long get() = assets.filter { isFavorite(it.id) && isProcessedKeep(it.id) }.sumOf { getEffectiveSize(it.id) }
-    val archiveSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.ARCHIVE }.sumOf { getEffectiveSize(it.id) }
-    val lockedSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.LOCK }.sumOf { getEffectiveSize(it.id) }
+    val keptSize: Long get() = summarySizes[SwipeDecision.KEEP] ?: 0L
+    val deletedSize: Long get() = summarySizes[SwipeDecision.DELETE] ?: 0L
+    val skippedSize: Long get() = summarySizes[SwipeDecision.SKIP] ?: 0L
+    val archiveSize: Long get() = summarySizes[SwipeDecision.ARCHIVE] ?: 0L
+    val lockedSize: Long get() = summarySizes[SwipeDecision.LOCK] ?: 0L
     
     /**
      * Taille restante : Somme des tailles connues + estimation (moyenne) pour les inconnues.
      */
     val remainingSize: Long get() {
         val unprocessed = assets.filter { !decisions.containsKey(it.id) }
-        val avg = averageKnownSize
+        val knownSizes = assetSizes.values.filter { it > 0 }
+        val avg = if (knownSizes.isEmpty()) 0L else knownSizes.sum() / knownSizes.size
+        
         return unprocessed.sumOf { asset ->
-            val size = getEffectiveSize(asset.id)
+            val size = assetSizes[asset.id] ?: asset.exifInfo?.fileSizeInBytes ?: 0L
             if (size > 0) size else avg
         }
     }

@@ -8,6 +8,7 @@ import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.domain.model.Album
+import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -269,6 +270,8 @@ class SwipeViewModel(
                         isLoading = newIsLoading
                     )
 
+                    updateSummaryStats()
+
                     // Anticipation : charge les détails de l'asset actuel si besoin
                     if (!newIsLoading && newIndex < workPile.size) {
                         loadAssetDetail(workPile[newIndex].id, newIndex)
@@ -282,6 +285,46 @@ class SwipeViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * Recalcule les statistiques du résumé en une seule passe pour optimiser les performances.
+     */
+    private fun updateSummaryStats() {
+        val state = _uiState.value
+        val decisions = state.decisions
+        val assetSizes = state.assetSizes
+        val workPile = state.assets
+        
+        val counts = mutableMapOf<SwipeDecision, Int>()
+        val sizes = mutableMapOf<SwipeDecision, Long>()
+        val deletedAssets = mutableListOf<Asset>()
+
+        // Calcul de la taille moyenne pour les assets dont le poids est inconnu
+        val knownSizes = assetSizes.values.filter { it > 0 }
+        val avgSize = if (knownSizes.isEmpty()) 0L else knownSizes.sum() / knownSizes.size
+
+        workPile.forEach { asset ->
+            val decision = decisions[asset.id] ?: return@forEach
+            
+            // Mise à jour des compteurs
+            counts[decision] = (counts[decision] ?: 0) + 1
+            
+            // Mise à jour des tailles (on utilise la taille réelle ou la moyenne)
+            val size = assetSizes[asset.id] ?: asset.exifInfo?.fileSizeInBytes ?: avgSize
+            sizes[decision] = (sizes[decision] ?: 0L) + size
+
+            // Liste spécifique pour la grille de suppression
+            if (decision == SwipeDecision.DELETE) {
+                deletedAssets.add(asset)
+            }
+        }
+
+        _uiState.value = state.copy(
+            summaryCounts = counts,
+            summarySizes = sizes,
+            summaryDeletedAssets = deletedAssets
+        )
     }
 
     private fun loadAssetDetail(assetId: String, index: Int) {
@@ -370,6 +413,8 @@ class SwipeViewModel(
             assetSizes = newSizes,
             history = newHistory
         )
+        
+        updateSummaryStats()
 
         // Anticipation : charge les détails du prochain
         if (nextIndex < assets.size) {
@@ -436,6 +481,8 @@ class SwipeViewModel(
                     history = newHistory
                 )
                 
+                updateSummaryStats()
+                
                 if (previousIndex != -1) {
                     loadAssetDetail(lastAssetIdFromHistory, previousIndex)
                 }
@@ -460,6 +507,8 @@ class SwipeViewModel(
                     currentIndex = previousIndex,
                     decisions = newDecisions
                 )
+                
+                updateSummaryStats()
                 
                 loadAssetDetail(previousAssetId, previousIndex)
             }
@@ -504,6 +553,7 @@ class SwipeViewModel(
                 decisions = newDecisions,
                 history = newHistory
             )
+            updateSummaryStats()
         }
     }
 

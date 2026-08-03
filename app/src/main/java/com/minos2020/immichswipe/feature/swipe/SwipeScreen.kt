@@ -1414,9 +1414,7 @@ fun SummaryDialog(
                 
                 Spacer(Modifier.height(12.dp))
 
-                val deletedAssets = remember(uiState.decisions) {
-                    uiState.assets.filter { uiState.decisions[it.id] == SwipeDecision.DELETE }
-                }
+                val deletedAssets = uiState.summaryDeletedAssets
 
                 if (deletedAssets.isNotEmpty()) {
                     Box(modifier = Modifier.height(220.dp).fillMaxWidth()) {
