@@ -1,7 +1,7 @@
 package com.minos2020.immichswipe.feature.home
 
 import android.content.Intent
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -261,76 +261,87 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when (uiState.currentTab) {
-                HomeTab.HOME -> {
-                    if (uiState.isLoading && uiState.albums.isEmpty()) {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    } else if (uiState.error != null) {
-                        ErrorView(error = uiState.error!!, onRetry = { viewModel.loadUser() })
-                    } else if (uiState.filteredAlbums.isEmpty() && uiState.searchQuery.isNotEmpty()) {
-                        // Aucun résultat de recherche
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.SearchOff, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outline)
-                                Spacer(Modifier.height(8.dp))
-                                Text(stringResource(R.string.home_no_results), color = MaterialTheme.colorScheme.outline)
+            AnimatedContent(
+                targetState = uiState.currentTab,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                },
+                label = "TabTransition",
+                modifier = Modifier.fillMaxSize()
+            ) { targetTab ->
+                when (targetTab) {
+                    HomeTab.HOME -> {
+                        if (uiState.isLoading && uiState.albums.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
                             }
-                        }
-                    } else {
-                        Crossfade(
-                            targetState = uiState.isGridView,
-                            animationSpec = tween(durationMillis = 500),
-                            label = "LayoutSwitch"
-                        ) { isGrid ->
-                            if (isGrid) {
-                                AlbumGrid(
-                                    groupedAlbums = uiState.groupedAlbums,
-                                    treatedCounts = uiState.albumTreatedCounts,
-                                    unsyncedChanges = uiState.albumUnsyncedChanges,
-                                    collapsedCategories = uiState.collapsedCategories,
-                                    isRefreshing = uiState.isRefreshing,
-                                    onRefresh = { viewModel.refreshAlbums() },
-                                    onAlbumClick = { viewModel.onAlbumSelected(it) },
-                                    onToggleCategory = { viewModel.toggleCategory(it) }
-                                )
-                            } else {
-                                AlbumList(
-                                    groupedAlbums = uiState.groupedAlbums,
-                                    treatedCounts = uiState.albumTreatedCounts,
-                                    unsyncedChanges = uiState.albumUnsyncedChanges,
-                                    collapsedCategories = uiState.collapsedCategories,
-                                    isRefreshing = uiState.isRefreshing,
-                                    onRefresh = { viewModel.refreshAlbums() },
-                                    onAlbumClick = { viewModel.onAlbumSelected(it) },
-                                    onToggleCategory = { viewModel.toggleCategory(it) }
-                                )
+                        } else if (uiState.error != null) {
+                            ErrorView(error = uiState.error!!, onRetry = { viewModel.loadUser() })
+                        } else if (uiState.filteredAlbums.isEmpty() && uiState.searchQuery.isNotEmpty()) {
+                            // Aucun résultat de recherche
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.SearchOff, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outline)
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(stringResource(R.string.home_no_results), color = MaterialTheme.colorScheme.outline)
+                                }
+                            }
+                        } else {
+                            Crossfade(
+                                targetState = uiState.isGridView,
+                                animationSpec = tween(durationMillis = 500),
+                                label = "LayoutSwitch"
+                            ) { isGrid ->
+                                if (isGrid) {
+                                    AlbumGrid(
+                                        groupedAlbums = uiState.groupedAlbums,
+                                        treatedCounts = uiState.albumTreatedCounts,
+                                        unsyncedChanges = uiState.albumUnsyncedChanges,
+                                        collapsedCategories = uiState.collapsedCategories,
+                                        isRefreshing = uiState.isRefreshing,
+                                        onRefresh = { viewModel.refreshAlbums() },
+                                        onAlbumClick = { viewModel.onAlbumSelected(it) },
+                                        onToggleCategory = { viewModel.toggleCategory(it) }
+                                    )
+                                } else {
+                                    AlbumList(
+                                        groupedAlbums = uiState.groupedAlbums,
+                                        treatedCounts = uiState.albumTreatedCounts,
+                                        unsyncedChanges = uiState.albumUnsyncedChanges,
+                                        collapsedCategories = uiState.collapsedCategories,
+                                        isRefreshing = uiState.isRefreshing,
+                                        onRefresh = { viewModel.refreshAlbums() },
+                                        onAlbumClick = { viewModel.onAlbumSelected(it) },
+                                        onToggleCategory = { viewModel.toggleCategory(it) }
+                                    )
+                                }
                             }
                         }
                     }
-                }
-                HomeTab.SWIPE -> {
-                    if (uiState.selectedAlbum != null) {
-                        SwipeScreen(
-                            album = uiState.selectedAlbum!!,
-                            assetRepository = assetRepository,
-                            swipeDecisionRepository = swipeDecisionRepository,
-                            sessionRepository = viewModel.getSessionRepository()
-                        )
-                    } else {
-                        SwipePlaceholder(selectedAlbum = null)
+                    HomeTab.SWIPE -> {
+                        if (uiState.selectedAlbum != null) {
+                            SwipeScreen(
+                                album = uiState.selectedAlbum!!,
+                                assetRepository = assetRepository,
+                                swipeDecisionRepository = swipeDecisionRepository,
+                                sessionRepository = viewModel.getSessionRepository()
+                            )
+                        } else {
+                            SwipePlaceholder(selectedAlbum = null)
+                        }
                     }
-                }
-                HomeTab.SETTINGS -> {
-                    val settingsViewModel: SettingsViewModel = viewModel(
-                        key = "settings-$sessionKey",
-                        factory = SettingsViewModelFactory(
-                            viewModel.getSessionRepository(),
-                            swipeDecisionRepository
+                    HomeTab.SETTINGS -> {
+                        val settingsViewModel: SettingsViewModel = viewModel(
+                            key = "settings-$sessionKey",
+                            factory = SettingsViewModelFactory(
+                                viewModel.getSessionRepository(),
+                                swipeDecisionRepository
+                            )
                         )
-                    )
-                    SettingsScreen(
-                        viewModel = settingsViewModel
-                    )
+                        SettingsScreen(
+                            viewModel = settingsViewModel
+                        )
+                    }
                 }
             }
         }
