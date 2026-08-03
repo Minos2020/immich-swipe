@@ -26,6 +26,8 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -77,6 +79,9 @@ fun HomeScreen(
     val uiState: HomeUiState by viewModel.uiState.collectAsState()
     val isSettings = uiState.currentTab == HomeTab.SETTINGS
     val isHome = uiState.currentTab == HomeTab.HOME
+
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
 
     // Charger l'utilisateur et les albums au premier affichage
     LaunchedEffect(Unit) {
@@ -299,6 +304,7 @@ fun HomeScreen(
                                         unsyncedChanges = uiState.albumUnsyncedChanges,
                                         collapsedCategories = uiState.collapsedCategories,
                                         isRefreshing = uiState.isRefreshing,
+                                        state = gridState,
                                         onRefresh = { viewModel.refreshAlbums() },
                                         onAlbumClick = { viewModel.onAlbumSelected(it) },
                                         onToggleCategory = { viewModel.toggleCategory(it) }
@@ -310,6 +316,7 @@ fun HomeScreen(
                                         unsyncedChanges = uiState.albumUnsyncedChanges,
                                         collapsedCategories = uiState.collapsedCategories,
                                         isRefreshing = uiState.isRefreshing,
+                                        state = listState,
                                         onRefresh = { viewModel.refreshAlbums() },
                                         onAlbumClick = { viewModel.onAlbumSelected(it) },
                                         onToggleCategory = { viewModel.toggleCategory(it) }
@@ -859,12 +866,11 @@ fun AlbumList(
     unsyncedChanges: Map<String, Int>,
     collapsedCategories: Set<AlbumStatus>,
     isRefreshing: Boolean,
+    state: LazyListState,
     onRefresh: () -> Unit,
     onAlbumClick: (Album) -> Unit,
     onToggleCategory: (AlbumStatus) -> Unit
 ) {
-    val state = rememberLazyListState()
-    
     Box(modifier = Modifier.fillMaxSize()) {
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -990,12 +996,11 @@ fun AlbumGrid(
     unsyncedChanges: Map<String, Int>,
     collapsedCategories: Set<AlbumStatus>,
     isRefreshing: Boolean,
+    state: LazyGridState,
     onRefresh: () -> Unit,
     onAlbumClick: (Album) -> Unit,
     onToggleCategory: (AlbumStatus) -> Unit
 ) {
-    val state = rememberLazyGridState()
-
     Box(modifier = Modifier.fillMaxSize()) {
         PullToRefreshBox(
             isRefreshing = isRefreshing,
