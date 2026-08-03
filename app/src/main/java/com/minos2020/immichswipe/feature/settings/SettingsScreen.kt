@@ -35,6 +35,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.minos2020.immichswipe.R
 import com.minos2020.immichswipe.core.AppTheme
@@ -508,14 +509,18 @@ fun SettingsScreen(
                 val rawLogs = remember { viewModel.getLogs() }
                 val errorColor = MaterialTheme.colorScheme.error
                 val warningColor = Color(0xFFFFA500) // Orange
+                val infoColor = Color(0xFF00B0FF)    // Bleu clair
+                val debugColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
 
-                val annotatedLogs = remember(rawLogs, errorColor) {
+                val annotatedLogs = remember(rawLogs, errorColor, warningColor, infoColor, debugColor) {
                     buildAnnotatedString {
                         if (rawLogs.isNotEmpty()) {
                             rawLogs.lineSequence().forEach { line ->
                                 val color = when {
                                     line.contains(" E/") -> errorColor
                                     line.contains(" W/") -> warningColor
+                                    line.contains(" I/") -> infoColor
+                                    line.contains(" D/") -> debugColor
                                     else -> Color.Unspecified
                                 }
                                 withStyle(style = SpanStyle(color = color)) {
@@ -536,7 +541,10 @@ fun SettingsScreen(
                     SelectionContainer {
                         Text(
                             text = if (rawLogs.isEmpty()) androidx.compose.ui.text.AnnotatedString(stringResource(R.string.settings_logs_empty)) else annotatedLogs,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                lineHeight = 16.sp,
+                                letterSpacing = 0.5.sp
+                            ),
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             modifier = Modifier
                                 .verticalScroll(scroll)
