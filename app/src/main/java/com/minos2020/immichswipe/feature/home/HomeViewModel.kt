@@ -127,9 +127,6 @@ class HomeViewModel(
         viewModelScope.launch {
             sessionRepository.sessionConfig.collect { config ->
                 if (config == null) return@collect
-                
-                // Lancement de la découverte des albums en arrière-plan
-                launchDiscoveryTask(config.userId)
 
                 combine(
                     swipeDecisionRepository.getSyncHistory(config.userId),
@@ -317,6 +314,7 @@ class HomeViewModel(
         discoveryJob?.cancel()
         _uiState.value = HomeUiState() // Reset COMPLET de l'état
         sessionRepository.clearSession()
+        AppLogger.i("Auth","Déconnexion de l'utilisateur")
     }
 
     fun onSearchQueryChanged(query: String) = _uiState.update { it.copy(searchQuery = query) }
@@ -378,23 +376,24 @@ class HomeViewModel(
                     albumsToScan.add(virtualOrphans)
                 }
 
-                AppLogger.d("Home", "--------------------------------------")
-                AppLogger.d("Home", "Démarrage de la découverte des albums (${albumsToScan.size} à scanner)")
+                val includeArchived = _uiState.value.includeArchived
+                AppLogger.i("Home", "Démarrage de la découverte des albums (${albumsToScan.size} à scanner)" +
+                        " [Archives: $includeArchived]")
 
                 for (album in albumsToScan) {
                     // Si le nombre de mappings locaux est différent du nombre serveur, on rescanne
                     val count = albumRepository.getMappingCount(album.id, userId)
                     if (count == album.assetCount && album.assetCount > 0) continue
 
-                    AppLogger.d("Home", "Scan de l'album : ${album.albumName} ($count/${album.assetCount})")
+
+                    AppLogger.d("Home", "Scan de l'album : ${album.albumName} ($count -> ${album.assetCount})")
                     // fetchAllAssets va automatiquement remplir la table album_assets avec le userId
-                    assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = userId)
+                    assetRepository.getAssetsByAlbum(album.id, includeArchived = includeArchived, userId = userId)
                     
                     // Petite pause pour ne pas saturer le serveur
                     delay(500)
                 }
-                AppLogger.i("Home", "Découverte des albums terminée")
-                AppLogger.d("Home", "--------------------------------------")
+                AppLogger.i("Home", "Découverte des albums terminée\n")
             } catch (e: Exception) {
                 AppLogger.e("Home", "Erreur lors de la découverte", e)
             }
