@@ -1,0 +1,19 @@
+Immich Swipe v2.2.0
+
+- Huge performance upgrade for big albums and collections (visually loads MUCH faster)
+ * they are now loaded in background, allowing to start sorting without waiting for the full list to load
+ * same for the review screen : all calculations are done along the way, not when opening it
+
+- Added smart library indexation and cleaning upon start and refresh
+ * it first checks for diffs between local and server, then fetches content only if there are some
+ * it also checks for swipe decisions on assets that may have been deleted server-side, and delete them locally
+
+- Added a mute button to swipe cards for videos
+- Added app version code to information panel (for debugging)
+- Enhance navigation by making homescreen remember scrollbar position
+
+- Enhanced UI in logs
+- Enhanced database exports naming
+- Added smooth transition when opening settings screen
+- Fixed cache leaks when switching user
+- Fixed progress synchronization issues (once for all hopefully), thanks to the smart albums indexations
