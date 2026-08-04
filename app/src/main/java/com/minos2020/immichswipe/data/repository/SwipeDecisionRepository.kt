@@ -183,6 +183,10 @@ class SwipeDecisionRepository(
         albumAssetDao?.clearAllForUser(userId)
     }
 
+    suspend fun removeGhostDecisions(userId: String): Int {
+        return swipeDecisionDao.removeGhostDecisions(userId)
+    }
+
     suspend fun getAllDecisionsRaw() = swipeDecisionDao.getAllDecisionsRaw()
     suspend fun getAllDecisionsForUserRaw(userId: String) = swipeDecisionDao.getAllDecisionsForUserRaw(userId)
     suspend fun getAllSyncHistoryRaw() = swipeDecisionDao.getAllSyncHistoryRaw()

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.PlaybackBehavior
@@ -84,17 +85,12 @@ class HomeViewModel(
                     combine(
                         swipeDecisionRepository.getAllDecisionsForUser(config.userId),
                         swipeDecisionRepository.getAllAlbumDecisionCounts(config.userId)
-                    ) { allDecisions, albumStats ->
-                        val uniqueDecisions = allDecisions.distinctBy { it.assetId }
+                    ) { _, albumStats ->
                         val treatedMap = albumStats.associate { it.albumId to it.totalCount }.toMutableMap()
                         val unsyncedMap = albumStats.associate { it.albumId to it.unsyncedCount }.toMutableMap()
                         
-                        // Injection du compte global pour "Tous les médias"
-                        treatedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.size
-                        unsyncedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.count { !it.isSynced && !it.wasSyncedSkip }
-                        
-                        // Note: Pour les orphelins, on se base sur les décisions prises spécifiquement sur des orphelins
-                        // ou on pourra affiner le calcul plus tard.
+                        // Note: Les collections All Assets et Orphans sont maintenant incluses 
+                        // dans albumStats grâce à la tâche de découverte qui maintient album_assets.
 
                         _uiState.update { 
                             it.copy(
@@ -361,11 +357,19 @@ class HomeViewModel(
                 // On récupère la liste des albums réels
                 val albumsToScan = _uiState.value.albums.toMutableList()
                 val orphansCount = _uiState.value.orphansCount
+                val includeArchived = _uiState.value.includeArchived
                 
-                if (albumsToScan.isEmpty() && orphansCount == 0) return@launch
+                if (albumsToScan.isEmpty() && orphansCount == 0) {
+                    // Bibliothèque vide : on nettoie les collections virtuelles
+                    assetRepository.updateAllAssetsMapping(userId)
+                    val removedCount = swipeDecisionRepository.removeGhostDecisions(userId)
+                    if (removedCount > 0) {
+                        AppLogger.i("Home", "Nettoyage : $removedCount décisions obsolètes supprimées")
+                    }
+                    return@launch
+                }
 
                 // On ajoute manuellement la collection des Orphelins à scanner
-                // car elle nécessite aussi une indexation pour la synchro inter-collections.
                 if (orphansCount > 0) {
                     val virtualOrphans = Album(
                         id = Album.VIRTUAL_ORPHANS_ID,
@@ -375,27 +379,46 @@ class HomeViewModel(
                     )
                     albumsToScan.add(virtualOrphans)
                 }
-
-                val includeArchived = _uiState.value.includeArchived
-                AppLogger.i("Home", "Démarrage de la découverte des albums (${albumsToScan.size} à scanner)" +
+                // albumsToScan.size-1 pour ne pas inclure la collection Orphans dans le compte (plus simple pour l'utilisateur)
+                AppLogger.i("Home", "Démarrage de la découverte des albums (${albumsToScan.size-1} à scanner)" +
                         " [Archives: $includeArchived]")
 
+                var hasChanges = false
                 for (album in albumsToScan) {
                     // Si le nombre de mappings locaux est différent du nombre serveur, on rescanne
                     val count = albumRepository.getMappingCount(album.id, userId)
-                    if (count == album.assetCount && album.assetCount > 0) continue
+                    if (count == album.assetCount) continue
 
-
+                    hasChanges = true
                     AppLogger.d("Home", "Scan de l'album : ${album.albumName} ($count -> ${album.assetCount})")
-                    // fetchAllAssets va automatiquement remplir la table album_assets avec le userId
-                    assetRepository.getAssetsByAlbum(album.id, includeArchived = includeArchived, userId = userId)
+                    // On consomme le flow jusqu'à la fin pour garantir l'indexation complète
+                    assetRepository.getAssetsByAlbum(album.id, includeArchived = includeArchived, userId = userId).collect {}
                     
                     // Petite pause pour ne pas saturer le serveur
                     delay(500)
                 }
-                AppLogger.i("Home", "Découverte des albums terminée\n")
+
+                if (hasChanges) {
+                    // Une fois tous les albums et orphelins indexés, on reconstruit la collection globale
+                    AppLogger.d("Home", "Mise à jour de la collection 'Tous les médias'")
+                    assetRepository.updateAllAssetsMapping(userId)
+
+                    // Enfin, on nettoie les décisions pour les photos disparues du serveur
+                    val removedCount = swipeDecisionRepository.removeGhostDecisions(userId)
+                    if (removedCount > 0) {
+                        AppLogger.d("Home", "Nettoyage des décisions obsolètes : $removedCount  supprimées")
+                    }
+                } else {
+                    AppLogger.d("Home", "Aucun changement détecté sur les albums")
+                }
+
+                AppLogger.i("Home", "Découverte des albums terminée\n--------------------------------------")
             } catch (e: Exception) {
-                AppLogger.e("Home", "Erreur lors de la découverte", e)
+                if (e is CancellationException) {
+                    AppLogger.d("Home", "Découverte annulée par une autre requête")
+                } else {
+                    AppLogger.e("Home", "Erreur lors de la découverte", e)
+                }
             }
         }
     }

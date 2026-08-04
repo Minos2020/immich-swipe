@@ -21,6 +21,10 @@ class AlbumRepository(
         return albumAssetDao?.getMappingCountForAlbum(albumId, userId) ?: 0
     }
 
+    suspend fun getAllDistinctAssetIds(userId: String): List<String> {
+        return albumAssetDao?.getAllDistinctAssetIdsForUser(userId) ?: emptyList()
+    }
+
     /**
      * Rafraîchit la liste des albums depuis le serveur.
      * @param includeArchived Si vrai, inclut les photos archivées dans le compte total.

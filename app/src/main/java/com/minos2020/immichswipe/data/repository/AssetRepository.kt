@@ -171,6 +171,19 @@ class AssetRepository(
     }
 
     /**
+     * Reconstruit la collection virtuelle "Tous les médias" à partir des IDs
+     * trouvés dans les autres albums et orphelins.
+     */
+    suspend fun updateAllAssetsMapping(userId: String) {
+        if (albumAssetDao == null) return
+        val allIds = albumAssetDao.getAllDistinctAssetIdsForUser(userId)
+        albumAssetDao.clearAlbumRelations(Album.VIRTUAL_ALL_ID, userId)
+        if (allIds.isNotEmpty()) {
+            albumAssetDao.insertAlbumAssets(allIds.map { AlbumAssetEntity(Album.VIRTUAL_ALL_ID, it, userId) })
+        }
+    }
+
+    /**
      * Supprime plusieurs assets du serveur Immich.
      */
     suspend fun deleteAssets(assetIds: List<String>) {

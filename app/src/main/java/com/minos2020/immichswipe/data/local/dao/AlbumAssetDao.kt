@@ -22,4 +22,7 @@ interface AlbumAssetDao {
 
     @Query("SELECT COUNT(*) FROM album_assets WHERE albumId = :albumId AND userId = :userId")
     suspend fun getMappingCountForAlbum(albumId: String, userId: String): Int
+
+    @Query("SELECT DISTINCT assetId FROM album_assets WHERE userId = :userId AND albumId NOT IN ('virtual_all_assets', 'virtual_skipped_synced')")
+    suspend fun getAllDistinctAssetIdsForUser(userId: String): List<String>
 }

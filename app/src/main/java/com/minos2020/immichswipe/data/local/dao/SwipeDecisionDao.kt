@@ -166,6 +166,17 @@ interface SwipeDecisionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSyncHistoryList(history: List<SyncHistoryEntity>)
+
+    /**
+     * Supprime les décisions pour les photos qui n'existent plus sur le serveur.
+     * Se base sur la table de cache album_assets qui doit être à jour.
+     */
+    @Query("""
+        DELETE FROM swipe_decisions 
+        WHERE userId = :userId 
+        AND assetId NOT IN (SELECT DISTINCT assetId FROM album_assets WHERE userId = :userId)
+    """)
+    suspend fun removeGhostDecisions(userId: String): Int
 }
 
 /**
