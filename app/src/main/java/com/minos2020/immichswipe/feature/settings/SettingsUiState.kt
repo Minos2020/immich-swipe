@@ -22,20 +22,16 @@ data class SettingsUiState(
     val userName: String = "",
     val playbackBehavior: PlaybackBehavior = PlaybackBehavior.PAUSE_OTHERS,
     val themeMode: AppTheme = AppTheme.SYSTEM,
-    val isSwipeInverted: Boolean = false,
-    val fullscreenButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
+    val fullscreenButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
     val immichButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     val cardDisplayButtonPosition: IconPosition = IconPosition.BOTTOM_LEFT,
     val isDefaultLayoutGrid: Boolean = false,
-    val skipLifespanDays: Long = 0L,
-    val showSkipLifespanWarning: Long? = null, // Contient la valeur cible si le dialogue est affiché
-    val showCustomSkipDialog: Boolean = false, // Gère l'affichage du slider personnalisé
     val showFavoriteButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
     val showLogsDialog: Boolean = false,
-    val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
+    val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FIT,
     val showSwipeButtons: Boolean = false,
     
     // Database actions

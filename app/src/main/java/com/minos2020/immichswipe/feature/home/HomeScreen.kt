@@ -61,6 +61,8 @@ import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.feature.settings.SettingsScreen
 import com.minos2020.immichswipe.feature.settings.SettingsViewModel
 import com.minos2020.immichswipe.feature.settings.SettingsViewModelFactory
+import com.minos2020.immichswipe.feature.auth.AuthScreen
+import com.minos2020.immichswipe.feature.auth.AuthViewModel
 import com.minos2020.immichswipe.feature.swipe.SwipeScreen
 import com.minos2020.immichswipe.ui.theme.VirtualGold
 
@@ -70,6 +72,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     assetRepository: AssetRepository,
     swipeDecisionRepository: SwipeDecisionRepository,
+    sessionKey: String,
     modifier: Modifier = Modifier,
 ) {
     val uiState: HomeUiState by viewModel.uiState.collectAsState()
@@ -81,15 +84,12 @@ fun HomeScreen(
     }
 
     // Mise à jour des noms localisés pour les albums virtuels
-    val virtualSkippedName = stringResource(R.string.home_virtual_skipped_synced)
-    val virtualSkippedDesc = stringResource(R.string.home_virtual_skipped_synced_desc)
     val virtualAllName = stringResource(R.string.home_virtual_all_assets)
     val virtualAllDesc = stringResource(R.string.home_virtual_all_assets_desc)
     val virtualOrphansName = stringResource(R.string.home_virtual_orphans)
     val virtualOrphansDesc = stringResource(R.string.home_virtual_orphans_desc)
 
-    LaunchedEffect(virtualSkippedName, virtualSkippedDesc, virtualAllName, virtualAllDesc, virtualOrphansName, virtualOrphansDesc) {
-        viewModel.updateVirtualNames(Album.VIRTUAL_SKIPPED_ID, virtualSkippedName, virtualSkippedDesc)
+    LaunchedEffect(virtualAllName, virtualAllDesc, virtualOrphansName, virtualOrphansDesc) {
         viewModel.updateVirtualNames(Album.VIRTUAL_ALL_ID, virtualAllName, virtualAllDesc)
         viewModel.updateVirtualNames(Album.VIRTUAL_ORPHANS_ID, virtualOrphansName, virtualOrphansDesc)
     }
@@ -297,7 +297,8 @@ fun HomeScreen(
                                     album = uiState.selectedAlbum!!,
                                     assetRepository = assetRepository,
                                     swipeDecisionRepository = swipeDecisionRepository,
-                                    sessionRepository = viewModel.getSessionRepository()
+                                    sessionRepository = viewModel.getSessionRepository(),
+                                    sessionKey = sessionKey
                                 )
                             } else {
                                 SwipePlaceholder(selectedAlbum = null)
@@ -371,14 +372,60 @@ fun HomeScreen(
     if (uiState.showProfilePopup) {
         ProfilePopup(
             user = uiState.user,
+            savedAccounts = uiState.savedAccounts,
             connectionStatus = uiState.connectionStatus,
             onClose = { viewModel.toggleProfilePopup(visible = false) },
             onSettingsClick = { 
                 viewModel.onTabSelected(HomeTab.SETTINGS)
                 viewModel.toggleProfilePopup(false)
             },
+            onSwitchAccount = { viewModel.switchAccount(it) },
+            onAddAccount = { viewModel.startAddAccount() },
             onLogout = { viewModel.logout() }
         )
+    }
+
+    // Dialogue d'ajout de compte
+    if (uiState.isLoggingInToAnotherAccount) {
+        val authRepository = remember { com.minos2020.immichswipe.data.repository.AuthRepository() }
+        val database = com.minos2020.immichswipe.data.local.AppDatabase.getDatabase(LocalContext.current)
+        val accountRepository = remember { com.minos2020.immichswipe.data.repository.AccountRepository(database.userAccountDao()) }
+        
+        Dialog(
+            onDismissRequest = { viewModel.cancelAddAccount() },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Column {
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.profile_add_account_title)) },
+                        navigationIcon = {
+                            IconButton(onClick = { viewModel.cancelAddAccount() }) {
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_cancel))
+                            }
+                        }
+                    )
+                    AuthScreen(
+                        viewModel = viewModel<AuthViewModel>(
+                            factory = com.minos2020.immichswipe.feature.auth.AuthViewModelFactory(
+                                viewModel.getSessionRepository(),
+                                authRepository,
+                                accountRepository
+                            )
+                        )
+                    )
+                }
+            }
+        }
+        
+        // On surveille si le login est réussi pour fermer le dialogue
+        val activeUserId by viewModel.getSessionRepository().sessionConfig.collectAsState(initial = null)
+        LaunchedEffect(activeUserId) {
+            // Si l'ID utilisateur a changé, c'est qu'on s'est connecté à un nouveau compte
+            if (activeUserId != null && activeUserId?.userId != uiState.user?.id) {
+                viewModel.cancelAddAccount()
+            }
+        }
     }
 
     // Affichage de la fenêtre popup de statistiques
@@ -533,7 +580,6 @@ fun StatsPopup(
                         DistributionBar(label = stringResource(R.string.swipe_delete), percentValue = distribution["DELETE"] ?: 0f, color = Color(0xFFF44336))
                         DistributionBar(label = stringResource(R.string.swipe_archive), percentValue = distribution["ARCHIVE"] ?: 0f, color = Color(0xFFFF9800))
                         DistributionBar(label = stringResource(R.string.swipe_locked), percentValue = distribution["LOCK"] ?: 0f, color = Color(0xFF9C27B0))
-                        DistributionBar(label = stringResource(R.string.swipe_skip), percentValue = distribution["SKIP"] ?: 0f, color = Color(0xFF9E9E9E))
                     }
                 }
                 
@@ -608,9 +654,12 @@ fun formatSize(bytes: Long): String {
 @Composable
 fun ProfilePopup(
     user: com.minos2020.immichswipe.domain.model.User?,
+    savedAccounts: List<com.minos2020.immichswipe.data.local.entity.UserAccountEntity>,
     connectionStatus: com.minos2020.immichswipe.core.ConnectionStatus,
     onClose: () -> Unit,
     onSettingsClick: () -> Unit,
+    onSwitchAccount: (String) -> Unit,
+    onAddAccount: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -624,7 +673,7 @@ fun ProfilePopup(
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .wrapContentHeight()
+                .fillMaxHeight(0.85f)
                 .padding(16.dp),
             shape = RoundedCornerShape(24.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -632,6 +681,7 @@ fun ProfilePopup(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -653,7 +703,9 @@ fun ProfilePopup(
                         modifier = Modifier.height(24.dp),
                         contentScale = ContentScale.Fit
                     )
-                    Spacer(Modifier.width(48.dp))
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
+                    }
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -711,7 +763,7 @@ fun ProfilePopup(
                     border = BorderStroke(1.dp, connectionStatus.level.color.copy(alpha = 0.3f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -727,75 +779,126 @@ fun ProfilePopup(
                                     com.minos2020.immichswipe.core.ConnectionLevel.ISSUES -> stringResource(R.string.diag_issues)
                                     com.minos2020.immichswipe.core.ConnectionLevel.OFFLINE -> stringResource(R.string.diag_offline)
                                 },
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = connectionStatus.level.color
                             )
-                            val message = when(connectionStatus.type) {
-                                com.minos2020.immichswipe.core.DiagStatus.CONNECTED -> stringResource(R.string.diag_connected_msg)
-                                com.minos2020.immichswipe.core.DiagStatus.AUTH_ERROR -> stringResource(R.string.diag_error_auth)
-                                com.minos2020.immichswipe.core.DiagStatus.UNAVAILABLE -> stringResource(R.string.diag_error_unavailable, connectionStatus.statusCode ?: 0)
-                                com.minos2020.immichswipe.core.DiagStatus.UNEXPECTED -> stringResource(R.string.diag_error_unexpected, connectionStatus.statusCode ?: 0)
-                                com.minos2020.immichswipe.core.DiagStatus.DNS_ERROR -> stringResource(R.string.diag_error_dns)
-                                com.minos2020.immichswipe.core.DiagStatus.TIMEOUT -> stringResource(R.string.diag_error_timeout)
-                                com.minos2020.immichswipe.core.DiagStatus.NO_INTERNET -> stringResource(R.string.diag_error_no_internet)
-                                com.minos2020.immichswipe.core.DiagStatus.CONNECTION_ERROR -> stringResource(R.string.diag_error_connection)
-                                com.minos2020.immichswipe.core.DiagStatus.LOGGED_OUT -> stringResource(R.string.diag_logged_out)
-                                else -> connectionStatus.rawMessage ?: stringResource(R.string.diag_unknown)
-                            }
-                            Text(
-                                text = message,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val hint = when(connectionStatus.type) {
-                                com.minos2020.immichswipe.core.DiagStatus.AUTH_ERROR -> stringResource(R.string.diag_error_auth_hint)
-                                com.minos2020.immichswipe.core.DiagStatus.UNAVAILABLE -> stringResource(R.string.diag_error_unavailable_hint)
-                                com.minos2020.immichswipe.core.DiagStatus.DNS_ERROR -> stringResource(R.string.diag_error_dns_hint)
-                                com.minos2020.immichswipe.core.DiagStatus.TIMEOUT -> stringResource(R.string.diag_error_timeout_hint)
-                                com.minos2020.immichswipe.core.DiagStatus.NO_INTERNET -> stringResource(R.string.diag_error_no_internet_hint)
-                                com.minos2020.immichswipe.core.DiagStatus.CONNECTION_ERROR -> connectionStatus.rawMessage
-                                else -> null
-                            }
-                            if (hint != null) {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = hint,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                                )
-                            }
                         }
                     }
                 }
 
                 Spacer(Modifier.height(24.dp))
 
-                // Actions
+                // Liste des comptes
+                Text(
+                    text = stringResource(R.string.profile_saved_accounts),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Start).padding(horizontal = 4.dp)
+                )
+                Spacer(Modifier.height(12.dp))
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ) {
+                    Column {
+                        savedAccounts.forEachIndexed { index, account ->
+                            val isCurrent = account.userId == user?.id
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { if (!isCurrent) onSwitchAccount(account.userId) }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val acAvatarColor = getAvatarColor(account.avatarColor)
+                                Box(contentAlignment = Alignment.BottomEnd) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data("${account.baseUrl.removeSuffix("/")}/api/users/${account.userId}/profile-image")
+                                            .addHeader("x-api-key", account.apiKey)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = null,
+                                        placeholder = rememberVectorPainter(Icons.Default.AccountCircle),
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .border(1.dp, acAvatarColor, CircleShape)
+                                            .padding(1.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    if (isCurrent) {
+                                        Surface(
+                                            modifier = Modifier.size(10.dp),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            shape = CircleShape,
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surface)
+                                        ) {
+                                            Icon(Icons.Default.Check, null, modifier = Modifier.padding(1.dp), tint = Color.White)
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = account.userName ?: "User",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                    Text(
+                                        text = account.userEmail,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                            }
+                            if (index < savedAccounts.size - 1) {
+                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+                            }
+                        }
+                        
+                        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onAddAccount() }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.PersonAdd, 
+                                null, 
+                                modifier = Modifier.size(32.dp).padding(4.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = stringResource(R.string.profile_add_account),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Actions (Logout)
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ) {
-                    Column {
-                        PopupActionItem(
-                            icon = Icons.Default.Settings,
-                            text = stringResource(R.string.settings_title),
-                            onClick = onSettingsClick
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-                        PopupActionItem(
-                            icon = Icons.AutoMirrored.Filled.Logout,
-                            text = stringResource(R.string.profile_logout_button),
-                            onClick = onLogout,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
+                    PopupActionItem(
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        text = stringResource(R.string.profile_logout_button),
+                        onClick = onLogout,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -1138,7 +1241,7 @@ fun AlbumGridItem(
     val baseUrl = remember { SessionManager.getBaseUrl()?.removeSuffix("/") }
     val apiKey = remember { SessionManager.getApiKey() ?: "" }
     val progress = if (album.assetCount > 0) treatedCount.toFloat() / album.assetCount else 0f
-    val isCompleted = album.id != Album.VIRTUAL_SKIPPED_ID && album.assetCount in 1..treatedCount
+    val isCompleted = album.assetCount in 1..treatedCount
     val hasUnsyncedChanges = unsyncedCount > 0
 
     Card(
@@ -1240,18 +1343,14 @@ fun AlbumGridItem(
                     maxLines = 1
                 )
                 Text(
-                    text = if (album.id == Album.VIRTUAL_SKIPPED_ID) {
-                        stringResource(R.string.home_skip_count, album.assetCount)
-                    } else {
-                        stringResource(R.string.home_sorted_count, treatedCount, album.assetCount)
-                    },
+                    text = stringResource(R.string.home_sorted_count, treatedCount, album.assetCount),
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 11.sp
                 )
             }
 
             // Barre de progression en haut de l'album (discrète)
-            if (progress > 0 && !isCompleted && album.id != Album.VIRTUAL_SKIPPED_ID) {
+            if (progress > 0 && !isCompleted) {
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier
@@ -1278,7 +1377,7 @@ fun AlbumItem(
     val baseUrl = remember { SessionManager.getBaseUrl()?.removeSuffix("/") }
     val apiKey = remember { SessionManager.getApiKey() ?: "" }
     val progress = if (album.assetCount > 0) treatedCount.toFloat() / album.assetCount else 0f
-    val isCompleted = album.id != Album.VIRTUAL_SKIPPED_ID && album.assetCount in 1..treatedCount
+    val isCompleted = album.assetCount in 1..treatedCount
     val isNotStarted = treatedCount == 0
     val hasUnsyncedChanges = unsyncedCount > 0
 
@@ -1378,14 +1477,10 @@ fun AlbumItem(
                         )
                     }
                     if (!album.description.isNullOrBlank()) {
-                        Text(text = album.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.outline, maxLines = 2)
+                        Text(text = album.description, fontSize = 11.sp, color = MaterialTheme.colorScheme.outline, maxLines = 3, lineHeight = 14.sp)
                     }
                     Text(
-                        text = if (album.id == Album.VIRTUAL_SKIPPED_ID) {
-                            stringResource(R.string.home_skip_count, album.assetCount)
-                        } else {
-                            stringResource(R.string.home_sorted_count, treatedCount, album.assetCount)
-                        },
+                        text = stringResource(R.string.home_sorted_count, treatedCount, album.assetCount),
                         fontSize = 12.sp,
                         color = if (isCompleted) Color(0xFF388E3C) else MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
@@ -1395,7 +1490,7 @@ fun AlbumItem(
             }
 
             // Barre de progression
-            if (progress > 0 && !isCompleted && album.id != Album.VIRTUAL_SKIPPED_ID) {
+            if (progress > 0 && !isCompleted) {
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier
@@ -1443,11 +1538,6 @@ fun ErrorView(error: String, onRetry: () -> Unit) {
 @Composable
 private fun getVirtualCollectionStyle(albumId: String): Triple<androidx.compose.ui.graphics.vector.ImageVector, Brush, Color> {
     return when (albumId) {
-        Album.VIRTUAL_SKIPPED_ID -> Triple(
-            Icons.Default.FastForward,
-            Brush.linearGradient(listOf(Color(0xFF667eea), Color(0xFF764ba2))),
-            Color.White
-        )
         Album.VIRTUAL_ALL_ID -> Triple(
             Icons.Default.AutoAwesomeMotion,
             Brush.linearGradient(listOf(Color(0xFFf6d365), Color(0xFFfda085))),

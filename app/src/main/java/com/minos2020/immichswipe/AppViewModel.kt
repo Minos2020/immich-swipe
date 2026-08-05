@@ -37,7 +37,8 @@ class AppViewModel(
                     // On met à jour l'UI : on est connecté !
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        isLoggedIn = true
+                        isLoggedIn = true,
+                        activeUserId = config.userId
                     )
                 } else {
                     // Si on reçoit null, on nettoie tout
@@ -50,7 +51,8 @@ class AppViewModel(
                     // On met à jour l'UI : on est déconnecté
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        isLoggedIn = false
+                        isLoggedIn = false,
+                        activeUserId = null
                     )
                 }
             }

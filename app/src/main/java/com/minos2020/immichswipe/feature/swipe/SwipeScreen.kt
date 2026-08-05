@@ -23,13 +23,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -104,10 +102,11 @@ fun SwipeScreen(
     assetRepository: AssetRepository,
     swipeDecisionRepository: SwipeDecisionRepository,
     sessionRepository: SessionRepository,
+    sessionKey: String,
     modifier: Modifier = Modifier
 ) {
     val viewModel: SwipeViewModel = viewModel(
-        key = album.id,
+        key = "$sessionKey-${album.id}",
         factory = SwipeViewModelFactory(assetRepository, sessionRepository, swipeDecisionRepository, album)
     )
     
@@ -193,17 +192,19 @@ fun SwipeScreen(
                     val asset = assets[index]
                     val isNextCard = index > currentIndex
                     key(asset.id) {
-                        SwipeCard(
+                                SwipeCard(
                             asset = asset,
                             onSwipe = { viewModel.onSwipe(it) },
                             isNext = isNextCard,
                             playbackBehavior = uiState.playbackBehavior,
-                            isSwipeInverted = uiState.isSwipeInverted,
                             fullscreenButtonPosition = uiState.fullscreenButtonPosition,
                             immichButtonPosition = uiState.immichButtonPosition,
                             cardDisplayButtonPosition = uiState.cardDisplayButtonPosition,
                             cardDisplayMode = uiState.cardDisplayMode,
-                            onToggleDisplayMode = { viewModel.toggleDisplayMode() }
+                            onToggleDisplayMode = { viewModel.toggleDisplayMode() },
+                            isFullscreenOpen = uiState.isFullscreenMode,
+                            onDoubleTap = { viewModel.toggleFavorite() },
+                            onOpenFullscreen = { viewModel.toggleFullscreen(true) }
                         )
                     }
                 }
@@ -345,17 +346,18 @@ fun SwipeScreen(
                     }
                 }
 
-                // SKIP
-                IconButton(
-                    onClick = { viewModel.onSwipe(SwipeDecision.SKIP) },
-                    modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Forward,
-                        contentDescription = stringResource(R.string.swipe_skip),
-                        modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
-                    )
-                }
+                // LOCK
+            IconButton(
+                onClick = { viewModel.toggleLock() },
+                modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = stringResource(R.string.swipe_locked),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
+                )
+            }
 
                 // BOUTON GARDER (KEEP)
                 if (uiState.showSwipeButtons) {
@@ -373,7 +375,7 @@ fun SwipeScreen(
             
             Spacer(Modifier.weight(1f)) // Espace en-dessous des boutons pour l'équilibre
             
-            Spacer(Modifier.height(100.dp)) // Zone réservée augmentée pour la barre de navigation flottante
+            Spacer(Modifier.height(120.dp)) // Zone réservée augmentée pour la barre de navigation flottante
         }
     }
 
@@ -384,6 +386,21 @@ fun SwipeScreen(
             onDismiss = { viewModel.toggleSummary(false) },
             onApply = { viewModel.applyChanges() },
             onUndoDecision = { viewModel.undoSpecificDecision(it) }
+        )
+    }
+
+    // Affichage Plein Écran PERSISTANT
+    if (uiState.isFullscreenMode && uiState.currentAsset != null) {
+        FullscreenViewer(
+            asset = uiState.currentAsset!!,
+            playbackBehavior = uiState.playbackBehavior,
+            onSwipe = {
+                viewModel.onSwipe(it)
+                // On ne ferme PAS isFullscreenMode ici pour rester en plein écran
+            },
+            onUndo = { viewModel.undo() },
+            onDoubleTap = { viewModel.toggleFavorite() },
+            onClose = { viewModel.toggleFullscreen(false) }
         )
     }
 
@@ -610,7 +627,6 @@ fun SwipeHeader(
         ) {
             StatBadge(label = stringResource(R.string.swipe_keep), count = uiState.allKeptCount, color = MaterialGreen)
             StatBadge(label = stringResource(R.string.swipe_delete), count = uiState.deletedCount, color = MaterialRed)
-            StatBadge(label = stringResource(R.string.swipe_skip), count = uiState.skippedCount, color = Color.Gray)
             StatBadge(label = stringResource(R.string.swipe_remaining), count = uiState.remainingCount, color = MaterialTheme.colorScheme.outline)
         }
     }
@@ -765,7 +781,6 @@ fun AssetTimeline(
                                     when (decision) {
                                         SwipeDecision.KEEP -> MaterialGreen
                                         SwipeDecision.DELETE -> MaterialRed
-                                        SwipeDecision.SKIP -> Color.Gray
                                         SwipeDecision.ARCHIVE -> MaterialTheme.colorScheme.primary
                                         SwipeDecision.LOCK -> MaterialTheme.colorScheme.outline
                                     }
@@ -776,7 +791,6 @@ fun AssetTimeline(
                                 imageVector = when (decision) {
                                     SwipeDecision.KEEP -> Icons.Default.Check
                                     SwipeDecision.DELETE -> Icons.Default.Delete
-                                    SwipeDecision.SKIP -> Icons.AutoMirrored.Filled.Forward
                                     SwipeDecision.ARCHIVE -> Icons.Default.Archive
                                     SwipeDecision.LOCK -> Icons.Default.Lock
                                 },
@@ -827,12 +841,14 @@ fun SwipeCard(
     onSwipe: (SwipeDecision) -> Unit,
     isNext: Boolean,
     playbackBehavior: PlaybackBehavior,
-    isSwipeInverted: Boolean,
     fullscreenButtonPosition: IconPosition,
     immichButtonPosition: IconPosition,
     cardDisplayButtonPosition: IconPosition,
     cardDisplayMode: CardDisplayMode,
-    onToggleDisplayMode: () -> Unit
+    onToggleDisplayMode: () -> Unit,
+    isFullscreenOpen: Boolean,
+    onDoubleTap: () -> Unit,
+    onOpenFullscreen: () -> Unit
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -843,7 +859,7 @@ fun SwipeCard(
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
     val offsetY = remember { Animatable(0f) }
-    var isFullscreenOpen by rememberSaveable { mutableStateOf(false) }
+    // isFullscreenOpen passé en paramètre
     var isVideoReady by remember(asset.id) { mutableStateOf(false) }
     var showLoadingIndicator by remember(asset.id) { mutableStateOf(false) }
 
@@ -951,10 +967,10 @@ fun SwipeCard(
                                 val currentY = offsetY.value
                                 if (currentX > 250) {
                                     offsetX.animateTo(1500f, tween(150))
-                                    onSwipe(if (isSwipeInverted) SwipeDecision.DELETE else SwipeDecision.KEEP)
+                                    onSwipe(SwipeDecision.KEEP)
                                 } else if (currentX < -250) {
                                     offsetX.animateTo(-1500f, tween(150))
-                                    onSwipe(if (isSwipeInverted) SwipeDecision.KEEP else SwipeDecision.DELETE)
+                                    onSwipe(SwipeDecision.DELETE)
                                 } else {
                                     launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
 
@@ -1001,7 +1017,7 @@ fun SwipeCard(
                         ZoomableBox(
                             modifier = Modifier.fillMaxSize(),
                             resetOnRelease = true,
-                            onDoubleTap = { isFullscreenOpen = true }
+                            onDoubleTap = onDoubleTap
                         ) {
                             SharedVideoPlayer(
                                 player = exoPlayer,
@@ -1058,7 +1074,7 @@ fun SwipeCard(
                         enabled = !isNext,
                         aspectRatio = asset.exifInfo?.let { it.imageWidth?.toFloat()?.div(it.imageHeight?.toFloat() ?: 1f) },
                         isFillMode = cardDisplayMode == CardDisplayMode.FILL,
-                        onDoubleTap = { isFullscreenOpen = true }
+                        onDoubleTap = onDoubleTap
                     ) {
                         AsyncImage(
                             model = photoRequest,
@@ -1102,7 +1118,7 @@ fun SwipeCard(
                                     SwipeActionIconButton(
                                         icon = Icons.Default.Fullscreen,
                                         contentDescription = stringResource(R.string.settings_fullscreen_pos_label),
-                                        onClick = { isFullscreenOpen = true }
+                                        onClick = onOpenFullscreen
                                     )
                                 }
                                 if (cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.TOP_LEFT || cardDisplayButtonPosition == IconPosition.TOP_RIGHT)) {
@@ -1133,7 +1149,7 @@ fun SwipeCard(
                                     SwipeActionIconButton(
                                         icon = Icons.Default.Fullscreen,
                                         contentDescription = stringResource(R.string.settings_fullscreen_pos_label),
-                                        onClick = { isFullscreenOpen = true }
+                                        onClick = onOpenFullscreen
                                     )
                                 }
                                 if (cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.BOTTOM_LEFT || cardDisplayButtonPosition == IconPosition.BOTTOM_RIGHT)) {
@@ -1164,32 +1180,15 @@ fun SwipeCard(
                 if (!isNext) {
                     val keepAlpha = (offsetX.value / 200f).coerceIn(0f, 1f)
                     val deleteAlpha = (-offsetX.value / 200f).coerceIn(0f, 1f)
-                    if (isSwipeInverted) {
-                        // Inversion des badges
-                        if (keepAlpha > 0f) {
-                            IndicatorBadge(stringResource(R.string.swipe_delete_upper), MaterialRed, Alignment.TopStart, keepAlpha * 0.9f)
-                        } else if (deleteAlpha > 0f) {
-                            IndicatorBadge(stringResource(R.string.swipe_keep_upper), MaterialGreen, Alignment.TopEnd, deleteAlpha * 0.9f)
-                        }
-                    } else {
-                        // Comportement normal
-                        if (keepAlpha > 0f) {
-                            IndicatorBadge(stringResource(R.string.swipe_keep_upper), MaterialGreen, Alignment.TopStart, keepAlpha * 0.9f)
-                        } else if (deleteAlpha > 0f) {
-                            IndicatorBadge(stringResource(R.string.swipe_delete_upper), MaterialRed, Alignment.TopEnd, deleteAlpha * 0.9f)
-                        }
+                    // Comportement normal
+                    if (keepAlpha > 0f) {
+                        IndicatorBadge(stringResource(R.string.swipe_keep_upper), MaterialGreen, Alignment.TopStart, keepAlpha * 0.9f)
+                    } else if (deleteAlpha > 0f) {
+                        IndicatorBadge(stringResource(R.string.swipe_delete_upper), MaterialRed, Alignment.TopEnd, deleteAlpha * 0.9f)
                     }
                 }
             }
         }
-    }
-
-    if (isFullscreenOpen) {
-        FullscreenViewer(
-            asset = asset,
-            player = exoPlayer,
-            onClose = { isFullscreenOpen = false }
-        )
     }
 }
 
@@ -1201,65 +1200,159 @@ fun SharedVideoPlayer(
     cardDisplayMode: com.minos2020.immichswipe.core.CardDisplayMode = CardDisplayMode.FILL,
     onDoubleTap: (() -> Unit)? = null
 ) {
-    AndroidView(
-        factory = { context ->
-            // On utilise un layout XML pour pouvoir spécifier le surface_type="texture_view"
-            // car le setter setSurfaceType n'est pas public dans Media3 PlayerView.
-            val view = LayoutInflater.from(context).inflate(R.layout.view_player_texture, null) as PlayerView
-            view
-        },
-        update = { view ->
-            // Re-attache le player si nécessaire
-            if (view.player != player) view.player = player
-            view.useController = isFullscreen
+    var currentTime by remember { mutableLongStateOf(0L) }
+    var duration by remember { mutableLongStateOf(0L) }
 
-            // TextureView est indispensable pour une intégration parfaite avec les couches Compose
-            // Cela évite les écrans noirs au retour du plein écran.
-            view.resizeMode = if (isFullscreen) {
-                androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-            } else {
-                if (cardDisplayMode == CardDisplayMode.FILL) {
-                    androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                } else {
+    // Mise à jour périodique du timer
+    LaunchedEffect(player) {
+        while (true) {
+            currentTime = player.currentPosition
+            duration = player.duration.coerceAtLeast(0L)
+            delay(200)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { context ->
+                // On utilise un layout XML pour pouvoir spécifier le surface_type="texture_view"
+                // car le setter setSurfaceType n'est pas public dans Media3 PlayerView.
+                val view = LayoutInflater.from(context).inflate(R.layout.view_player_texture, null) as PlayerView
+                view
+            },
+            update = { view ->
+                // Re-attache le player si nécessaire
+                if (view.player != player) view.player = player
+                view.useController = isFullscreen
+
+                // TextureView est indispensable pour une intégration parfaite avec les couches Compose
+                // Cela évite les écrans noirs au retour du plein écran.
+                view.resizeMode = if (isFullscreen) {
                     androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                }
-            }
-
-            // S'assure que la lecture reprend bien
-            if (player.playbackState == Player.STATE_READY && !player.isPlaying) {
-                player.play()
-            }
-        },
-        onRelease = { view ->
-            // Détache proprement le player de la vue avant destruction
-            view.player = null
-        },
-        modifier = Modifier
-            .fillMaxSize()
-            .then(
-                if (onDoubleTap != null) {
-                    Modifier.pointerInput(onDoubleTap) {
-                        detectTapGestures(onDoubleTap = { onDoubleTap() })
+                } else {
+                    if (cardDisplayMode == CardDisplayMode.FILL) {
+                        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    } else {
+                        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                     }
-                } else Modifier
-            )
-    )
+                }
+
+                // S'assure que la lecture reprend bien
+                if (player.playbackState == Player.STATE_READY && !player.isPlaying) {
+                    player.play()
+                }
+            },
+            onRelease = { view ->
+                // Détache proprement le player de la vue avant destruction
+                view.player = null
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (onDoubleTap != null) {
+                        Modifier.pointerInput(onDoubleTap) {
+                            detectTapGestures(onDoubleTap = { onDoubleTap() })
+                        }
+                    } else Modifier
+                )
+        )
+
+        // Overlay du timestamp [actuel / total]
+        if (duration > 0) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp),
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = "${formatMediaTime(currentTime)} / ${formatMediaTime(duration)}",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+    }
 }
 
+/**
+ * Formate le temps média (ms) en H:MM:SS ou MM:SS.
+ */
+private fun formatMediaTime(timeMs: Long): String {
+    val totalSeconds = (timeMs / 1000).coerceAtLeast(0)
+    val seconds = totalSeconds % 60
+    val minutes = (totalSeconds / 60) % 60
+    val hours = totalSeconds / 3600
+
+    return if (hours > 0) {
+        String.format(java.util.Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
+    }
+}
+
+@OptIn(UnstableApi::class)
 @Composable
 fun FullscreenViewer(
     asset: Asset,
-    player: Player?,
+    playbackBehavior: PlaybackBehavior,
+    onSwipe: (SwipeDecision) -> Unit,
+    onUndo: () -> Unit,
+    onDoubleTap: () -> Unit,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
+    
+    // On utilise des Animatables persistants pour éviter les flashs de recréation
     val swipeY = remember { Animatable(0f) }
+    val swipeX = remember { Animatable(0f) }
+    
+    // On capture les callbacks pour qu'ils soient toujours à jour dans le pointerInput
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
 
-    DisposableEffect(Unit) {
+    // Reset instantané quand l'asset change
+    LaunchedEffect(asset.id) {
+        swipeX.snapTo(0f)
+        swipeY.snapTo(0f)
+    }
+
+    val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/")
+    val apiKey = SessionManager.getApiKey() ?: ""
+
+    // Gestion autonome du player pour le plein écran
+    val exoPlayer = remember(asset.id) {
+        if (asset.type == "VIDEO") {
+            ExoPlayer.Builder(context).build().apply {
+                if (playbackBehavior != PlaybackBehavior.IGNORE) {
+                    val audioAttributes = AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                        .build()
+                    setAudioAttributes(audioAttributes, true)
+                }
+                repeatMode = Player.REPEAT_MODE_ONE
+                val videoUrl = "$baseUrl/api/assets/${asset.id}/video/playback"
+                val dataSourceFactory = DefaultHttpDataSource.Factory()
+                    .setDefaultRequestProperties(mapOf("x-api-key" to apiKey))
+                val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+                    .createMediaSource(MediaItem.fromUri(videoUrl))
+                setMediaSource(mediaSource)
+                prepare()
+                playWhenReady = true
+            }
+        } else null
+    }
+
+    DisposableEffect(exoPlayer, asset.id) {
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-        onDispose { activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+        onDispose { 
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT 
+            exoPlayer?.release()
+        }
     }
 
     Dialog(
@@ -1270,30 +1363,52 @@ fun FullscreenViewer(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = (1f - (swipeY.value / 1000f)).coerceIn(0f, 1f)))
-                .pointerInput(Unit) {
+                .pointerInput(Unit) { // On utilise Unit pour que le détecteur soit persistant
                     detectDragGestures(
                         onDragEnd = {
-                            if (swipeY.value > 120) onClose()
-                            else scope.launch { swipeY.animateTo(0f) }
+                            scope.launch {
+                                val currentX = swipeX.value
+                                val currentY = swipeY.value
+                                
+                                if (currentY > 120 && kotlin.math.abs(currentX) < 100) {
+                                    onClose()
+                                } else if (currentX > 250) {
+                                    swipeX.animateTo(2000f, tween(200))
+                                    currentOnSwipe(SwipeDecision.KEEP)
+                                } else if (currentX < -250) {
+                                    swipeX.animateTo(-2000f, tween(200))
+                                    currentOnSwipe(SwipeDecision.DELETE)
+                                } else {
+                                    launch { swipeY.animateTo(0f) }
+                                    launch { swipeX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
+                                }
+                            }
                         },
                         onDrag = { change, dragAmount ->
                             // Le swipe down n'est déclenché que si le ZoomableBox ne consomme pas l'événement
                             // (ce qui arrive quand on n'est pas en train de zoomer/panner)
                             change.consume()
-                            scope.launch { swipeY.snapTo((swipeY.value + dragAmount.y).coerceAtLeast(0f)) }
+                            scope.launch {
+                                swipeY.snapTo((swipeY.value + dragAmount.y).coerceAtLeast(0f))
+                                swipeX.snapTo(swipeX.value + dragAmount.x)
+                            }
                         }
                     )
                 }
-                .offset { IntOffset(0, swipeY.value.roundToInt()) },
+                .offset { IntOffset(swipeX.value.roundToInt(), swipeY.value.roundToInt()) }
+                .graphicsLayer {
+                    rotationZ = swipeX.value / 60f
+                },
             contentAlignment = Alignment.Center
         ) {
             ZoomableBox(
                 modifier = Modifier.fillMaxSize(),
                 resetOnRelease = false,
+                onDoubleTap = onDoubleTap,
                 aspectRatio = asset.exifInfo?.let { it.imageWidth?.toFloat()?.div(it.imageHeight?.toFloat() ?: 1f) }
             ) {
-                if (asset.type == "VIDEO" && player != null) {
-                    SharedVideoPlayer(player = player, isFullscreen = true)
+                if (asset.type == "VIDEO" && exoPlayer != null) {
+                    SharedVideoPlayer(player = exoPlayer, isFullscreen = true)
                 } else {
                     val baseUrlClean = SessionManager.getBaseUrl()?.removeSuffix("/")
                     AsyncImage(
@@ -1308,6 +1423,13 @@ fun FullscreenViewer(
                 }
             }
 
+            // Badges de tri en plein écran
+            val keepAlpha = (swipeX.value / 200f).coerceIn(0f, 1f)
+            val deleteAlpha = (-swipeX.value / 200f).coerceIn(0f, 1f)
+            
+            if (keepAlpha > 0f) IndicatorBadge(stringResource(R.string.swipe_keep_upper), MaterialGreen, Alignment.TopStart, keepAlpha * 0.9f)
+            else if (deleteAlpha > 0f) IndicatorBadge(stringResource(R.string.swipe_delete_upper), MaterialRed, Alignment.TopEnd, deleteAlpha * 0.9f)
+
             IconButton(
                 onClick = onClose,
                 modifier = Modifier
@@ -1316,6 +1438,21 @@ fun FullscreenViewer(
                     .background(Color.Black.copy(alpha = 0.5f), CircleShape)
             ) {
                 Icon(Icons.Default.Close, stringResource(R.string.common_close), tint = Color.White)
+            }
+
+            // Bouton Undo (Bas Gauche)
+            IconButton(
+                onClick = onUndo,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 24.dp, bottom = 100.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Undo,
+                    contentDescription = stringResource(R.string.nav_back),
+                    tint = Color.White
+                )
             }
         }
     }
@@ -1435,19 +1572,18 @@ fun SummaryDialog(
                 
                 Spacer(Modifier.height(20.dp))
                 
-                // Grille de statistiques (3x2) - Utilisation d'une grille fixe pour éviter l'étirement
+                // Grille de statistiques (2x2)
                 Box(modifier = Modifier.fillMaxWidth()) {
                     val stats = listOf(
                         Triple(stringResource(R.string.swipe_keep), Triple(uiState.keptCount, uiState.keptSize, MaterialGreen), Icons.Default.Check),
                         Triple(stringResource(R.string.swipe_delete), Triple(uiState.deletedCount, uiState.deletedSize, MaterialRed), Icons.Default.Delete),
                         Triple(stringResource(R.string.swipe_archive), Triple(uiState.archiveCount, uiState.archiveSize, MaterialTheme.colorScheme.primary), Icons.Default.Archive),
                         Triple(stringResource(R.string.swipe_locked), Triple(uiState.lockedCount, uiState.lockedSize, MaterialTheme.colorScheme.outline), Icons.Default.Lock),
-                        Triple(stringResource(R.string.swipe_skip), Triple(uiState.skippedCount, uiState.skippedSize, Color.Gray), Icons.AutoMirrored.Filled.Forward),
                         Triple(stringResource(R.string.swipe_remaining), Triple(uiState.remainingCount, uiState.remainingSize, MaterialTheme.colorScheme.outlineVariant), Icons.Default.Pending)
                     )
                     
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (i in 0 until 3) {
+                        for (i in 0 until 2) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 val left = stats[i * 2]
                                 val right = stats[i * 2 + 1]
@@ -1471,6 +1607,17 @@ fun SummaryDialog(
                                 )
                             }
                         }
+                        // Remaining box on its own line for balance
+                        val last = stats.last()
+                        StatSummaryBox(
+                            label = last.first,
+                            count = last.second.first,
+                            size = last.second.second,
+                            color = last.second.third,
+                            icon = last.third,
+                            isEstimated = last.first == stringResource(R.string.swipe_remaining) && uiState.isRemainingEstimated,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
 
@@ -1912,10 +2059,12 @@ fun ZoomableBox(
                 }
             }
             .then(
-                Modifier.pointerInput(resetOnRelease, scale) {
+                Modifier.pointerInput(resetOnRelease, scale, onDoubleTap) {
                     detectTapGestures(onDoubleTap = { tapOffset ->
-                        if (!resetOnRelease) {
-                            // Mode plein écran : Bascule x1 / x3
+                        if (onDoubleTap != null) {
+                            onDoubleTap()
+                        } else if (!resetOnRelease) {
+                            // Mode plein écran (zoom par défaut si pas de callback spécifique)
                             if (scale > 1.01f) {
                                 scope.launch {
                                     launch {
@@ -1969,9 +2118,6 @@ fun ZoomableBox(
                                     }
                                 }
                             }
-                        } else {
-                            // Mode Swipe Card : Action externe (ex: ouvrir plein écran)
-                            onDoubleTap?.invoke()
                         }
                     })
                 }

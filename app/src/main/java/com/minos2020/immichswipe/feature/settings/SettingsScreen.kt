@@ -15,6 +15,8 @@ import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -212,72 +214,30 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(12.dp))
-                    Column(Modifier.selectableGroup()) {
-                        SortOption(
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeButton(
                             text = stringResource(R.string.settings_sort_newest),
+                            icon = Icons.Default.ArrowDownward,
                             selected = uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC,
-                            onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC) }
+                            onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC) },
+                            modifier = Modifier.weight(1f)
                         )
-                        SortOption(
+                        ThemeButton(
                             text = stringResource(R.string.settings_sort_oldest),
+                            icon = Icons.Default.ArrowUpward,
                             selected = uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC,
-                            onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC) }
+                            onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC) },
+                            modifier = Modifier.weight(1f)
                         )
-                        SortOption(
+                        ThemeButton(
                             text = stringResource(R.string.settings_sort_shuffled),
+                            icon = Icons.Default.Shuffle,
                             selected = uiState.sortOrder == SortOrder.SHUFFLED,
-                            onClick = { viewModel.setSortOrder(SortOrder.SHUFFLED) }
-                        )
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
-
-                    Text(
-                        text = stringResource(R.string.settings_skip_lifespan_label),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_skip_lifespan_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    
-                    // État local pour le slider pour une réponse fluide
-                    var localSliderValue by remember(uiState.skipLifespanDays) { 
-                        mutableStateOf(mapDaysToSlider(uiState.skipLifespanDays)) 
-                    }
-                    // Si une alerte est annulée, on s'assure que le slider revient à la valeur réelle
-                    LaunchedEffect(uiState.showSkipLifespanWarning) {
-                        if (uiState.showSkipLifespanWarning == null) {
-                            localSliderValue = mapDaysToSlider(uiState.skipLifespanDays)
-                        }
-                    }
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val currentDays = mapSliderToDays(localSliderValue)
-                        Text(
-                            text = formatDays(currentDays),
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Slider(
-                            value = localSliderValue,
-                            onValueChange = { localSliderValue = it },
-                            onValueChangeFinished = {
-                                viewModel.requestSkipLifespanChange(mapSliderToDays(localSliderValue))
-                            },
-                            valueRange = 0f..500f, // Échelle personnalisée de 0 à 500
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        
-                        Text(
-                            text = if (currentDays == 0L) stringResource(R.string.settings_skip_never) else stringResource(R.string.settings_skip_hint),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            onClick = { viewModel.setSortOrder(SortOrder.SHUFFLED) },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -350,17 +310,6 @@ fun SettingsScreen(
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
 
-                    // Inversion du swipe
-                    SettingsToggleItem(
-                        title = stringResource(R.string.settings_swipe_invert_label),
-                        subtitle = stringResource(R.string.settings_swipe_invert_desc),
-                        checked = uiState.isSwipeInverted,
-                        onCheckedChange = { viewModel.setSwipeInverted(it) },
-                        icon = Icons.Default.SwapHoriz
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
                     // Position icône plein écran
                     IconPositionPicker(
                         title = stringResource(R.string.settings_fullscreen_pos_label),
@@ -401,16 +350,23 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.outline
                         )
                         Spacer(Modifier.height(12.dp))
-                        Column(Modifier.selectableGroup()) {
-                            PlaybackOption(
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ThemeButton(
                                 text = stringResource(R.string.settings_video_pause),
+                                icon = Icons.AutoMirrored.Filled.VolumeOff,
                                 selected = uiState.playbackBehavior == PlaybackBehavior.PAUSE_OTHERS,
-                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.PAUSE_OTHERS) }
+                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.PAUSE_OTHERS) },
+                                modifier = Modifier.weight(1f)
                             )
-                            PlaybackOption(
+                            ThemeButton(
                                 text = stringResource(R.string.settings_video_ignore),
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
                                 selected = uiState.playbackBehavior == PlaybackBehavior.IGNORE,
-                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.IGNORE) }
+                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.IGNORE) },
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
@@ -494,29 +450,8 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(140.dp))
         }
-
-    // Dialogue d'avertissement SKIP
-    if (uiState.showSkipLifespanWarning != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissSkipLifespanWarning() },
-            title = { Text(stringResource(R.string.settings_skip_warning_title)) },
-            text = { 
-                Text(stringResource(R.string.settings_skip_warning_msg)) 
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.confirmSkipLifespanChange() }) {
-                    Text(stringResource(R.string.common_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissSkipLifespanWarning() }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        )
-    }
 
     // Dialogue des LOGS
     if (uiState.showLogsDialog) {
@@ -698,50 +633,6 @@ fun SettingsScreen(
 }
 
 @Composable
-fun formatDays(days: Long): String {
-    return when {
-        days == 0L -> stringResource(R.string.duration_never)
-        days < 7 -> stringResource(R.string.duration_day, days)
-        days < 30 -> stringResource(R.string.duration_week, days / 7)
-        days < 360 -> stringResource(R.string.duration_month, days / 30)
-        else -> {
-            val years = (days + 5) / 365 
-            if (years <= 1L) stringResource(R.string.duration_year_one) 
-            else stringResource(R.string.duration_years, years)
-        }
-    }
-}
-
-/**
- * Mappe une valeur de slider (0-500) vers un nombre de jours (0-1825).
- */
-private fun mapSliderToDays(v: Float): Long {
-    if (v <= 0f) return 0L
-    return when {
-        v <= 100f -> lerpLong(1, 14, v / 100f)
-        v <= 200f -> lerpLong(15, 60, (v - 100f) / 100f)
-        v <= 300f -> lerpLong(61, 180, (v - 200f) / 100f)
-        v <= 400f -> lerpLong(181, 365, (v - 300f) / 100f)
-        else -> lerpLong(366, 1825, (v - 400f) / 100f)
-    }
-}
-
-private fun mapDaysToSlider(d: Long): Float {
-    if (d <= 0L) return 0f
-    return when {
-        d <= 14 -> (d - 1f) / 13f * 100f + 1f
-        d <= 60 -> (d - 15f) / 45f * 100f + 100f
-        d <= 180 -> (d - 61f) / 119f * 100f + 200f
-        d <= 365 -> (d - 181f) / 184f * 100f + 300f
-        else -> (d - 366f) / 1459f * 100f + 400f
-    }.coerceIn(0f, 500f)
-}
-
-private fun lerpLong(start: Long, end: Long, fraction: Float): Long {
-    return start + ((end - start) * fraction).toLong()
-}
-
-@Composable
 fun SettingsSection(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, content: @Composable () -> Unit) {
     Column {
         Row(
@@ -815,31 +706,6 @@ fun SettingsToggleItemSmall(
             onCheckedChange = onCheckedChange,
             modifier = Modifier.scale(0.8f)
         )
-    }
-}
-
-@Composable
-fun SettingsToggleItem(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -962,54 +828,4 @@ fun ThemeButton(
     }
 }
 
-@Composable
-fun PlaybackOption(text: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .selectable(
-                selected = selected,
-                onClick = onClick,
-                role = Role.RadioButton
-            )
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = null // null car le clic est géré par la Row
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 16.dp)
-        )
-    }
-}
 
-@Composable
-fun SortOption(text: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .selectable(
-                selected = selected,
-                onClick = onClick,
-                role = Role.RadioButton
-            )
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = null
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 16.dp)
-        )
-    }
-}

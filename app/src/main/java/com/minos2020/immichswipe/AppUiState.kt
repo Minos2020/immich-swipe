@@ -8,5 +8,6 @@ import com.minos2020.immichswipe.core.AppTheme
 data class AppUiState(
     val isLoading: Boolean = true,
     val isLoggedIn: Boolean = false,
+    val activeUserId: String? = null,
     val themeMode: AppTheme = AppTheme.SYSTEM
 )

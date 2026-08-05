@@ -60,11 +60,6 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
-            sessionRepository.swipeInverted.collect { inverted ->
-                _uiState.value = _uiState.value.copy(isSwipeInverted = inverted)
-            }
-        }
-        viewModelScope.launch {
             sessionRepository.fullscreenButtonPosition.collect { pos ->
                 _uiState.value = _uiState.value.copy(fullscreenButtonPosition = pos)
             }
@@ -82,11 +77,6 @@ class SettingsViewModel(
         viewModelScope.launch {
             sessionRepository.defaultLayoutGrid.collect { isGrid ->
                 _uiState.value = _uiState.value.copy(isDefaultLayoutGrid = isGrid)
-            }
-        }
-        viewModelScope.launch {
-            sessionRepository.skipLifespanDays.collect { days ->
-                _uiState.value = _uiState.value.copy(skipLifespanDays = days)
             }
         }
         viewModelScope.launch {
@@ -130,12 +120,6 @@ class SettingsViewModel(
     fun setThemeMode(theme: AppTheme) {
         viewModelScope.launch {
             sessionRepository.saveThemeMode(theme)
-        }
-    }
-
-    fun setSwipeInverted(inverted: Boolean) {
-        viewModelScope.launch {
-            sessionRepository.saveSwipeInverted(inverted)
         }
     }
 
@@ -189,42 +173,6 @@ class SettingsViewModel(
         viewModelScope.launch {
             sessionRepository.saveShowSwipeButtons(show)
         }
-    }
-
-    fun requestSkipLifespanChange(days: Long) {
-        val currentDays = _uiState.value.skipLifespanDays
-        
-        // On détermine si on doit afficher l'alerte :
-        // 1. Si on passe de "Jamais" (0) à une durée limitée -> Alerte (car on réduit l'infini)
-        // 2. Si on réduit une durée existante (ex: de 30j à 7j) -> Alerte
-        val isReduction = (currentDays == 0L && days > 0L) || (currentDays > 0L && days in 1 until currentDays)
-        
-        if (isReduction) {
-            _uiState.value = _uiState.value.copy(showSkipLifespanWarning = days)
-        } else {
-            // Sinon, on applique directement
-            viewModelScope.launch {
-                sessionRepository.saveSkipLifespan(days)
-                // Nettoyage au cas où (même si peu probable que ça supprime en augmentant)
-                if (days > 0) swipeDecisionRepository.cleanExpiredSkips(days)
-            }
-        }
-    }
-
-    fun confirmSkipLifespanChange() {
-        val targetDays = _uiState.value.showSkipLifespanWarning ?: return
-        viewModelScope.launch {
-            sessionRepository.saveSkipLifespan(targetDays)
-            // On lance un nettoyage immédiat si une durée a été définie
-            if (targetDays > 0) {
-                swipeDecisionRepository.cleanExpiredSkips(targetDays)
-            }
-            _uiState.value = _uiState.value.copy(showSkipLifespanWarning = null)
-        }
-    }
-
-    fun dismissSkipLifespanWarning() {
-        _uiState.value = _uiState.value.copy(showSkipLifespanWarning = null)
     }
 
     fun logout() {

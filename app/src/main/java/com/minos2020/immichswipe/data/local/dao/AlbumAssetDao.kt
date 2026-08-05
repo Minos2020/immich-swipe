@@ -11,6 +11,6 @@ interface AlbumAssetDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAlbumAssets(relations: List<AlbumAssetEntity>)
 
-    @Query("DELETE FROM album_assets WHERE albumId = :albumId")
-    suspend fun clearAlbumRelations(albumId: String)
+    @Query("DELETE FROM album_assets WHERE albumId = :albumId AND userId = :userId")
+    suspend fun clearAlbumRelations(albumId: String, userId: String)
 }

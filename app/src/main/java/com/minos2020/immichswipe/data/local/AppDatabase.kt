@@ -9,24 +9,75 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.data.local.dao.SwipeDecisionDao
 import com.minos2020.immichswipe.data.local.dao.AlbumAssetDao
+import com.minos2020.immichswipe.data.local.dao.UserAccountDao
 import com.minos2020.immichswipe.data.local.entity.SwipeDecisionEntity
 import com.minos2020.immichswipe.data.local.entity.SyncHistoryEntity
 import com.minos2020.immichswipe.data.local.entity.AlbumAssetEntity
+import com.minos2020.immichswipe.data.local.entity.UserAccountEntity
 
 /**
  * La base de données principale de l'application.
  * Elle centralise les accès via les DAOs.
  */
 @Database(
-    entities = [SwipeDecisionEntity::class, SyncHistoryEntity::class, AlbumAssetEntity::class],
-    version = 8,
+    entities = [SwipeDecisionEntity::class, SyncHistoryEntity::class, AlbumAssetEntity::class, UserAccountEntity::class],
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun swipeDecisionDao(): SwipeDecisionDao
     abstract fun albumAssetDao(): AlbumAssetDao
+    abstract fun userAccountDao(): UserAccountDao
 
     companion object {
+        /**
+         * Migration ROOM de la version 9 vers la version 10.
+         * - Modifie la table 'album_assets' pour inclure 'userId' dans la clé primaire.
+         */
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                AppLogger.i("Database", "Exécution Migration 9 -> 10 (Modification album_assets)")
+                // 1. Supprimer l'ancienne table (on repart à zéro car on n'a pas les userId)
+                db.execSQL("DROP TABLE IF EXISTS album_assets")
+                
+                // 2. Créer la nouvelle table avec userId
+                db.execSQL("""
+                    CREATE TABLE album_assets (
+                        albumId TEXT NOT NULL,
+                        assetId TEXT NOT NULL,
+                        userId TEXT NOT NULL,
+                        PRIMARY KEY(albumId, assetId, userId)
+                    )
+                """.trimIndent())
+                
+                // 3. Recréer les index
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_album_assets_assetId ON album_assets (assetId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_album_assets_userId ON album_assets (userId)")
+            }
+        }
+
+        /**
+         * Migration ROOM de la version 8 vers la version 9.
+         * - Ajoute la table 'user_accounts' pour le multi-compte.
+         */
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                AppLogger.i("Database", "Exécution Migration 8 -> 9 (Ajout user_accounts)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS user_accounts (
+                        userId TEXT NOT NULL,
+                        baseUrl TEXT NOT NULL,
+                        apiKey TEXT NOT NULL,
+                        userName TEXT,
+                        userEmail TEXT NOT NULL,
+                        avatarColor TEXT,
+                        lastActive INTEGER NOT NULL,
+                        PRIMARY KEY(userId)
+                    )
+                """.trimIndent())
+            }
+        }
+
         /**
          * Migration ROOM de la version 7 vers la version 8.
          * - Ajoute la colonne 'wasSyncedSkip' à 'swipe_decisions'.
@@ -171,7 +222,7 @@ abstract class AppDatabase : RoomDatabase() {
                                 "immich_swipe_database"
                             )
                     // On enregistre nos scripts de migration
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .fallbackToDestructiveMigration(false)
                 .build()
                 INSTANCE = instance

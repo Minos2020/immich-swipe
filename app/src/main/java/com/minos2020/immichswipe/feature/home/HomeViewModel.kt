@@ -21,6 +21,7 @@ import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
+import com.minos2020.immichswipe.data.repository.AccountRepository
 import com.minos2020.immichswipe.domain.model.Album
 
 /**
@@ -31,6 +32,7 @@ class HomeViewModel(
     private val albumRepository: AlbumRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository,
     private val assetRepository: AssetRepository,
+    private val accountRepository: AccountRepository,
 ) : ViewModel() {
     
     private val userRepository by lazy { 
@@ -98,7 +100,7 @@ class HomeViewModel(
                         
                         // Injection du compte global pour "Tous les médias"
                         treatedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.size
-                        unsyncedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.count { !it.isSynced && !it.wasSyncedSkip }
+                        unsyncedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.count { !it.isSynced }
                         
                         // Note: Pour les orphelins, on se base sur les décisions prises spécifiquement sur des orphelins
                         // ou on pourra affiner le calcul plus tard.
@@ -110,22 +112,6 @@ class HomeViewModel(
                             )
                         }
                     }.collect {}
-                }
-            }
-        }
-
-        // Observe le nombre de SKIP synchronisés pour l'album virtuel
-        viewModelScope.launch {
-            sessionRepository.sessionConfig.collect { config ->
-                if (config != null) {
-                    combine(
-                        swipeDecisionRepository.getSyncedSkipCount(config.userId),
-                        sessionRepository.includeArchived
-                    ) { count, _ ->
-                        count // Imprecision accepted for now
-                    }.collect { adjustedCount ->
-                        _uiState.update { it.copy(syncedSkipCount = adjustedCount) }
-                    }
                 }
             }
         }
@@ -152,10 +138,9 @@ class HomeViewModel(
                     val totalBytes = history.sumOf { it.bytesSaved }
                     val totalLocked = history.sumOf { it.lockedCount }
                     
-                    // Pour KEEP, ARCHIVE et SKIP, on fait : (Somme de l'historique) + (Nouveaux swipes pas encore synchronisés)
+                    // Pour KEEP et ARCHIVE, on fait : (Somme de l'historique) + (Nouveaux swipes pas encore synchronisés)
                     val totalKept = history.sumOf { it.keptCount } + allDecisions.count { (it.decision == "KEEP") && !it.isSynced }
                     val totalArchived = history.sumOf { it.archivedCount } + allDecisions.count { (it.decision == "ARCHIVE") && !it.isSynced }
-                    val totalSkipped = history.sumOf { it.skippedCount } + allDecisions.count { (it.decision == "SKIP") && !it.isSynced }
                     
                     // Stats hebdomadaires (basées sur l'activité réelle enregistrée)
                     val weeklyDeleted = weeklyHistory.sumOf { it.deletedCount }
@@ -172,7 +157,6 @@ class HomeViewModel(
                         totalKept = totalKept,
                         totalArchived = totalArchived,
                         totalLocked = totalLocked,
-                        totalSkipped = totalSkipped,
                         totalAlbums = albums.size,
                         completedAlbums = completedCount,
                         weeklyDeleted = weeklyDeleted,
@@ -183,6 +167,13 @@ class HomeViewModel(
                 }
             }
         }
+
+        // Observe les comptes sauvegardés
+        viewModelScope.launch {
+            accountRepository.allAccounts.collect { accounts ->
+                _uiState.update { it.copy(savedAccounts = accounts) }
+            }
+        }
     }
 
     fun loadUser() {
@@ -191,8 +182,6 @@ class HomeViewModel(
             try {
                 AppLogger.d("Home", "Chargement des données utilisateur et albums")
                 val user = userRepository.getCurrentUser()
-                // SOLUTION : Migration des anciennes données (v3 -> v4) vers l'ID utilisateur réel
-                swipeDecisionRepository.migrateLegacyDecisions(user.id)
 
                 val albums = albumRepository.refreshAlbums(_uiState.value.includeArchived)
                 AppLogger.i("Home", "Utilisateur chargé: ${user.name}, ${albums.size} albums trouvés")
@@ -302,8 +291,37 @@ class HomeViewModel(
     }
 
     fun logout() = viewModelScope.launch {
+        val currentUserId = _uiState.value.user?.id
         _uiState.update { it.copy(currentTab = HomeTab.HOME) }
+        
+        // Supprime le compte de la base locale
+        currentUserId?.let { accountRepository.deleteAccount(it) }
+        
+        // Déconnexion de la session active
         sessionRepository.clearSession()
+    }
+
+    fun switchAccount(userId: String) = viewModelScope.launch {
+        val account = accountRepository.getAccount(userId) ?: return@launch
+        AppLogger.i("Home", "Switching to account ${account.userName} ($userId)")
+        
+        // On met à jour l'heure d'activité
+        accountRepository.updateLastActive(userId)
+        
+        // On sauvegarde la session active (cela va déclencher le re-rendu de MainActivity via AppViewModel)
+        sessionRepository.saveSession(
+            baseUrl = account.baseUrl,
+            token = account.apiKey,
+            userId = account.userId
+        )
+    }
+
+    fun startAddAccount() {
+        _uiState.update { it.copy(isLoggingInToAnotherAccount = true, showProfilePopup = false) }
+    }
+
+    fun cancelAddAccount() {
+        _uiState.update { it.copy(isLoggingInToAnotherAccount = false) }
     }
 
     fun onSearchQueryChanged(query: String) = _uiState.update { it.copy(searchQuery = query) }

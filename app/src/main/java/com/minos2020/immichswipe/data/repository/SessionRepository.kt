@@ -59,15 +59,10 @@ class SessionRepository(context: Context) {
     }
 
     /**
-     * Expose l'inversion du swipe.
-     */
-    val swipeInverted: Flow<Boolean> = dataStore.isSwipeInverted()
-
-    /**
      * Expose la position de l'icône plein écran.
      */
     val fullscreenButtonPosition: Flow<IconPosition> = dataStore.getFullscreenIconPosition().map {
-        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.TOP_RIGHT } } ?: IconPosition.TOP_RIGHT
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
     }
 
     /**
@@ -89,11 +84,6 @@ class SessionRepository(context: Context) {
      */
     val defaultLayoutGrid: Flow<Boolean> = dataStore.isDefaultLayoutGrid()
 
-    /**
-     * Expose la durée de vie des SKIP (en jours). 0 = Jamais.
-     */
-    val skipLifespanDays: Flow<Long> = dataStore.getSkipLifespan()
-
     val showFavoriteButton: Flow<Boolean> = dataStore.isShowFavorite()
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
@@ -107,7 +97,7 @@ class SessionRepository(context: Context) {
      * Expose le mode d'affichage par défaut des cartes.
      */
     val defaultCardDisplayMode: Flow<CardDisplayMode> = dataStore.getDefaultCardDisplayMode().map {
-        it?.let { try { CardDisplayMode.valueOf(it) } catch(e: Exception) { CardDisplayMode.FILL } } ?: CardDisplayMode.FILL
+        it?.let { try { CardDisplayMode.valueOf(it) } catch(e: Exception) { CardDisplayMode.FIT } } ?: CardDisplayMode.FIT
     }
 
     /**
@@ -130,13 +120,6 @@ class SessionRepository(context: Context) {
      */
     suspend fun saveThemeMode(theme: AppTheme) {
         dataStore.saveThemeMode(theme.name)
-    }
-
-    /**
-     * Sauvegarde l'inversion du swipe.
-     */
-    suspend fun saveSwipeInverted(inverted: Boolean) {
-        dataStore.saveSwipeInverted(inverted)
     }
 
     /**
@@ -165,13 +148,6 @@ class SessionRepository(context: Context) {
      */
     suspend fun saveDefaultLayoutGrid(isGrid: Boolean) {
         dataStore.saveDefaultLayoutGrid(isGrid)
-    }
-
-    /**
-     * Sauvegarde la durée de vie des SKIP.
-     */
-    suspend fun saveSkipLifespan(days: Long) {
-        dataStore.saveSkipLifespan(days)
     }
 
     suspend fun saveShowFavorite(show: Boolean) { dataStore.saveShowFavorite(show) }

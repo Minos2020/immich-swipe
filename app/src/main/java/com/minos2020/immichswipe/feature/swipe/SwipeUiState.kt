@@ -10,7 +10,7 @@ import com.minos2020.immichswipe.core.SortOrder
  * Les différentes décisions possibles pour un asset.
  */
 enum class SwipeDecision {
-    KEEP, DELETE, SKIP, ARCHIVE, LOCK
+    KEEP, DELETE, ARCHIVE, LOCK
 }
 
 /**
@@ -29,18 +29,17 @@ data class SwipeUiState(
     val history: List<String> = emptyList(), // Liste des IDs swipés pour l'undo
     val error: String? = null,
     val playbackBehavior: PlaybackBehavior = PlaybackBehavior.PAUSE_OTHERS,
-    val isSwipeInverted: Boolean = false,
-    val fullscreenButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
+    val fullscreenButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
     val immichButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     val cardDisplayButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
-    val skipLifespanDays: Long = 0L,
     val showFavoriteButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
-    val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
-    val showSwipeButtons: Boolean = false
+    val cardDisplayMode: CardDisplayMode = CardDisplayMode.FIT,
+    val showSwipeButtons: Boolean = false,
+    val isFullscreenMode: Boolean = false
 ) {
     val currentAsset: Asset? get() = assets.getOrNull(currentIndex)
     
@@ -75,13 +74,13 @@ data class SwipeUiState(
     val keptCount: Int get() = decisions.values.count { it == SwipeDecision.KEEP }
     val allKeptCount: Int get() = decisions.values.count { it == SwipeDecision.KEEP || it == SwipeDecision.ARCHIVE || it == SwipeDecision.LOCK }
     val deletedCount: Int get() = decisions.values.count { it == SwipeDecision.DELETE }
-    val skippedCount: Int get() = decisions.values.count { it == SwipeDecision.SKIP }
     val favoriteCount: Int get() = assets.count { isFavorite(it.id) && isProcessedKeep(it.id) }
     val favoritesAddedCount: Int get() = localFavorites.count { (id, fav) -> fav && !(assets.find { it.id == id }?.isFavorite ?: false) }
     val favoritesRemovedCount: Int get() = localFavorites.count { (id, fav) -> !fav && (assets.find { it.id == id }?.isFavorite ?: false) }
     val archiveCount: Int get() = decisions.values.count { it == SwipeDecision.ARCHIVE }
     val lockedCount: Int get() = decisions.values.count { it == SwipeDecision.LOCK }
 
+    // Calcul de l'état "traité" (Gardé)
     private fun isProcessedKeep(assetId: String): Boolean {
         val d = decisions[assetId]
         return d == SwipeDecision.KEEP || d == SwipeDecision.ARCHIVE || d == SwipeDecision.LOCK
@@ -102,7 +101,6 @@ data class SwipeUiState(
     // Calcul des poids (en bytes)
     val keptSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.KEEP }.sumOf { getEffectiveSize(it.id) }
     val deletedSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.DELETE }.sumOf { getEffectiveSize(it.id) }
-    val skippedSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.SKIP }.sumOf { getEffectiveSize(it.id) }
     val favoriteSize: Long get() = assets.filter { isFavorite(it.id) && isProcessedKeep(it.id) }.sumOf { getEffectiveSize(it.id) }
     val archiveSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.ARCHIVE }.sumOf { getEffectiveSize(it.id) }
     val lockedSize: Long get() = assets.filter { decisions[it.id] == SwipeDecision.LOCK }.sumOf { getEffectiveSize(it.id) }

@@ -18,12 +18,10 @@ class SessionDataStore(private val context: Context) {
         private val KEY_USER_ID = stringPreferencesKey("user_id")
         private val KEY_AUDIO_FOCUS = stringPreferencesKey("audio_focus")
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
-        private val KEY_SWIPE_INVERTED = androidx.datastore.preferences.core.booleanPreferencesKey("swipe_inverted")
         private val KEY_FULLSCREEN_ICON_POS = stringPreferencesKey("fullscreen_icon_pos")
         private val KEY_IMMICH_ICON_POS = stringPreferencesKey("immich_icon_pos")
         private val KEY_CARD_DISPLAY_ICON_POS = stringPreferencesKey("card_display_icon_pos")
         private val KEY_DEFAULT_LAYOUT_GRID = androidx.datastore.preferences.core.booleanPreferencesKey("default_layout_grid")
-        private val KEY_SKIP_LIFESPAN = androidx.datastore.preferences.core.longPreferencesKey("skip_lifespan")
         private val KEY_SHOW_FAVORITE = androidx.datastore.preferences.core.booleanPreferencesKey("show_favorite")
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
         private val KEY_INCLUDE_ARCHIVED = androidx.datastore.preferences.core.booleanPreferencesKey("include_archived")
@@ -68,12 +66,6 @@ class SessionDataStore(private val context: Context) {
         context.dataStore.edit { it[KEY_THEME_MODE] = mode }
     }
 
-    fun isSwipeInverted(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SWIPE_INVERTED] ?: false }
-    
-    suspend fun saveSwipeInverted(inverted: Boolean) {
-        context.dataStore.edit { it[KEY_SWIPE_INVERTED] = inverted }
-    }
-
     fun getFullscreenIconPosition(): Flow<String?> = context.dataStore.data.map { it[KEY_FULLSCREEN_ICON_POS] }
     
     suspend fun saveFullscreenIconPosition(pos: String) {
@@ -96,12 +88,6 @@ class SessionDataStore(private val context: Context) {
 
     suspend fun saveDefaultLayoutGrid(isGrid: Boolean) {
         context.dataStore.edit { it[KEY_DEFAULT_LAYOUT_GRID] = isGrid }
-    }
-
-    fun getSkipLifespan(): Flow<Long> = context.dataStore.data.map { it[KEY_SKIP_LIFESPAN] ?: 0L }
-
-    suspend fun saveSkipLifespan(days: Long) {
-        context.dataStore.edit { it[KEY_SKIP_LIFESPAN] = days }
     }
 
     fun isShowFavorite(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_FAVORITE] ?: true }

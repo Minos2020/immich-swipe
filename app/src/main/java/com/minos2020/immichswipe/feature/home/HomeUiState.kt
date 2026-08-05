@@ -6,6 +6,7 @@ import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.ConnectionStatus
 import com.minos2020.immichswipe.core.SortOrder
+import com.minos2020.immichswipe.data.local.entity.UserAccountEntity
 
 /**
  * Les différents onglets disponibles dans l'application.
@@ -36,7 +37,6 @@ data class HomeUiState(
     val isGridView: Boolean = false, // Toggle entre liste et grille
     val searchQuery: String = "", // Texte de recherche pour filtrer les albums
     val connectionStatus: ConnectionStatus = ConnectionStatus(),
-    val syncedSkipCount: Int = 0, // Nombre de SKIP synchronisés pour l'album virtuel
     val allAssetsCount: Int = 0, // Nombre total de médias
     val orphansCount: Int = 0, // Nombre de médias orphelins (sans album)
     val includeArchived: Boolean = false, // Inclure ou non les archives externes
@@ -45,7 +45,13 @@ data class HomeUiState(
     val virtualDescriptions: Map<String, String> = emptyMap(), // Descriptions localisées
     val showStatsPopup: Boolean = false, // Visibilité de la popup stats
     val stats: StatsUiData = StatsUiData(), // Données des stats
-    val collapsedCategories: Set<AlbumStatus> = emptySet() // Catégories réduites
+    val collapsedCategories: Set<AlbumStatus> = setOf(
+        AlbumStatus.IN_PROGRESS,
+        AlbumStatus.NOT_STARTED,
+        AlbumStatus.COMPLETED
+    ), // Catégories réduites par défaut
+    val savedAccounts: List<UserAccountEntity> = emptyList(), // Comptes enregistrés
+    val isLoggingInToAnotherAccount: Boolean = false // Si on est en train d'ajouter un compte
 ) {
     /**
      * Retourne la liste des albums filtrée par le texte de recherche.
@@ -54,18 +60,7 @@ data class HomeUiState(
         get() {
             val virtuals = mutableListOf<Album>()
             
-            // 1. SKIPs
-            if (syncedSkipCount > 0) {
-                virtuals.add(Album(
-                    id = Album.VIRTUAL_SKIPPED_ID,
-                    albumName = virtualNames[Album.VIRTUAL_SKIPPED_ID] ?: "Review Skips",
-                    description = virtualDescriptions[Album.VIRTUAL_SKIPPED_ID],
-                    assetCount = syncedSkipCount,
-                    albumThumbnailAssetId = null
-                ))
-            }
-
-            // 2. All Assets
+            // 1. All Assets
             if (allAssetsCount > 0) {
                 virtuals.add(Album(
                     id = Album.VIRTUAL_ALL_ID,
@@ -108,8 +103,7 @@ data class HomeUiState(
         get() {
             val filtered = filteredAlbums
             return filtered.groupBy { album ->
-                if (album.id == Album.VIRTUAL_SKIPPED_ID || 
-                    album.id == Album.VIRTUAL_ALL_ID || 
+                if (album.id == Album.VIRTUAL_ALL_ID || 
                     album.id == Album.VIRTUAL_ORPHANS_ID) {
                     return@groupBy AlbumStatus.VIRTUAL
                 }
@@ -133,13 +127,12 @@ data class StatsUiData(
     val totalKept: Int = 0,
     val totalArchived: Int = 0,
     val totalLocked: Int = 0,
-    val totalSkipped: Int = 0,
     val totalAlbums: Int = 0,
     val completedAlbums: Int = 0,
     val weeklyDeleted: Int = 0,
     val weeklyBytesSaved: Long = 0
 ) {
-    val totalSwiped: Int get() = totalDeleted + totalKept + totalArchived + totalLocked + totalSkipped
+    val totalSwiped: Int get() = totalDeleted + totalKept + totalArchived + totalLocked
     
     val distribution: Map<String, Float> get() {
         val total = totalSwiped.toFloat()
@@ -148,8 +141,7 @@ data class StatsUiData(
             "KEEP" to totalKept / total,
             "DELETE" to totalDeleted / total,
             "ARCHIVE" to totalArchived / total,
-            "LOCK" to totalLocked / total,
-            "SKIP" to totalSkipped / total
+            "LOCK" to totalLocked / total
         )
     }
 }

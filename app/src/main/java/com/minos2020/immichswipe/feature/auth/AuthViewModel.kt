@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.SessionConfig
 import com.minos2020.immichswipe.core.SessionManager
+import com.minos2020.immichswipe.data.repository.AccountRepository
 import com.minos2020.immichswipe.data.repository.AuthRepository
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,8 @@ import kotlinx.coroutines.launch
  */
 class AuthViewModel(
     private val sessionRepository: SessionRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val accountRepository: AccountRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -82,7 +84,8 @@ class AuthViewModel(
                 val config = SessionConfig(baseUrl = baseUrl, apiKey = apiKey, userId = user.id)
                 SessionManager.initialize(config)
 
-                // 3. On sauvegarde la session
+                // 3. On sauvegarde le compte dans la base locale et la session active
+                accountRepository.saveAccount(baseUrl, apiKey, user)
                 sessionRepository.saveSession(baseUrl = baseUrl, token = apiKey, userId = user.id)
 
                 _uiState.value = _uiState.value.copy(isLoading = false, success = true)

@@ -29,7 +29,7 @@ interface SwipeDecisionDao {
     @Query("""
         SELECT sd.* FROM swipe_decisions sd
         JOIN album_assets aa ON sd.assetId = aa.assetId
-        WHERE aa.albumId = :albumId AND sd.userId = :userId
+        WHERE aa.albumId = :albumId AND sd.userId = :userId AND aa.userId = :userId
     """)
     fun getDecisionsForAlbum(albumId: String, userId: String): Flow<List<SwipeDecisionEntity>>
 
@@ -66,29 +66,8 @@ interface SwipeDecisionDao {
     /**
      * Marque des décisions comme synchronisées pour un utilisateur.
      */
-    @Query("UPDATE swipe_decisions SET isSynced = 1, wasSyncedSkip = (CASE WHEN decision = 'SKIP' THEN 1 ELSE 0 END) WHERE assetId IN (:assetIds) AND userId = :userId")
+    @Query("UPDATE swipe_decisions SET isSynced = 1 WHERE assetId IN (:assetIds) AND userId = :userId")
     suspend fun markAsSynced(assetIds: List<String>, userId: String)
-
-    /**
-     * Supprime les décisions 'SKIP' NON SYNCHRONISÉES plus vieilles qu'un certain timestamp pour tous les utilisateurs.
-     * (Ou on pourrait filtrer par utilisateur, mais le nettoyage global est souvent plus simple).
-     */
-    @Query("DELETE FROM swipe_decisions WHERE decision = 'SKIP' AND isSynced = 0 AND createdAt < :threshold")
-    suspend fun deleteExpiredSkips(threshold: Long)
-
-    /**
-     * Récupère toutes les décisions 'SKIP' déjà synchronisées pour un utilisateur.
-     * Inclut aussi les assets qui étaient SKIP et qui sont en cours de retraitement (wasSyncedSkip = 1).
-     * Trié par date de création pour maintenir l'ordre chronologique.
-     */
-    @Query("SELECT * FROM swipe_decisions WHERE (wasSyncedSkip = 1 OR (decision = 'SKIP' AND isSynced = 1)) AND userId = :userId ORDER BY createdAt DESC")
-    fun getSyncedSkipDecisions(userId: String): Flow<List<SwipeDecisionEntity>>
-
-    /**
-     * Compte le nombre de décisions 'SKIP' synchronisées pour un utilisateur.
-     */
-    @Query("SELECT COUNT(*) FROM swipe_decisions WHERE (wasSyncedSkip = 1 OR (decision = 'SKIP' AND isSynced = 1)) AND userId = :userId")
-    fun getSyncedSkipCount(userId: String): Flow<Int>
 
     /**
      * Migre les données d'une version précédente (sans userId) vers l'utilisateur actuel.
@@ -127,9 +106,9 @@ interface SwipeDecisionDao {
     @Query("""
         SELECT aa.albumId, 
                COUNT(DISTINCT sd.assetId) as totalCount, 
-               SUM(CASE WHEN sd.isSynced = 0 AND (sd.wasSyncedSkip = 0 OR aa.albumId = 'virtual_skipped_synced') THEN 1 ELSE 0 END) as unsyncedCount
+               SUM(CASE WHEN sd.isSynced = 0 THEN 1 ELSE 0 END) as unsyncedCount
         FROM album_assets aa
-        JOIN swipe_decisions sd ON aa.assetId = sd.assetId
+        JOIN swipe_decisions sd ON aa.assetId = sd.assetId AND aa.userId = sd.userId
         WHERE sd.userId = :userId
         GROUP BY aa.albumId
     """)

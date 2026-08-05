@@ -36,13 +36,11 @@
     <string name="home_album_completed">Completed</string>
     <string name="home_unsynced_changes">Contains %1$d unsynced changes</string>
     <string name="home_sorted_count">%1$d / %2$d sorted</string>
-    <string name="home_skip_count">%1$d photos</string>
     <string name="home_select_album">Select an album to start!</string>
     <string name="home_session_title">Sorting session: %1$s</string>
     <string name="home_photos_to_discover">%1$d photos to discover</string>
     <string name="home_new_badge">NEW</string>
     <string name="home_unsynced_badge">NOT SYNCED</string>
-    <string name="home_virtual_skipped_synced_desc">Collection of all assets previously skipped and synced</string>
     <string name="home_virtual_all_assets_desc">Collection of all assets in your library (depending on your access rights)</string>
     <string name="home_virtual_orphans">Orphans</string>
     <string name="home_virtual_orphans_desc">Collection of assets that are not in any album</string>
@@ -52,6 +50,9 @@
     <string name="profile_connected_label">Connected to Immich server</string>
     <string name="profile_logout_button">Logout</string>
     <string name="profile_source_code">Source code</string>
+    <string name="profile_saved_accounts">Saved accounts</string>
+    <string name="profile_add_account">Add another account</string>
+    <string name="profile_add_account_title">Add account</string>
     <string name="diag_online">Server online</string>
     <string name="diag_issues">Issues detected</string>
     <string name="diag_offline">Server unreachable</string>
@@ -88,16 +89,8 @@
     <string name="settings_sort_desc">Choose the order in which media is presented</string>
     <string name="settings_sort_newest">Newest first</string>
     <string name="settings_sort_oldest">Oldest first</string>
-    <string name="settings_sort_shuffled">Random (Shuffle)</string>
-    <string name="settings_skip_lifespan_label">SKIP lifespan</string>
-    <string name="settings_skip_lifespan_desc">After this delay, \'skipped\' photos become \'unsorted\' again and reappear in albums for re-evaluation. You can always review them via the SKIPs collection.</string>
-    <string name="settings_skip_never">SKIP never return</string>
-    <string name="settings_skip_hint">More precision for short durations</string>
-    <string name="settings_skip_warning_title">Modify SKIP duration</string>
-    <string name="settings_skip_warning_msg">By changing this duration, some photos you previously \'skipped\' might immediately reappear in your sorting queue if they exceed the new limit.</string>
+    <string name="settings_sort_shuffled">Shuffle</string>
     <string name="settings_section_interaction">Interaction</string>
-    <string name="settings_swipe_invert_label">Invert swipe direction</string>
-    <string name="settings_swipe_invert_desc">Left to keep, right to delete</string>
     <string name="settings_fullscreen_pos_label">Fullscreen button position</string>
     <string name="settings_immich_pos_label">Open in Immich button position</string>
     <string name="settings_video_behavior_label">Video behavior</string>
@@ -121,7 +114,6 @@
     <string name="swipe_keep_upper">KEEP</string>
     <string name="swipe_delete">Delete</string>
     <string name="swipe_delete_upper">DELETE</string>
-    <string name="swipe_skip">Skip</string>
     <string name="swipe_remaining">Remaining</string>
     <string name="swipe_favorite">Favorites</string>
     <string name="swipe_archive">Archive</string>
@@ -163,7 +155,6 @@
     <string name="common_retry">Retry</string>
     <string name="common_close">Close</string>
     <string name="common_loading">Loading…</string>
-    <string name="home_virtual_skipped_synced">SKIPs</string>
 
     <!-- Statistics -->
     <string name="stats_popup_title">Usage Statistics</string>

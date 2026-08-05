@@ -11,7 +11,7 @@ import androidx.room.Entity
  * @property assetId L'identifiant unique de la photo/vidéo sur le serveur Immich.
  * @property albumId L'identifiant de l'album où l'action a été initialement faite (informatif).
  * @property userId L'identifiant de l'utilisateur.
- * @property decision La décision prise : "KEEP", "DELETE", "SKIP", "ARCHIVE", "LOCK".
+ * @property decision La décision prise : "KEEP", "DELETE", "ARCHIVE", "LOCK".
  * @property createdAt Le moment où la décision a été prise.
  * @property isSynced Indique si cette décision a été synchronisée avec le serveur Immich.
  * @property wasSyncedSkip Indique si l'asset était un 'SKIP' déjà synchronisé avant le swipe actuel.

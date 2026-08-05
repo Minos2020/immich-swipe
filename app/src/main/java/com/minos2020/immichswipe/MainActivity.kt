@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.minos2020.immichswipe.core.AppTheme
@@ -28,6 +29,7 @@ import com.minos2020.immichswipe.data.repository.AuthRepository
 import com.minos2020.immichswipe.data.repository.AlbumRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
+import com.minos2020.immichswipe.data.repository.AccountRepository
 import com.minos2020.immichswipe.data.local.AppDatabase
 import com.minos2020.immichswipe.feature.auth.AuthScreen
 import com.minos2020.immichswipe.feature.auth.AuthViewModelFactory
@@ -52,9 +54,10 @@ class MainActivity : ComponentActivity() {
         val sessionRepository = SessionRepository(applicationContext)
         val authRepository = AuthRepository()
         
-        // Initialisation de la base de données Room et du Repository
+        // Initialisation de la base de données Room et des Repositories
         val database = AppDatabase.getDatabase(applicationContext)
         val swipeDecisionRepository = SwipeDecisionRepository(database.swipeDecisionDao())
+        val accountRepository = AccountRepository(database.userAccountDao())
 
         setContent {
             val appViewModel: AppViewModel = viewModel(
@@ -90,37 +93,41 @@ class MainActivity : ComponentActivity() {
                             }
 
                             targetState.isLoggedIn -> {
+                                val activeUserId = targetState.activeUserId
                                 val api = SessionManager.api
                                 val baseUrl = SessionManager.getBaseUrl()
                                 val apiKey = SessionManager.getApiKey()
                                 
-                                if (api != null && baseUrl != null && apiKey != null) {
-                                    // On utilise l'URL + Clé API comme clé de mémorisation pour forcer
-                                    // le rafraîchissement si l'utilisateur change (même serveur, autre clé).
-                                    val sessionKey = "$baseUrl-$apiKey"
+                                if (api != null && baseUrl != null && apiKey != null && activeUserId != null) {
+                                    // On utilise l'ID utilisateur + URL + Clé API comme clé pour forcer
+                                    // le rafraîchissement total si la session change.
+                                    val sessionKey = "$activeUserId-$baseUrl-$apiKey"
                                     
-                                    val albumRepository = remember(sessionKey) { AlbumRepository(api) }
-                                    val assetRepository = remember(sessionKey) { 
-                                        AssetRepository(
-                                            api, 
-                                            database.swipeDecisionDao(),
-                                            database.albumAssetDao()
-                                        ) 
-                                    }
+                                    key(sessionKey) {
+                                        val albumRepository = remember(sessionKey) { AlbumRepository(api) }
+                                        val assetRepository = remember(sessionKey) { 
+                                            AssetRepository(
+                                                api, 
+                                                database.albumAssetDao()
+                                            ) 
+                                        }
 
-                                    HomeScreen(
-                                        viewModel = viewModel(
-                                            key = sessionKey,
-                                            factory = HomeViewModelFactory(
-                                                sessionRepository, 
-                                                albumRepository, 
-                                                swipeDecisionRepository,
-                                                assetRepository
-                                            )
-                                        ),
-                                        assetRepository = assetRepository,
-                                        swipeDecisionRepository = swipeDecisionRepository
-                                    )
+                                        HomeScreen(
+                                            viewModel = viewModel(
+                                                key = sessionKey,
+                                                factory = HomeViewModelFactory(
+                                                    sessionRepository, 
+                                                    albumRepository, 
+                                                    swipeDecisionRepository,
+                                                    assetRepository,
+                                                    accountRepository
+                                                )
+                                            ),
+                                            assetRepository = assetRepository,
+                                            swipeDecisionRepository = swipeDecisionRepository,
+                                            sessionKey = sessionKey
+                                        )
+                                    }
                                 } else {
                                     // Sécurité : si l'API n'est plus là mais qu'on est noté connecté,
                                     // on affiche un chargement le temps que l'état se synchronise.
@@ -131,7 +138,7 @@ class MainActivity : ComponentActivity() {
                             else -> {
                                 AuthScreen(
                                     viewModel = viewModel(
-                                        factory = AuthViewModelFactory(sessionRepository, authRepository)
+                                        factory = AuthViewModelFactory(sessionRepository, authRepository, accountRepository)
                                     )
                                 )
                             }
