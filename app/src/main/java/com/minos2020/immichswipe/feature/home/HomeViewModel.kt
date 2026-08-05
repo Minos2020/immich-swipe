@@ -292,13 +292,22 @@ class HomeViewModel(
 
     fun logout() = viewModelScope.launch {
         val currentUserId = _uiState.value.user?.id
-        _uiState.update { it.copy(currentTab = HomeTab.HOME) }
+        _uiState.update { it.copy(currentTab = HomeTab.HOME, showProfilePopup = false) }
         
         // Supprime le compte de la base locale
         currentUserId?.let { accountRepository.deleteAccount(it) }
         
         // Déconnexion de la session active
         sessionRepository.clearSession()
+    }
+
+    fun removeAccount(userId: String) = viewModelScope.launch {
+        val currentUserId = _uiState.value.user?.id
+        if (userId == currentUserId) {
+            logout()
+        } else {
+            accountRepository.deleteAccount(userId)
+        }
     }
 
     fun switchAccount(userId: String) = viewModelScope.launch {

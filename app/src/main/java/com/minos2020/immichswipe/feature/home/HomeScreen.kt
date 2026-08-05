@@ -380,6 +380,7 @@ fun HomeScreen(
                 viewModel.toggleProfilePopup(false)
             },
             onSwitchAccount = { viewModel.switchAccount(it) },
+            onRemoveAccount = { viewModel.removeAccount(it) },
             onAddAccount = { viewModel.startAddAccount() },
             onLogout = { viewModel.logout() }
         )
@@ -659,6 +660,7 @@ fun ProfilePopup(
     onClose: () -> Unit,
     onSettingsClick: () -> Unit,
     onSwitchAccount: (String) -> Unit,
+    onRemoveAccount: (String) -> Unit,
     onAddAccount: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -851,7 +853,20 @@ fun ProfilePopup(
                                     Text(
                                         text = account.userEmail,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.outline
+                                        color = MaterialTheme.colorScheme.outline,
+                                        maxLines = 1
+                                    )
+                                }
+                                
+                                IconButton(
+                                    onClick = { onRemoveAccount(account.userId) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteOutline,
+                                        contentDescription = "Remove",
+                                        tint = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                             }

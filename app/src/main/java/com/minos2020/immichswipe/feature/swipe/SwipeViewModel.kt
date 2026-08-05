@@ -45,6 +45,7 @@ class SwipeViewModel(
         observeCardDisplayButtonPosition()
         observeButtonVisibility()
         observeAutoNextOnFav()
+        observeSortOrder()
     }
 
     private fun observePlaybackBehavior() {
@@ -91,6 +92,20 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.autoNextOnFav.collect { autoNext ->
                 _uiState.update { it.copy(autoNextOnFav = autoNext) }
+            }
+        }
+    }
+
+    private fun observeSortOrder() {
+        viewModelScope.launch {
+            sessionRepository.sortOrder.collect { order ->
+                val previousOrder = _uiState.value.sortOrder
+                _uiState.update { it.copy(sortOrder = order) }
+                
+                // Si l'ordre a réellement changé, on recharge tout
+                if (previousOrder != order) {
+                    loadAssetsAndDecisions()
+                }
             }
         }
     }
