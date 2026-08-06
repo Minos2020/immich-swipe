@@ -188,6 +188,14 @@ class HomeViewModel(
                 val orphansCount = assetRepository.getOrphansCount(_uiState.value.includeArchived)
 
                 AppLogger.i("Home", "Utilisateur chargé: ${user.name}, ${albums.size} albums trouvés")
+                
+                // Nettoyage des SKIP expirés dès le démarrage
+                val lifespan = sessionRepository.skipLifespanDays.first()
+                val removedSkips = swipeDecisionRepository.cleanExpiredSkips(lifespan)
+                if (removedSkips > 0) {
+                    AppLogger.i("Home", "Nettoyage : $removedSkips SKIP expirés supprimés")
+                }
+
                 _uiState.update { 
                     it.copy(
                         user = user, 
@@ -226,6 +234,13 @@ class HomeViewModel(
 
                 // On récupère le nombre d'orphelins directement via l'API
                 val orphansCount = assetRepository.getOrphansCount(_uiState.value.includeArchived)
+
+                // Nettoyage des SKIP expirés au rafraîchissement manuel
+                val lifespan = sessionRepository.skipLifespanDays.first()
+                val removedSkips = swipeDecisionRepository.cleanExpiredSkips(lifespan)
+                if (removedSkips > 0) {
+                    AppLogger.i("Home", "Nettoyage : $removedSkips SKIP expirés supprimés")
+                }
 
                 // En cas de refresh manuel, on force le redémarrage de la tâche de découverte
                 // pour s'assurer que les compteurs d'albums sont à jour (indexation)

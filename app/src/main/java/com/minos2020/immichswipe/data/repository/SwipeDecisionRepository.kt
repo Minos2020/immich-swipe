@@ -134,10 +134,10 @@ class SwipeDecisionRepository(
     /**
      * Supprime les SKIP expirés de la base de données.
      */
-    suspend fun cleanExpiredSkips(lifespanDays: Long) {
-        if (lifespanDays <= 0) return
+    suspend fun cleanExpiredSkips(lifespanDays: Long): Int {
+        if (lifespanDays <= 0) return 0
         val threshold = System.currentTimeMillis() - (lifespanDays * 24 * 60 * 60 * 1000L)
-        swipeDecisionDao.deleteExpiredSkips(threshold)
+        return swipeDecisionDao.deleteExpiredSkips(threshold)
     }
 
     /**

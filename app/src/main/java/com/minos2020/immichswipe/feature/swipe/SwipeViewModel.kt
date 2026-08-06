@@ -173,30 +173,10 @@ class SwipeViewModel(
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 val includeArchived = sessionRepository.includeArchived.first()
 
-                // 1. On charge d'abord TOUTES les décisions locales de l'utilisateur
-                val allDecisionsFromDb = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
+                // On charge les décisions une seule fois au début pour le filtrage
+                val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
                 
-                // Durée d'expiration des SKIP
-                val lifespanDays = sessionRepository.skipLifespanDays.first()
-                val lifespanMs = lifespanDays * 24 * 60 * 60 * 1000L
-                val currentTime = System.currentTimeMillis()
-
-                // Filtrage des SKIP expirés pour qu'ils retournent dans la pile de tri
-                val localDecisions = allDecisionsFromDb.filter { entity ->
-                    if (lifespanDays > 0 && entity.decision == SwipeDecision.SKIP.name) {
-                        val isExpired = (currentTime - entity.createdAt) > lifespanMs
-                        !isExpired
-                    } else {
-                        true
-                    }
-                }
-                
-                // Nettoyage de la base de données pour les SKIP expirés
-                if (lifespanDays > 0) {
-                    swipeDecisionRepository.cleanExpiredSkips(lifespanDays)
-                }
-
-                // 2. On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation.
+                // On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation.
                 initialSyncedDecisions = localDecisions
                     .filter { it.isSynced || it.wasSyncedSkip }
                     .associate { entity ->

@@ -70,11 +70,11 @@ interface SwipeDecisionDao {
     suspend fun markAsSynced(assetIds: List<String>, userId: String)
 
     /**
-     * Supprime les décisions 'SKIP' NON SYNCHRONISÉES plus vieilles qu'un certain timestamp pour tous les utilisateurs.
-     * (Ou on pourrait filtrer par utilisateur, mais le nettoyage global est souvent plus simple).
+     * Supprime les décisions 'SKIP' plus vieilles qu'un certain timestamp.
+     * On supprime TOUS les skips (synced ou non) pour qu'ils réapparaissent dans le flux de tri.
      */
-    @Query("DELETE FROM swipe_decisions WHERE decision = 'SKIP' AND isSynced = 0 AND createdAt < :threshold")
-    suspend fun deleteExpiredSkips(threshold: Long)
+    @Query("DELETE FROM swipe_decisions WHERE decision = 'SKIP' AND createdAt < :threshold")
+    suspend fun deleteExpiredSkips(threshold: Long): Int
 
     /**
      * Récupère toutes les décisions 'SKIP' déjà synchronisées pour un utilisateur.
