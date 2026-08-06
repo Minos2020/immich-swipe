@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.minos2020.immichswipe.core.AppTheme
+import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.SessionManager
@@ -266,14 +267,20 @@ class SettingsViewModel(
 
     fun executeDelete(scope: DatabaseScope) {
         viewModelScope.launch {
-            val userId = SessionManager.getUserId()
-            if (scope == DatabaseScope.ALL) {
-                swipeDecisionRepository.clearAllData()
-            } else {
-                userId?.let { swipeDecisionRepository.clearUserData(it) }
+            try {
+                val userId = SessionManager.getUserId()
+                if (scope == DatabaseScope.ALL) {
+                    swipeDecisionRepository.clearAllData()
+                } else {
+                    userId?.let { swipeDecisionRepository.clearUserData(it) }
+                }
+                dismissDatabaseConfirmation()
+                _uiState.update { it.copy(databaseActionStatus = "Données supprimées avec succès") }
+                AppLogger.i("Database", "Suppression des données locales (scope:${scope.name})")
+            } catch (e: Exception) {
+                _uiState.update { it.copy(databaseActionStatus = "Erreur lors de la suppression: ${e.message}") }
+                AppLogger.e("Database", "Échec de la suppression des données", e)
             }
-            dismissDatabaseConfirmation()
-            _uiState.update { it.copy(databaseActionStatus = "Données supprimées avec succès") }
         }
     }
 
@@ -303,8 +310,10 @@ class SettingsViewModel(
                 outputStream.use { it.write(json.toByteArray()) }
 
                 _uiState.update { it.copy(databaseActionStatus = "Export terminé (${decisions.size} décisions)") }
+                AppLogger.i("Database", "Export réussi : ${decisions.size} décisions enregistrées (scope:${scope.name})")
             } catch (e: Exception) {
                 _uiState.update { it.copy(databaseActionStatus = "Erreur export: ${e.message}") }
+                AppLogger.e("Database", "Échec de l'export", e)
             } finally {
                 dismissDatabaseConfirmation()
             }
@@ -320,8 +329,10 @@ class SettingsViewModel(
                 swipeDecisionRepository.importData(export.swipeDecisions, export.syncHistory)
 
                 _uiState.update { it.copy(databaseActionStatus = "Import réussi (${export.swipeDecisions.size} décisions)") }
+                AppLogger.i("Database", "Import réussi : ${export.swipeDecisions.size} décisions importées")
             } catch (e: Exception) {
                 _uiState.update { it.copy(databaseActionStatus = "Erreur import: ${e.message}") }
+                AppLogger.e("Database", "Échec de l'import", e)
             } finally {
                 dismissDatabaseConfirmation()
             }
@@ -341,7 +352,7 @@ class SettingsViewModel(
     }
 
     fun clearLogs() {
-        com.minos2020.immichswipe.core.AppLogger.clearLogs()
+        AppLogger.clearLogs()
         _uiState.update { it.copy(
             showClearLogsConfirmation = false,
             showLogsDialog = false
@@ -349,7 +360,7 @@ class SettingsViewModel(
     }
 
     fun getLogs(): String {
-        return com.minos2020.immichswipe.core.AppLogger.getLogs()
+        return AppLogger.getLogs()
     }
 }
 
