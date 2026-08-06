@@ -43,8 +43,6 @@ class AssetRepository(
             val assetIds = skippedDecisions.map { it.assetId }
             
             if (assetIds.isNotEmpty()) {
-                albumAssetDao?.insertAlbumAssets(assetIds.map { AlbumAssetEntity(albumId, it, userId) })
-                
                 // On charge par paquets de 50 pour simuler un chargement progressif
                 assetIds.chunked(50).forEach { batch ->
                     val detailedBatch = coroutineScope {
@@ -55,6 +53,14 @@ class AssetRepository(
                         }.awaitAll().filterNotNull()
                             .filter { !it.isTrashed }
                     }
+
+                    // Mise à jour du cache avec les statuts d'archivage réels
+                    if (albumAssetDao != null) {
+                        albumAssetDao.insertAlbumAssets(detailedBatch.map { 
+                            AlbumAssetEntity(albumId, it.id, userId, it.isArchived) 
+                        })
+                    }
+
                     allAssets.addAll(detailedBatch)
                     emit(allAssets.sortedByDescending { it.fileCreatedAt })
                 }
@@ -74,6 +80,7 @@ class AssetRepository(
         if (includeArchived) visibilities.add("archive")
 
         for (visibility in visibilities) {
+            val isCurrentBatchArchived = (visibility == "archive")
             var nextToFetch: String? = "1"
             while (nextToFetch != null) {
                 val response = api.searchAssets(
@@ -88,7 +95,11 @@ class AssetRepository(
                     allAssets.addAll(newItems)
                     // Mise à jour de l'indexation locale pour les compteurs du Home
                     if (albumAssetDao != null && userId != null) {
-                        albumAssetDao.insertAlbumAssets(newItems.map { AlbumAssetEntity(albumId, it.id, userId) })
+                        // On définit explicitement isArchived en fonction de la visibilité demandée
+                        // car le champ it.isArchived d'Immich peut être trompeur dans les résultats de recherche
+                        albumAssetDao.insertAlbumAssets(newItems.map { 
+                            AlbumAssetEntity(albumId, it.id, userId, isCurrentBatchArchived) 
+                        })
                     }
                     // On émet la liste triée chronologiquement au fur et à mesure
                     emit(allAssets.sortedByDescending { it.fileCreatedAt })
@@ -154,19 +165,19 @@ class AssetRepository(
      */
     suspend fun getAssetDetail(assetId: String, userId: String? = null): Asset {
         val detail = api.getAssetDetail(assetId)
-        
+
         // Auto-indexation : On récupère les albums de l'asset pour mettre à jour les liens
         if (albumAssetDao != null && userId != null) {
             try {
                 val albums = api.getAlbumsForAsset(assetId)
                 if (albums.isNotEmpty()) {
-                    albumAssetDao.insertAlbumAssets(albums.map { AlbumAssetEntity(it.id, assetId, userId) })
+                    albumAssetDao.insertAlbumAssets(albums.map { AlbumAssetEntity(it.id, assetId, userId, detail.isArchived) })
                 }
             } catch (_: Exception) {
                 // Échec silencieux de l'indexation
             }
         }
-        
+
         return detail
     }
 
@@ -176,10 +187,10 @@ class AssetRepository(
      */
     suspend fun updateAllAssetsMapping(userId: String) {
         if (albumAssetDao == null) return
-        val allIds = albumAssetDao.getAllDistinctAssetIdsForUser(userId)
+        val assets = albumAssetDao.getAllDistinctAssetsForUser(userId)
         albumAssetDao.clearAlbumRelations(Album.VIRTUAL_ALL_ID, userId)
-        if (allIds.isNotEmpty()) {
-            albumAssetDao.insertAlbumAssets(allIds.map { AlbumAssetEntity(Album.VIRTUAL_ALL_ID, it, userId) })
+        if (assets.isNotEmpty()) {
+            albumAssetDao.insertAlbumAssets(assets.map { AlbumAssetEntity(Album.VIRTUAL_ALL_ID, it.assetId, userId, it.isArchived) })
         }
     }
 

@@ -18,8 +18,8 @@ class SwipeDecisionRepository(
     /**
      * Observe le compte des décisions pour tous les albums d'un utilisateur.
      */
-    fun getAllAlbumDecisionCounts(userId: String): Flow<List<AlbumDecisionCount>> {
-        return swipeDecisionDao.getAllAlbumDecisionCounts(userId)
+    fun getAllAlbumDecisionCounts(userId: String, includeArchived: Boolean): Flow<List<AlbumDecisionCount>> {
+        return swipeDecisionDao.getAllAlbumDecisionCounts(userId, includeArchived)
     }
 
     fun getGlobalUniqueTreatedCount(userId: String): Flow<Int> {

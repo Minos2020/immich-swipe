@@ -8,7 +8,7 @@ import com.minos2020.immichswipe.data.local.entity.AlbumAssetEntity
 
 @Dao
 interface AlbumAssetDao {
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAlbumAssets(relations: List<AlbumAssetEntity>)
 
     @Query("DELETE FROM album_assets WHERE albumId = :albumId AND userId = :userId")
@@ -23,6 +23,11 @@ interface AlbumAssetDao {
     @Query("SELECT COUNT(*) FROM album_assets WHERE albumId = :albumId AND userId = :userId")
     suspend fun getMappingCountForAlbum(albumId: String, userId: String): Int
 
-    @Query("SELECT DISTINCT assetId FROM album_assets WHERE userId = :userId AND albumId NOT IN ('virtual_all_assets', 'virtual_skipped_synced')")
-    suspend fun getAllDistinctAssetIdsForUser(userId: String): List<String>
+    @Query("SELECT DISTINCT assetId, isArchived FROM album_assets WHERE userId = :userId AND albumId NOT IN ('virtual_all_assets', 'virtual_skipped_synced')")
+    suspend fun getAllDistinctAssetsForUser(userId: String): List<AssetIdWithArchiveStatus>
 }
+
+data class AssetIdWithArchiveStatus(
+    val assetId: String,
+    val isArchived: Boolean
+)

@@ -16,5 +16,6 @@ import androidx.room.Index
 data class AlbumAssetEntity(
     val albumId: String,
     val assetId: String,
-    val userId: String
+    val userId: String,
+    val isArchived: Boolean = false
 )

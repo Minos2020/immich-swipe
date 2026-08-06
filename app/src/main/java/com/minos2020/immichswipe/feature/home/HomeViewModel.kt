@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
@@ -82,23 +84,20 @@ class HomeViewModel(
         viewModelScope.launch {
             sessionRepository.sessionConfig.collect { config ->
                 if (config != null) {
-                    combine(
-                        swipeDecisionRepository.getAllDecisionsForUser(config.userId),
-                        swipeDecisionRepository.getAllAlbumDecisionCounts(config.userId)
-                    ) { _, albumStats ->
-                        val treatedMap = albumStats.associate { it.albumId to it.totalCount }.toMutableMap()
-                        val unsyncedMap = albumStats.associate { it.albumId to it.unsyncedCount }.toMutableMap()
-                        
-                        // Note: Les collections All Assets et Orphans sont maintenant incluses 
-                        // dans albumStats grâce à la tâche de découverte qui maintient album_assets.
+                    // On observe includeArchived pour relancer le flux de statistiques SQL
+                    _uiState.map { it.includeArchived }.distinctUntilChanged().collectLatest { includeArchived ->
+                        swipeDecisionRepository.getAllAlbumDecisionCounts(config.userId, includeArchived).collect { albumStats ->
+                            val treatedMap = albumStats.associate { it.albumId to it.totalCount }.toMutableMap()
+                            val unsyncedMap = albumStats.associate { it.albumId to it.unsyncedCount }.toMutableMap()
 
-                        _uiState.update { 
-                            it.copy(
-                                albumTreatedCounts = treatedMap,
-                                albumUnsyncedChanges = unsyncedMap
-                            )
+                            _uiState.update { 
+                                it.copy(
+                                    albumTreatedCounts = treatedMap,
+                                    albumUnsyncedChanges = unsyncedMap
+                                )
+                            }
                         }
-                    }.collect {}
+                    }
                 }
             }
         }
@@ -398,16 +397,23 @@ class HomeViewModel(
                 AppLogger.i("Home", "Démarrage de la découverte des albums (${albumsToScan.size-1} à scanner)" +
                         " [Archives: $includeArchived]")
 
+                // On récupère la vérité absolue du serveur (totaux réels incluant archives) 
+                // pour savoir si on doit lancer un scan de mise à jour du cache.
+                val exhaustiveAlbums = albumRepository.refreshAlbums(includeArchived = true)
+                val serverTotals = exhaustiveAlbums.associate { it.id to it.assetCount }
+
                 var hasChanges = false
                 for (album in albumsToScan) {
-                    // Si le nombre de mappings locaux est différent du nombre serveur, on rescanne
-                    val count = albumRepository.getMappingCount(album.id, userId)
-                    if (count == album.assetCount) continue
+                    val localCount = albumRepository.getMappingCount(album.id, userId)
+                    val serverTotal = serverTotals[album.id] ?: album.assetCount
+
+                    // Si notre cache local est déjà complet par rapport au serveur, on passe.
+                    if (localCount == serverTotal) continue
 
                     hasChanges = true
-                    AppLogger.d("Home", "Scan de l'album : ${album.albumName} ($count -> ${album.assetCount})")
-                    // On consomme le flow jusqu'à la fin pour garantir l'indexation complète
-                    assetRepository.getAssetsByAlbum(album.id, includeArchived = includeArchived, userId = userId).collect {}
+                    AppLogger.d("Home", "Scan de l'album : ${album.albumName} ($localCount -> $serverTotal)")
+                    // On force includeArchived = true pour avoir un cache exhaustif (Solution A)
+                    assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = userId).collect {}
                     
                     // Petite pause pour ne pas saturer le serveur
                     delay(500)

@@ -130,10 +130,10 @@ interface SwipeDecisionDao {
                SUM(CASE WHEN sd.isSynced = 0 AND (sd.wasSyncedSkip = 0 OR aa.albumId = 'virtual_skipped_synced') THEN 1 ELSE 0 END) as unsyncedCount
         FROM album_assets aa
         JOIN swipe_decisions sd ON aa.assetId = sd.assetId AND aa.userId = sd.userId
-        WHERE sd.userId = :userId
+        WHERE sd.userId = :userId AND (:includeArchived = 1 OR aa.isArchived = 0)
         GROUP BY aa.albumId
     """)
-    fun getAllAlbumDecisionCounts(userId: String): Flow<List<AlbumDecisionCount>>
+    fun getAllAlbumDecisionCounts(userId: String, includeArchived: Boolean): Flow<List<AlbumDecisionCount>>
 
     // --- Opérations d'administration de la base de données ---
 
