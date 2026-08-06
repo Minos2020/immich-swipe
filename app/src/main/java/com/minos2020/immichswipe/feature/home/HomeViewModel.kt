@@ -190,7 +190,7 @@ class HomeViewModel(
                 
                 // Nettoyage des SKIP expirés dès le démarrage
                 val lifespan = sessionRepository.skipLifespanDays.first()
-                val removedSkips = swipeDecisionRepository.cleanExpiredSkips(lifespan)
+                val removedSkips = swipeDecisionRepository.cleanExpiredSkips(user.id, lifespan)
                 if (removedSkips > 0) {
                     AppLogger.i("Home", "Nettoyage : $removedSkips SKIP expirés supprimés")
                 }
@@ -236,7 +236,7 @@ class HomeViewModel(
 
                 // Nettoyage des SKIP expirés au rafraîchissement manuel
                 val lifespan = sessionRepository.skipLifespanDays.first()
-                val removedSkips = swipeDecisionRepository.cleanExpiredSkips(lifespan)
+                val removedSkips = swipeDecisionRepository.cleanExpiredSkips(config!!.userId, lifespan)
                 if (removedSkips > 0) {
                     AppLogger.i("Home", "Nettoyage : $removedSkips SKIP expirés supprimés")
                 }

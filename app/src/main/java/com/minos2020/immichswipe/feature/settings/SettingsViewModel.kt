@@ -221,8 +221,9 @@ class SettingsViewModel(
             // Sinon, on applique directement
             viewModelScope.launch {
                 sessionRepository.saveSkipLifespan(days)
+                val userId = SessionManager.getUserId()
                 // Nettoyage au cas où (même si peu probable que ça supprime en augmentant)
-                if (days > 0) swipeDecisionRepository.cleanExpiredSkips(days)
+                if (days > 0 && userId != null) swipeDecisionRepository.cleanExpiredSkips(userId, days)
             }
         }
     }
@@ -231,9 +232,10 @@ class SettingsViewModel(
         val targetDays = _uiState.value.showSkipLifespanWarning ?: return
         viewModelScope.launch {
             sessionRepository.saveSkipLifespan(targetDays)
+            val userId = SessionManager.getUserId()
             // On lance un nettoyage immédiat si une durée a été définie
-            if (targetDays > 0) {
-                swipeDecisionRepository.cleanExpiredSkips(targetDays)
+            if (targetDays > 0 && userId != null) {
+                swipeDecisionRepository.cleanExpiredSkips(userId, targetDays)
             }
             _uiState.update { it.copy(showSkipLifespanWarning = null) }
         }

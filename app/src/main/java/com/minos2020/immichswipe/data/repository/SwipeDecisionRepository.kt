@@ -133,11 +133,33 @@ class SwipeDecisionRepository(
 
     /**
      * Supprime les SKIP expirés de la base de données.
+     * Pour les SKIP déjà synchronisés, on ajoute une entrée corrective dans l'historique
+     * pour que les statistiques globales (Total trié) restent exactes.
      */
-    suspend fun cleanExpiredSkips(lifespanDays: Long): Int {
+    suspend fun cleanExpiredSkips(userId: String, lifespanDays: Long): Int {
         if (lifespanDays <= 0) return 0
         val threshold = System.currentTimeMillis() - (lifespanDays * 24 * 60 * 60 * 1000L)
-        return swipeDecisionDao.deleteExpiredSkips(threshold)
+        
+        // 1. On compte combien de SKIP synchronisés vont disparaître
+        val syncedCount = swipeDecisionDao.countSyncedSkipsBeforeDelete(userId, threshold)
+        
+        // 2. On effectue la suppression
+        val totalRemoved = swipeDecisionDao.deleteExpiredSkips(userId, threshold)
+        
+        // 3. Si on a supprimé des éléments déjà comptés dans les stats globales, on balance
+        if (syncedCount > 0) {
+            saveSyncHistory(
+                userId = userId,
+                deletedCount = 0,
+                bytesSaved = 0,
+                keptCount = 0,
+                archivedCount = 0,
+                lockedCount = 0,
+                skippedCount = -syncedCount // On retire du total global
+            )
+        }
+        
+        return totalRemoved
     }
 
     /**
