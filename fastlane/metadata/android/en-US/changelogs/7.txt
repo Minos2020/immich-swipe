@@ -1,0 +1,10 @@
+Immich Swipe v2.2.1
+
+- Added logs for database operations (export, import, delete)
+
+- Fixed: expired SKIPs
+ * expired SKIPs now reappear correctly after expiration
+ * global statistics are updated when expired SKIPs are deleted, so they are not counted twice
+ - Fixed: archive decision were deleted during database cleaning if includeArchived parameter was off
+
+ - Screenshots for F-Droid have been updated to match with the current state of the application

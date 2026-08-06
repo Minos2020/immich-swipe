@@ -17,17 +17,17 @@ Inspired by the [Sponge](https://play.google.com/store/apps/details?id=com.prism
 
 ## 📸 Overview
 
-|                                         Home Screen                                          |                                    Sorting Stack                                     |                                       Review Mode                                        |
-|:--------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------:|
-| <img src="metadata/en-US/images/phoneScreenshots/01_Light_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/02_Light_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/03_Light_ReviewScreen.png" width="200"> |
-|                                     *Browse your albums*                                     |                                  *Swipe to decide*                                   |                                 *Check before deleting*                                  |
+|                                         Home Screen                                          |                                    Sorting Stack                                     |                                       Review Mode                                        |                                       Usage Stats                                       |
+|:--------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|
+| <img src="metadata/en-US/images/phoneScreenshots/01_Light_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/02_Light_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/03_Light_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/09_Light_StatsScreen.png" width="200"> |
+|                                     *Browse your albums*                                     |                                  *Swipe to decide*                                   |                                 *Check before deleting*                                  |                              *See what you have achieved*                               |
 
 <details>
 <summary>🌙 <b>View Dark Mode Gallery</b></summary>
 
-|                                       Home Screen (Dark)                                       |                                  Sorting Stack (Dark)                                  |                                   Review Mode (Dark)                                    |                                    Settings (Dark)                                     |
-|:----------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|
-| <img src="metadata/en-US/images/phoneScreenshots/05_Dark_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/07_Dark_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/08_Dark_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/Dark_SettingsScreen.png" width="200"> |
+|                                       Home Screen (Dark)                                       |                                  Sorting Stack (Dark)                                  |                                   Review Mode (Dark)                                    |                                     Usage Stats (Dark)                                     |
+|:----------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------:|
+| <img src="metadata/en-US/images/phoneScreenshots/05_Dark_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/07_Dark_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/08_Dark_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/10_Dark_StatsScreen.png" width="200"> |
 
 </details>
 

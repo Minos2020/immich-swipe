@@ -17,17 +17,17 @@ Inspirée par l'application [Sponge](https://play.google.com/store/apps/details?
 
 ## 📸 Aperçu
 
-|                                         Écran d'accueil                                         |                                     La pile de tri                                      |                                        Mode Revue                                        |
-|:-----------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------:|
-| <img src="metadata/en-US/images/phoneScreenshots/01_Light_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/02_Light_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/03_Light_ReviewScreen.png" width="200"> |
-|                                     *Parcourez vos albums*                                      |                                  *Swipez pour décider*                                  |                              *Vérifiez avant de supprimer*                               |
+|                                         Écran d'accueil                                         |                                     La pile de tri                                      |                                        Mode Revue                                        |                               Statistiques d'utilisation                                |
+|:-----------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|
+| <img src="metadata/en-US/images/phoneScreenshots/01_Light_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/02_Light_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/03_Light_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/09_Light_StatsScreen.png" width="200"> |
+|                                     *Parcourez vos albums*                                      |                                  *Swipez pour décider*                                  |                              *Vérifiez avant de supprimer*                               |                          *Voyez de ce que vous avez accompli*                           |
 
 <details>
 <summary>🌙 <b>Voir la galerie en Mode Sombre</b></summary>
 
-|                                        Écran d'accueil                                         |                                     La pile de tri                                     |                                       Mode Revue                                        |                                       Paramètres                                       |
+|                                        Écran d'accueil                                         |                                     La pile de tri                                     |                                       Mode Revue                                        |                                      Statistiques                                      |
 |:----------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|
-| <img src="metadata/en-US/images/phoneScreenshots/05_Dark_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/07_Dark_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/08_Dark_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/Dark_SettingsScreen.png" width="200"> |
+| <img src="metadata/en-US/images/phoneScreenshots/05_Dark_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/07_Dark_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/08_Dark_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/10_Dark_StatsScreen.png" width="200"> |
 
 </details>
 
