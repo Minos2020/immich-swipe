@@ -19,7 +19,7 @@ Inspired by the [Sponge](https://play.google.com/store/apps/details?id=com.prism
 
 |                                         Home Screen                                          |                                    Sorting Stack                                     |                                       Review Mode                                        |
 |:--------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------:|
-| <img src="metadata/en-US/images/phoneScreenshots/01_Light_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/02_Light_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/03_Light_ReviewScreen.png" width="200"> |
+| <img src="metadata/en-US/images/phoneScreenshots/06_Dark_HomeScreen_ListView.jpg" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/02_Light_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/03_Light_ReviewScreen.png" width="200"> |
 |                                     *Browse your albums*                                     |                                  *Swipe to decide*                                   |                                 *Check before deleting*                                  |
 
 <details>
