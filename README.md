@@ -34,10 +34,9 @@ Inspired by the [Sponge](https://play.google.com/store/apps/details?id=com.prism
 ## ✨ Features
 
 - **🚀 Fast Sorting Stack**: Swipe right to keep, left to delete. Sorted assets disappear from the timeline in real-time for a cleaner experience.
-- **🕒 Snooze (SKIP)**: Unsure? Skip it. Assets automatically reappear after a configurable delay (1 day, 1 month, or never).
-- **📁 Collections (Virtual Albums)**: Access special groups like the **SKIPs Collection** to review all your skipped items in one place.
+- **📁 Collections (Virtual Albums)**: Access special groups to review all your skipped items in one place.
 - **📊 Global Usage Stats**: Visualize your progress with detailed statistics and a breakdown of your sorting actions.
-- **🛡️ Advanced Review Mode**: Review all your decisions (delete, keep, archive, lock) and see estimated reclaimed space before syncing.
+- **🛡️ Advanced Review Mode**: Review all your decisions (delete, keep, lock) and see estimated reclaimed space before syncing.
 - **🔄 Multi-Account Support**: Switch between different users seamlessly; your local decisions and progress are preserved for each account.
 - **🗃️ Database Management**: Export, import, or clear your local database (globally or per user) to safeguard your sorting data.
 - **🚦 Connection Diagnostic**: Real-time status indicator, HTTP/direct IP support, and in-app logs for easy troubleshooting.
