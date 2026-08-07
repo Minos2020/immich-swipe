@@ -22,9 +22,11 @@ data class SettingsUiState(
     val userName: String = "",
     val playbackBehavior: PlaybackBehavior = PlaybackBehavior.PAUSE_OTHERS,
     val themeMode: AppTheme = AppTheme.SYSTEM,
-    val fullscreenButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
+    val dynamicColor: Boolean = true,
+    val fullscreenButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
     val immichButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     val cardDisplayButtonPosition: IconPosition = IconPosition.BOTTOM_LEFT,
+    val muteButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
     val isDefaultLayoutGrid: Boolean = false,
     val showFavoriteButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
@@ -33,6 +35,9 @@ data class SettingsUiState(
     val showLogsDialog: Boolean = false,
     val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FIT,
     val showSwipeButtons: Boolean = false,
+    val swapSummaryArchive: Boolean = false,
+    val syncLocalDeletion: Boolean = false,
+    val trashLocalDeletion: Boolean = true,
     
     // Database actions
     val pendingDatabaseAction: DatabaseAction? = null,

@@ -24,6 +24,7 @@ class AppViewModel(
         // Au démarrage, on lance l'observation réactive de la session et du thème
         observeSession()
         observeTheme()
+        observeDynamicColor()
     }
 
     private fun observeSession() {
@@ -63,6 +64,14 @@ class AppViewModel(
         viewModelScope.launch {
             sessionRepository.themeMode.collect { mode ->
                 _uiState.value = _uiState.value.copy(themeMode = mode)
+            }
+        }
+    }
+
+    private fun observeDynamicColor() {
+        viewModelScope.launch {
+            sessionRepository.dynamicColor.collect { enabled ->
+                _uiState.value = _uiState.value.copy(dynamicColor = enabled)
             }
         }
     }

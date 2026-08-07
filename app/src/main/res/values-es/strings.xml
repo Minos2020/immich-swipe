@@ -41,7 +41,6 @@
     <string name="home_photos_to_discover">%1$d fotos por descubrir</string>
     <string name="home_new_badge">NUEVO</string>
     <string name="home_unsynced_badge">SIN SINCRONIZAR</string>
-    <string name="home_virtual_all_assets">Todos los medios</string>
     <string name="home_virtual_all_assets_desc">Colección de toda su biblioteca (según sus derechos de acceso)</string>
     <string name="home_virtual_orphans">Huérfanos</string>
     <string name="home_virtual_orphans_desc">Colección de medios que no están en ningún álbum</string>
@@ -80,6 +79,8 @@
     <string name="settings_theme_system">Sistema</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Oscuro</string>
+    <string name="settings_dynamic_color_label">Colores del sistema (Material You)</string>
+    <string name="settings_dynamic_color_desc">Utiliza los colores de tu fondo de pantalla y del sistema. Si está desactivado, se utilizarán los colores por defecto de la aplicación.</string>
     <string name="settings_layout_label">Diseño predeterminado</string>
     <string name="settings_layout_list">Lista</string>
     <string name="settings_layout_grid">Cuadrícula</string>
@@ -109,13 +110,6 @@
     <string name="settings_pos_top_right">Arriba a la derecha</string>
     <string name="settings_pos_bottom_left">Abajo a la izquierda</string>
     <string name="settings_pos_bottom_right">Abajo a la derecha</string>
-    <string name="settings_display_mode_label">Visualización predeterminada de los medios</string>
-    <string name="settings_display_mode_fill">Rellenar</string>
-    <string name="settings_display_mode_fit">Ajustar</string>
-    <string name="settings_display_mode_pos_label">Posición del botón de modo de visualización</string>
-    <string name="settings_show_swipe_buttons_label">Mostrar botones Keep/Delete</string>
-    <string name="settings_show_swipe_buttons_desc">Mostrar grandes botones rojo y verde para clasificar con un solo toque</string>
-    <string name="swipe_toggle_display">Cambiar modo de visualización</string>
 
     <!-- Pantalla de swipe -->
     <string name="swipe_keep">Conservar</string>
@@ -139,6 +133,7 @@
     <string name="swipe_metadata_resolution">Resolución</string>
     <string name="swipe_loading">Cargando…</string>
     <string name="swipe_syncing">Sincronizando…</string>
+    <string name="swipe_sync_changes">Sincronizar cambios</string>
     <string name="swipe_congratulations">¡Enhorabuena! Álbum ordenado.</string>
     <string name="swipe_check_before_delete">Revisar antes de eliminar</string>
 
@@ -163,6 +158,12 @@
     <string name="common_retry">Reintentar</string>
     <string name="common_close">Cerrar</string>
     <string name="common_loading">Cargando…</string>
+    <string name="backup_warning_title">Sincronización de almacenamiento</string>
+    <string name="backup_warning_msg">Para evitar que Immich vuelva a subir automáticamente las fotos que eliminas, ahora puedes activar la **\"Sincronización de eliminación local\"** en Ajustes.\n\nEsto intentará eliminar la copia local de tu teléfono cada vez que elimines una foto del servidor.</string>
+    <string name="backup_warning_settings">Ir a Ajustes</string>
+    <string name="swipe_reset_button">Reiniciar álbum</string>
+    <string name="swipe_reset_confirm_title">¿Reiniciar ordenación?</string>
+    <string name="swipe_reset_confirm_msg">Esto eliminará permanentemente todas las decisiones locales de este álbum. Las decisiones ya sincronizadas (KEEP/DELETE) en Immich NO se desharán en el servidor, pero se borrarán de tu progreso local en esta aplicación.</string>
 
     <!-- Estadísticas -->
     <string name="stats_popup_title">Estadísticas de uso</string>
@@ -200,4 +201,17 @@
     <string name="settings_logs_clear">Borrar registros</string>
     <string name="settings_logs_empty">No hay registros disponibles por el momento.</string>
     <string name="settings_logs_copied_toast">Registros copiados al portapapeles</string>
+    <string name="settings_display_mode_fill">Rellenar</string>
+    <string name="settings_display_mode_fit">Ajustar</string>
+    <string name="settings_display_mode_pos_label">Posición del botón de modo de visualización</string>
+    <string name="settings_mute_pos_label">Posición del botón Mute</string>
+    <string name="settings_display_mode_label">Visualización predeterminada de los medios</string>
+    <string name="settings_show_swipe_buttons_label">Mostrar botones Keep/Delete</string>
+    <string name="settings_show_swipe_buttons_desc">Mostrar grandes botones rojo y verde para clasificar con un solo toque</string>
+    <string name="settings_swap_summary_archive_label">Cambiar Archivar por Resumen</string>
+    <string name="settings_swap_summary_archive_desc">Reemplaza el botón Archivar por un botón Resumen en la barra de clasificación</string>
+    <string name="settings_sync_local_deletion_label">Sincronizar eliminación local</string>
+    <string name="settings_sync_local_deletion_desc">Cuando eliminas una foto de Immich, también intenta eliminar el archivo local de tu dispositivo para evitar que se vuelva a subir.</string>
+    <string name="settings_trash_local_deletion_label">Mover a la papelera en lugar de eliminar</string>
+    <string name="settings_trash_local_deletion_desc">Si su sistema lo admite, los archivos se moverán a la papelera durante 30 días en lugar de borrarse permanentemente.</string>
 </resources>

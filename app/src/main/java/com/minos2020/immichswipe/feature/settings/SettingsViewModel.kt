@@ -60,6 +60,11 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.dynamicColor.collect { enabled ->
+                _uiState.value = _uiState.value.copy(dynamicColor = enabled)
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.fullscreenButtonPosition.collect { pos ->
                 _uiState.value = _uiState.value.copy(fullscreenButtonPosition = pos)
             }
@@ -72,6 +77,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             sessionRepository.cardDisplayButtonPosition.collect { pos ->
                 _uiState.value = _uiState.value.copy(cardDisplayButtonPosition = pos)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.muteButtonPosition.collect { pos ->
+                _uiState.value = _uiState.value.copy(muteButtonPosition = pos)
             }
         }
         viewModelScope.launch {
@@ -109,6 +119,21 @@ class SettingsViewModel(
                 _uiState.update { it.copy(showSwipeButtons = show) }
             }
         }
+        viewModelScope.launch {
+            sessionRepository.swapSummaryArchive.collect { swap ->
+                _uiState.update { it.copy(swapSummaryArchive = swap) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.syncLocalDeletion.collect { sync ->
+                _uiState.update { it.copy(syncLocalDeletion = sync) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.trashLocalDeletion.collect { trash ->
+                _uiState.update { it.copy(trashLocalDeletion = trash) }
+            }
+        }
     }
 
     fun setPlaybackBehavior(behavior: PlaybackBehavior) {
@@ -120,6 +145,12 @@ class SettingsViewModel(
     fun setThemeMode(theme: AppTheme) {
         viewModelScope.launch {
             sessionRepository.saveThemeMode(theme)
+        }
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        viewModelScope.launch {
+            sessionRepository.saveDynamicColor(enabled)
         }
     }
 
@@ -138,6 +169,12 @@ class SettingsViewModel(
     fun setCardDisplayButtonPosition(pos: IconPosition) {
         viewModelScope.launch {
             sessionRepository.saveCardDisplayButtonPosition(pos)
+        }
+    }
+
+    fun setMuteButtonPosition(pos: IconPosition) {
+        viewModelScope.launch {
+            sessionRepository.saveMuteButtonPosition(pos)
         }
     }
 
@@ -172,6 +209,24 @@ class SettingsViewModel(
     fun setShowSwipeButtons(show: Boolean) {
         viewModelScope.launch {
             sessionRepository.saveShowSwipeButtons(show)
+        }
+    }
+
+    fun setSwapSummaryArchive(swap: Boolean) {
+        viewModelScope.launch {
+            sessionRepository.saveSwapSummaryArchive(swap)
+        }
+    }
+
+    fun setSyncLocalDeletion(sync: Boolean) {
+        viewModelScope.launch {
+            sessionRepository.saveSyncLocalDeletion(sync)
+        }
+    }
+
+    fun setTrashLocalDeletion(trash: Boolean) {
+        viewModelScope.launch {
+            sessionRepository.saveTrashLocalDeletion(trash)
         }
     }
 

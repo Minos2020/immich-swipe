@@ -16,6 +16,7 @@ data class Asset(
     val isLocked: Boolean = false,
     val isTrashed: Boolean = false,
     val originalFileName: String? = null,
+    val checksum: String? = null,
     @SerializedName("extension")
     val fileExtension: String? = null,
     val exifInfo: ExifInfo? = null

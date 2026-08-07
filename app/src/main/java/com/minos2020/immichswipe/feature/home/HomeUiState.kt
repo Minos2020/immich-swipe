@@ -51,7 +51,8 @@ data class HomeUiState(
         AlbumStatus.COMPLETED
     ), // Catégories réduites par défaut
     val savedAccounts: List<UserAccountEntity> = emptyList(), // Comptes enregistrés
-    val isLoggingInToAnotherAccount: Boolean = false // Si on est en train d'ajouter un compte
+    val isLoggingInToAnotherAccount: Boolean = false, // Si on est en train d'ajouter un compte
+    val showBackupWarning: Boolean = false
 ) {
     /**
      * Retourne la liste des albums filtrée par le texte de recherche.

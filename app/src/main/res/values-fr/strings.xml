@@ -35,14 +35,13 @@
     <string name="home_status_completed">Terminés</string>
     <string name="home_status_virtual">Collections spéciales</string>
     <string name="home_album_completed">Terminé</string>
-    <string name="home_unsynced_changes">Contient %1$d changements non synchronisés</string>
+    <string name="home_unsynced_changes">Contiene %1$d changements non synchronisés</string>
     <string name="home_sorted_count">%1$d / %2$d triés</string>
     <string name="home_select_album">Sélectionnez un album pour commencer !</string>
     <string name="home_session_title">Session de tri : %1$s</string>
     <string name="home_photos_to_discover">%1$d photos à découvrir</string>
     <string name="home_new_badge">NOUVEAU</string>
     <string name="home_unsynced_badge">NON SYNCHRONISÉ</string>
-    <string name="home_virtual_all_assets">Tous les médias</string>
     <string name="home_virtual_all_assets_desc">Collection de l\'ensemble de votre bibliothèque (dépendant de vos droits d\'accès)</string>
     <string name="home_virtual_orphans">Orphelins</string>
     <string name="home_virtual_orphans_desc">Collection des médias qui ne sont dans aucun album</string>
@@ -81,6 +80,8 @@
     <string name="settings_theme_system">Système</string>
     <string name="settings_theme_light">Clair</string>
     <string name="settings_theme_dark">Sombre</string>
+    <string name="settings_dynamic_color_label">Couleurs système (Material You)</string>
+    <string name="settings_dynamic_color_desc">Utilise les couleurs de votre fond d\'écran et du système. Si désactivé, les couleurs par défaut de l\'app seront utilisées.</string>
     <string name="settings_layout_label">Affichage par défaut</string>
     <string name="settings_layout_list">Liste</string>
     <string name="settings_layout_grid">Grille</string>
@@ -110,13 +111,6 @@
     <string name="settings_pos_top_right">Haut-Droite</string>
     <string name="settings_pos_bottom_left">Bas-Gauche</string>
     <string name="settings_pos_bottom_right">Bas-Droite</string>
-    <string name="settings_display_mode_label">Affichage par défaut des médias</string>
-    <string name="settings_display_mode_fill">Remplir</string>
-    <string name="settings_display_mode_fit">Ajuster</string>
-    <string name="settings_display_mode_pos_label">Position du bouton Mode d\'affichage</string>
-    <string name="settings_show_swipe_buttons_label">Afficher les boutons Keep/Delete</string>
-    <string name="settings_show_swipe_buttons_desc">Afficher les gros boutons rouge et vert pour trier d\'un simple clic</string>
-    <string name="swipe_toggle_display">Changer le mode d\'affichage</string>
 
     <!-- Écran Swipe -->
     <string name="swipe_keep">Garder</string>
@@ -140,6 +134,7 @@
     <string name="swipe_metadata_resolution">Résolution</string>
     <string name="swipe_loading">Chargement…</string>
     <string name="swipe_syncing">Synchronisation…</string>
+    <string name="swipe_sync_changes">Synchroniser les changements</string>
     <string name="swipe_congratulations">Félicitations ! Album trié.</string>
     <string name="swipe_check_before_delete">Vérifiez avant suppression</string>
 
@@ -164,6 +159,12 @@
     <string name="common_retry">Réessayer</string>
     <string name="common_close">Fermer</string>
     <string name="common_loading">Chargement…</string>
+    <string name="backup_warning_title">Synchro Stockage</string>
+    <string name="backup_warning_msg">Pour éviter qu\'Immich ne re-sauvegarde les photos supprimées, vous pouvez activer la **\"Synchro. suppression locale\"** dans les Paramètres.\n\nCela tentera de supprimer la copie locale de votre téléphone à chaque fois que vous supprimez une photo du serveur.</string>
+    <string name="backup_warning_settings">Aller aux Paramètres</string>
+    <string name="swipe_reset_button">Réinitialiser l\'album</string>
+    <string name="swipe_reset_confirm_title">Réinitialiser le tri ?</string>
+    <string name="swipe_reset_confirm_msg">Cela supprimera définitivement toutes les décisions locales pour cet album. Les décisions déjà synchronisées (KEEP/DELETE) sur Immich ne seront PAS annulées sur le serveur, mais elles seront effacées de votre progression locale dans cette application.</string>
 
     <!-- Statistiques -->
     <string name="stats_popup_title">Statistiques d\'usage</string>
@@ -187,7 +188,7 @@
     <string name="settings_db_scope_user">Uniquement mon compte (%1$s)</string>
     <string name="settings_db_scope_all">Tous les comptes (Total)</string>
     <string name="settings_db_confirm_delete_title">⚠️ SUPPRESSION DÉFINITIVE</string>
-    <string name="settings_db_confirm_delete_msg">Êtes-vous ABSOLUMENT sûr de vouloir supprimer les données ?\n\nCette action est irréversible et effacera toutes vos décisions de tri locales ainsi que vos statistiques de synchronisation.</string>
+    <string name="settings_db_confirm_delete_msg">Êtes-vous ABSOLUTELY sûr de vouloir supprimer les données ?\n\nCette action est irréversible et effacera toutes vos décisions de tri locales ainsi que vos statistiques de synchronisation.</string>
     <string name="settings_db_confirm_export_title">Exporter les données</string>
     <string name="settings_db_confirm_import_title">Importer les données</string>
     <string name="settings_db_confirm_import_msg">L\'importation va ajouter les données du fichier à votre base actuelle. Les décisions déjà existantes seront mises à jour.\n\nVoulez-vous continuer ?</string>
@@ -201,4 +202,17 @@
     <string name="settings_logs_clear">Effacer les logs</string>
     <string name="settings_logs_empty">Aucun journal disponible pour le moment.</string>
     <string name="settings_logs_copied_toast">Logs copiés dans le presse-papier</string>
+    <string name="settings_display_mode_fill">Remplir</string>
+    <string name="settings_display_mode_fit">Ajuster</string>
+    <string name="settings_display_mode_pos_label">Position du bouton Mode d\'affichage</string>
+    <string name="settings_mute_pos_label">Position du bouton Mute</string>
+    <string name="settings_display_mode_label">Affichage par défaut des médias</string>
+    <string name="settings_show_swipe_buttons_label">Afficher les boutons Keep/Delete</string>
+    <string name="settings_show_swipe_buttons_desc">Afficher les gros boutons rouge et vert pour trier d\'un simple clic</string>
+    <string name="settings_swap_summary_archive_label">Remplacer Archiver par Résumé</string>
+    <string name="settings_swap_summary_archive_desc">Remplace le bouton Archiver par un bouton Résumé dans la barre de tri</string>
+    <string name="settings_sync_local_deletion_label">Sycnhro. suppression locale</string>
+    <string name="settings_sync_local_deletion_desc">Lorsque vous supprimez une photo d\'Immich, tente également de supprimer le fichier local de votre téléphone pour éviter qu\'il ne soit re-sauvegardé.</string>
+    <string name="settings_trash_local_deletion_label">Mettre à la corbeille au lieu de supprimer</string>
+    <string name="settings_trash_local_deletion_desc">Si supporté par le système, les fichiers seront mis dans la corbeille pendant 30 jours au lieu d\'être effacés définitivement.</string>
 </resources>

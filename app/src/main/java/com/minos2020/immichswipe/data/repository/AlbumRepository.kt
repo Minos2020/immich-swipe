@@ -6,6 +6,8 @@ import com.minos2020.immichswipe.domain.model.Album
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 /**
  * Repository gérant la récupération des albums depuis le serveur Immich.
@@ -22,17 +24,21 @@ class AlbumRepository(
         val albums = api.getAlbums()
         if (includeArchived) return albums
 
+        val semaphore = Semaphore(10) // Autorise 10 requêtes simultanées pour les stats
+
         return coroutineScope {
             albums.map { album ->
                 async {
-                    val archiveCount = try {
-                        api.getSearchStatistics(
-                            SearchAssetsRequest(albumIds = listOf(album.id), visibility = "archive")
-                        ).total
-                    } catch (_: Exception) {
-                        0
+                    semaphore.withPermit {
+                        val archiveCount = try {
+                            api.getSearchStatistics(
+                                SearchAssetsRequest(albumIds = listOf(album.id), visibility = "archive")
+                            ).total
+                        } catch (_: Exception) {
+                            0
+                        }
+                        album.copy(assetCount = (album.assetCount - archiveCount).coerceAtLeast(0))
                     }
-                    album.copy(assetCount = (album.assetCount - archiveCount).coerceAtLeast(0))
                 }
             }.awaitAll()
         }

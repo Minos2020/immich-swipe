@@ -18,9 +18,11 @@ class SessionDataStore(private val context: Context) {
         private val KEY_USER_ID = stringPreferencesKey("user_id")
         private val KEY_AUDIO_FOCUS = stringPreferencesKey("audio_focus")
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
+        private val KEY_DYNAMIC_COLOR = androidx.datastore.preferences.core.booleanPreferencesKey("dynamic_color")
         private val KEY_FULLSCREEN_ICON_POS = stringPreferencesKey("fullscreen_icon_pos")
         private val KEY_IMMICH_ICON_POS = stringPreferencesKey("immich_icon_pos")
         private val KEY_CARD_DISPLAY_ICON_POS = stringPreferencesKey("card_display_icon_pos")
+        private val KEY_MUTE_ICON_POS = stringPreferencesKey("mute_icon_pos")
         private val KEY_DEFAULT_LAYOUT_GRID = androidx.datastore.preferences.core.booleanPreferencesKey("default_layout_grid")
         private val KEY_SHOW_FAVORITE = androidx.datastore.preferences.core.booleanPreferencesKey("show_favorite")
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
@@ -28,6 +30,10 @@ class SessionDataStore(private val context: Context) {
         private val KEY_SORT_ORDER = stringPreferencesKey("sort_order")
         private val KEY_DEFAULT_CARD_DISPLAY_MODE = stringPreferencesKey("default_card_display_mode")
         private val KEY_SHOW_SWIPE_BUTTONS = androidx.datastore.preferences.core.booleanPreferencesKey("show_swipe_buttons")
+        private val KEY_SWAP_SUMMARY_ARCHIVE = androidx.datastore.preferences.core.booleanPreferencesKey("swap_summary_archive")
+        private val KEY_BACKUP_WARNING_SHOWN = androidx.datastore.preferences.core.booleanPreferencesKey("backup_warning_shown")
+        private val KEY_SYNC_LOCAL_DELETION = androidx.datastore.preferences.core.booleanPreferencesKey("sync_local_deletion")
+        private val KEY_TRASH_LOCAL_DELETION = androidx.datastore.preferences.core.booleanPreferencesKey("trash_local_deletion")
     }
 
     suspend fun saveSession(baseUrl: String, apiKey: String, userId: String) {
@@ -66,6 +72,12 @@ class SessionDataStore(private val context: Context) {
         context.dataStore.edit { it[KEY_THEME_MODE] = mode }
     }
 
+    fun isDynamicColor(): Flow<Boolean> = context.dataStore.data.map { it[KEY_DYNAMIC_COLOR] ?: true }
+
+    suspend fun saveDynamicColor(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_DYNAMIC_COLOR] = enabled }
+    }
+
     fun getFullscreenIconPosition(): Flow<String?> = context.dataStore.data.map { it[KEY_FULLSCREEN_ICON_POS] }
     
     suspend fun saveFullscreenIconPosition(pos: String) {
@@ -82,6 +94,12 @@ class SessionDataStore(private val context: Context) {
 
     suspend fun saveCardDisplayIconPosition(pos: String) {
         context.dataStore.edit { it[KEY_CARD_DISPLAY_ICON_POS] = pos }
+    }
+
+    fun getMuteIconPosition(): Flow<String?> = context.dataStore.data.map { it[KEY_MUTE_ICON_POS] }
+
+    suspend fun saveMuteIconPosition(pos: String) {
+        context.dataStore.edit { it[KEY_MUTE_ICON_POS] = pos }
     }
 
     fun isDefaultLayoutGrid(): Flow<Boolean> = context.dataStore.data.map { it[KEY_DEFAULT_LAYOUT_GRID] ?: false }
@@ -107,6 +125,18 @@ class SessionDataStore(private val context: Context) {
 
     fun isShowSwipeButtons(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_SWIPE_BUTTONS] ?: false }
     suspend fun saveShowSwipeButtons(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_SWIPE_BUTTONS] = show } }
+
+    fun isSwapSummaryArchive(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SWAP_SUMMARY_ARCHIVE] ?: false }
+    suspend fun saveSwapSummaryArchive(swap: Boolean) { context.dataStore.edit { it[KEY_SWAP_SUMMARY_ARCHIVE] = swap } }
+
+    fun isBackupWarningShown(): Flow<Boolean> = context.dataStore.data.map { it[KEY_BACKUP_WARNING_SHOWN] ?: false }
+    suspend fun saveBackupWarningShown(shown: Boolean) { context.dataStore.edit { it[KEY_BACKUP_WARNING_SHOWN] = shown } }
+
+    fun isSyncLocalDeletion(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SYNC_LOCAL_DELETION] ?: false }
+    suspend fun saveSyncLocalDeletion(sync: Boolean) { context.dataStore.edit { it[KEY_SYNC_LOCAL_DELETION] = sync } }
+
+    fun isTrashLocalDeletion(): Flow<Boolean> = context.dataStore.data.map { it[KEY_TRASH_LOCAL_DELETION] ?: true }
+    suspend fun saveTrashLocalDeletion(trash: Boolean) { context.dataStore.edit { it[KEY_TRASH_LOCAL_DELETION] = trash } }
 
     suspend fun clearSession() {
         context.dataStore.edit { it.clear() }

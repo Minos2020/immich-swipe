@@ -4,8 +4,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.minos2020.immichswipe.data.repository.UserRepository
-import com.minos2020.immichswipe.data.repository.AlbumRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,9 +41,13 @@ class SwipeViewModel(
         observeFullscreenButtonPosition()
         observeImmichButtonPosition()
         observeCardDisplayButtonPosition()
+        observeMuteButtonPosition()
         observeButtonVisibility()
         observeAutoNextOnFav()
         observeSortOrder()
+        observeSwapSummaryArchive()
+        observeSyncLocalDeletion()
+        observeTrashLocalDeletion()
     }
 
     private fun observePlaybackBehavior() {
@@ -80,6 +82,14 @@ class SwipeViewModel(
         }
     }
 
+    private fun observeMuteButtonPosition() {
+        viewModelScope.launch {
+            sessionRepository.muteButtonPosition.collect { pos ->
+                _uiState.update { it.copy(muteButtonPosition = pos) }
+            }
+        }
+    }
+
     private fun observeButtonVisibility() {
         viewModelScope.launch {
             sessionRepository.showSwipeButtons.collect { show ->
@@ -106,6 +116,30 @@ class SwipeViewModel(
                 if (previousOrder != order) {
                     loadAssetsAndDecisions()
                 }
+            }
+        }
+    }
+
+    private fun observeSwapSummaryArchive() {
+        viewModelScope.launch {
+            sessionRepository.swapSummaryArchive.collect { swap ->
+                _uiState.update { it.copy(swapSummaryArchive = swap) }
+            }
+        }
+    }
+
+    private fun observeSyncLocalDeletion() {
+        viewModelScope.launch {
+            sessionRepository.syncLocalDeletion.collect { sync ->
+                _uiState.update { it.copy(syncLocalDeletion = sync) }
+            }
+        }
+    }
+
+    private fun observeTrashLocalDeletion() {
+        viewModelScope.launch {
+            sessionRepository.trashLocalDeletion.collect { trash ->
+                _uiState.update { it.copy(trashLocalDeletion = trash) }
             }
         }
     }
@@ -375,6 +409,38 @@ class SwipeViewModel(
     }
 
     /**
+     * Affiche ou cache le dialogue de confirmation de reset.
+     */
+    fun toggleResetConfirmation(visible: Boolean) {
+        _uiState.update { it.copy(showResetConfirmation = visible) }
+    }
+
+    /**
+     * Réinitialise toutes les décisions pour l'album actuel.
+     */
+    fun resetAlbumDecisions() {
+        val currentState = _uiState.value
+        val assetIds = currentState.assets.map { it.id }
+        
+        viewModelScope.launch {
+            try {
+                val config = sessionRepository.sessionConfig.first() ?: return@launch
+                
+                // 1. Supprimer de la base Room
+                swipeDecisionRepository.removeDecisions(assetIds, config.userId)
+                
+                // 2. Recharger les données pour repartir de zéro
+                _uiState.update { it.copy(showResetConfirmation = false) }
+                loadAssetsAndDecisions()
+                
+                AppLogger.i("Swipe", "Album ${album.albumName} réinitialisé avec succès")
+            } catch (e: Exception) {
+                AppLogger.e("Swipe", "Erreur lors du reset de l'album", e)
+            }
+        }
+    }
+
+    /**
      * Active ou désactive le mode plein écran.
      */
     fun toggleFullscreen(enabled: Boolean) {
@@ -433,7 +499,7 @@ class SwipeViewModel(
             initialSyncedDecisions[id] != decision
         }
         
-        val toDelete = unsyncedDecisions.filter { it.value == SwipeDecision.DELETE }.keys.toList()
+        val toDeleteIds = unsyncedDecisions.filter { it.value == SwipeDecision.DELETE }.keys.toList()
         val toArchive = unsyncedDecisions.filter { it.value == SwipeDecision.ARCHIVE }.keys.toList()
         val toLock = unsyncedDecisions.filter { it.value == SwipeDecision.LOCK }.keys.toList()
         val toKeep = unsyncedDecisions.filter { it.value == SwipeDecision.KEEP }.keys.toList()
@@ -442,19 +508,34 @@ class SwipeViewModel(
         val toFavorite = currentState.localFavorites.filter { it.value }.keys.toList()
         val toUnfavorite = currentState.localFavorites.filter { !it.value }.keys.toList()
 
-        if (toDelete.isEmpty() && toArchive.isEmpty() && toLock.isEmpty() && toKeep.isEmpty() && toFavorite.isEmpty() && toUnfavorite.isEmpty()) {
+        if (toDeleteIds.isEmpty() && toArchive.isEmpty() && toLock.isEmpty() && toKeep.isEmpty() && toFavorite.isEmpty() && toUnfavorite.isEmpty()) {
             AppLogger.d("Swipe", "Aucun changement à synchroniser")
             _uiState.update { it.copy(showSummary = false) }
             return
         }
 
         viewModelScope.launch {
-            AppLogger.i("Swipe", "Application des changements : DELETE(${toDelete.size}), ARCHIVE(${toArchive.size}), LOCK(${toLock.size}), KEEP(${toKeep.size})")
+            AppLogger.i("Swipe", "Application des changements : DELETE(${toDeleteIds.size}), ARCHIVE(${toArchive.size}), LOCK(${toLock.size}), KEEP(${toKeep.size})")
             _uiState.update { it.copy(isSyncing = true) }
             try {
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
+                
+                // 0. Préparation de la suppression locale (si activée)
+                var pendingIntent: android.app.PendingIntent? = null
+                if (currentState.syncLocalDeletion && toDeleteIds.isNotEmpty()) {
+                    val assetsToDelete = currentState.assets.filter { toDeleteIds.contains(it.id) }
+                    val localUris = assetRepository.findLocalUris(assetsToDelete)
+                    if (localUris.isNotEmpty()) {
+                        pendingIntent = if (currentState.trashLocalDeletion) {
+                            assetRepository.createLocalTrashRequest(localUris, true)
+                        } else {
+                            assetRepository.createLocalDeleteRequest(localUris)
+                        }
+                    }
+                }
+
                 // 1. Appels API
-                if (toDelete.isNotEmpty()) assetRepository.deleteAssets(toDelete)
+                if (toDeleteIds.isNotEmpty()) assetRepository.deleteAssets(toDeleteIds)
                 if (toFavorite.isNotEmpty()) assetRepository.updateAssets(toFavorite, isFavorite = true)
                 if (toUnfavorite.isNotEmpty()) assetRepository.updateAssets(toUnfavorite, isFavorite = false)
                 if (toArchive.isNotEmpty()) assetRepository.updateAssets(toArchive, visibility = "archive")
@@ -465,8 +546,7 @@ class SwipeViewModel(
                 val freshIds = freshAssets.map { it.id }.toSet()
 
                 // - Identification des succès (ceux qui ont disparu de l'album)
-                val successfullyDisappeared = (toDelete + toLock).filter { !freshIds.contains(it) }
-                val failedDeletionsCount = toDelete.size - toDelete.filter { disappeared -> successfullyDisappeared.contains(disappeared) }.size
+                val successfullyDisappeared = (toDeleteIds + toLock).filter { !freshIds.contains(it) }
                 
                 val successfulKeeps = (toKeep + toArchive).filter { freshIds.contains(it) }
 
@@ -483,7 +563,7 @@ class SwipeViewModel(
                 var deltaKeep = toKeep.size
                 var deltaArchive = toArchive.size
 
-                (toKeep + toArchive + toDelete + toLock).forEach { id ->
+                (toKeep + toArchive + toDeleteIds + toLock).forEach { id ->
                     initialSyncedDecisions[id]?.let { previous ->
                         when (previous) {
                             SwipeDecision.KEEP -> deltaKeep--
@@ -495,26 +575,38 @@ class SwipeViewModel(
 
                 swipeDecisionRepository.saveSyncHistory(
                     userId = config.userId,
-                    deletedCount = successfullyDisappeared.count { toDelete.contains(it) },
-                    bytesSaved = toDelete.filter { successfullyDisappeared.contains(it) }.sumOf { currentState.assetSizes[it] ?: 0L },
+                    deletedCount = successfullyDisappeared.count { toDeleteIds.contains(it) },
+                    bytesSaved = toDeleteIds.filter { successfullyDisappeared.contains(it) }.sumOf { currentState.assetSizes[it] ?: 0L },
                     keptCount = deltaKeep,
                     archivedCount = deltaArchive,
                     lockedCount = successfullyDisappeared.count { toLock.contains(it) }
                 )
 
                 // Mise à jour de l'état local pour refléter la synchronisation
+                val currentAssetId = currentState.currentAsset?.id
                 val newSyncedDecisions = initialSyncedDecisions.toMutableMap()
                 successfulKeeps.forEach { id -> newSyncedDecisions[id] = decisions[id] ?: SwipeDecision.KEEP }
                 successfullyDisappeared.forEach { newSyncedDecisions.remove(it) }
                 initialSyncedDecisions = newSyncedDecisions
 
                 _uiState.update { 
+                    val filteredAssets = it.assets.filter { asset -> !successfullyDisappeared.contains(asset.id) }
+                    // Recalcul de l'index pour éviter les sauts lors du filtrage
+                    val newIndex = if (currentAssetId != null) {
+                        val foundIndex = filteredAssets.indexOfFirst { a -> a.id == currentAssetId }
+                        if (foundIndex != -1) foundIndex else it.currentIndex.coerceAtMost(filteredAssets.size)
+                    } else {
+                        it.currentIndex.coerceAtMost(filteredAssets.size)
+                    }
+
                     it.copy(
-                        assets = it.assets.filter { asset -> !successfullyDisappeared.contains(asset.id) },
+                        assets = filteredAssets,
+                        currentIndex = newIndex,
                         isSyncing = false,
                         showSuccessAnimation = true,
                         showSummary = false,
-                        localFavorites = emptyMap()
+                        localFavorites = emptyMap(),
+                        localDeletePendingIntent = pendingIntent
                     )
                 }
                 
@@ -526,6 +618,13 @@ class SwipeViewModel(
                 _uiState.update { it.copy(isSyncing = false, error = "Erreur synchro: ${e.message}") }
             }
         }
+    }
+
+    /**
+     * Une fois que l'Intent de suppression locale a été traité par l'UI, on le vide.
+     */
+    fun onLocalDeleteIntentHandled() {
+        _uiState.update { it.copy(localDeletePendingIntent = null) }
     }
 
     /**

@@ -29,9 +29,10 @@ data class SwipeUiState(
     val history: List<String> = emptyList(), // Liste des IDs swipés pour l'undo
     val error: String? = null,
     val playbackBehavior: PlaybackBehavior = PlaybackBehavior.PAUSE_OTHERS,
-    val fullscreenButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
+    val fullscreenButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
     val immichButtonPosition: IconPosition = IconPosition.TOP_LEFT,
-    val cardDisplayButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
+    val cardDisplayButtonPosition: IconPosition = IconPosition.BOTTOM_LEFT,
+    val muteButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
     val showFavoriteButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
@@ -39,7 +40,12 @@ data class SwipeUiState(
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
     val cardDisplayMode: CardDisplayMode = CardDisplayMode.FIT,
     val showSwipeButtons: Boolean = false,
-    val isFullscreenMode: Boolean = false
+    val swapSummaryArchive: Boolean = false,
+    val isFullscreenMode: Boolean = false,
+    val showResetConfirmation: Boolean = false,
+    val syncLocalDeletion: Boolean = false,
+    val trashLocalDeletion: Boolean = true,
+    val localDeletePendingIntent: android.app.PendingIntent? = null
 ) {
     val currentAsset: Asset? get() = assets.getOrNull(currentIndex)
     

@@ -71,6 +71,17 @@ fun SettingsScreen(
         }
     }
 
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+        if (!allGranted) {
+            // Si refusé, on désactive l'option
+            viewModel.setSyncLocalDeletion(false)
+            android.widget.Toast.makeText(context, "Permission denied. Local sync disabled.", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // Toast pour le statut des actions de base de données
     LaunchedEffect(uiState.databaseActionStatus) {
         uiState.databaseActionStatus?.let {
@@ -120,6 +131,22 @@ fun SettingsScreen(
                             selected = uiState.themeMode == AppTheme.DARK,
                             onClick = { viewModel.setThemeMode(AppTheme.DARK) },
                             modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        Spacer(Modifier.height(16.dp))
+                        SettingsToggleItemSmall(
+                            title = stringResource(R.string.settings_dynamic_color_label),
+                            checked = uiState.dynamicColor,
+                            onCheckedChange = { viewModel.setDynamicColor(it) },
+                            icon = Icons.Default.ColorLens
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_dynamic_color_desc),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(start = 40.dp, end = 16.dp)
                         )
                     }
 
@@ -306,6 +333,78 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.outline,
                             modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
                         )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+
+                        SettingsToggleItemSmall(
+                            title = stringResource(R.string.settings_swap_summary_archive_label),
+                            checked = uiState.swapSummaryArchive,
+                            onCheckedChange = { viewModel.setSwapSummaryArchive(it) },
+                            icon = Icons.Default.SwapHoriz
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_swap_summary_archive_desc),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+
+                        SettingsToggleItemSmall(
+                            title = stringResource(R.string.settings_sync_local_deletion_label),
+                            checked = uiState.syncLocalDeletion,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    // Demander les permissions avant d'activer
+                                    val perms = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                                        arrayOf(
+                                            android.Manifest.permission.READ_MEDIA_IMAGES,
+                                            android.Manifest.permission.READ_MEDIA_VIDEO
+                                        )
+                                    } else {
+                                        arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                                    }
+                                    permissionLauncher.launch(perms)
+                                }
+                                viewModel.setSyncLocalDeletion(checked)
+                            },
+                            icon = Icons.Default.PhonelinkErase
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_sync_local_deletion_desc),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
+                        )
+
+                        AnimatedVisibility(
+                            visible = uiState.syncLocalDeletion,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(start = 32.dp, end = 8.dp, bottom = 8.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        RoundedCornerShape(12.dp)
+                                    )
+                            ) {
+                                SettingsToggleItemSmall(
+                                    title = stringResource(R.string.settings_trash_local_deletion_label),
+                                    checked = uiState.trashLocalDeletion,
+                                    onCheckedChange = { viewModel.setTrashLocalDeletion(it) },
+                                    icon = Icons.Default.DeleteSweep
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_trash_local_deletion_desc),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
+                                )
+                            }
+                        }
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -333,6 +432,15 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_display_mode_pos_label),
                         selectedPosition = uiState.cardDisplayButtonPosition,
                         onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+                    // Position icône Mute (Nouveau)
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_mute_pos_label),
+                        selectedPosition = uiState.muteButtonPosition,
+                        onPositionSelected = { viewModel.setMuteButtonPosition(it) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -457,7 +565,18 @@ fun SettingsScreen(
     if (uiState.showLogsDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.setShowLogs(false) },
-            title = { Text(stringResource(R.string.settings_logs_dialog_title)) },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.settings_logs_dialog_title))
+                    IconButton(onClick = { viewModel.setShowLogs(false) }) {
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
+                    }
+                }
+            },
             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
             modifier = Modifier.fillMaxSize().padding(16.dp),
             text = {

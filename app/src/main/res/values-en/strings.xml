@@ -79,6 +79,8 @@
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color_label">System colors (Material You)</string>
+    <string name="settings_dynamic_color_desc">Use colors from your wallpaper and system theme. If disabled, the default app colors will be used.</string>
     <string name="settings_layout_label">Default layout</string>
     <string name="settings_layout_list">List</string>
     <string name="settings_layout_grid">Grid</string>
@@ -108,6 +110,20 @@
     <string name="settings_pos_top_right">Top-Right</string>
     <string name="settings_pos_bottom_left">Bottom-Left</string>
     <string name="settings_pos_bottom_right">Bottom-Right</string>
+    <string name="settings_display_mode_label">Default media display</string>
+    <string name="settings_display_mode_fill">Fill</string>
+    <string name="settings_display_mode_fit">Fit</string>
+    <string name="settings_display_mode_pos_label">Display mode button position</string>
+    <string name="settings_mute_pos_label">Mute button position</string>
+    <string name="settings_show_swipe_buttons_label">Show Keep/Delete buttons</string>
+    <string name="settings_show_swipe_buttons_desc">Display large red and green buttons for one-tap sorting</string>
+    <string name="settings_swap_summary_archive_label">Swap Archive for Summary</string>
+    <string name="settings_swap_summary_archive_desc">Replace the Archive button with a Summary button in the sorting bar</string>
+    <string name="settings_sync_local_deletion_label">Sync deletion with device</string>
+    <string name="settings_sync_local_deletion_desc">When you delete a photo from Immich, also attempt to delete the local file from your device storage to prevent re-uploading.</string>
+    <string name="settings_trash_local_deletion_label">Move to Trash instead of Delete</string>
+    <string name="settings_trash_local_deletion_desc">If supported by your system, files will be moved to the trash bin for 30 days instead of being permanently erased.</string>
+    <string name="swipe_toggle_display">Toggle display mode</string>
 
     <!-- Swipe Screen -->
     <string name="swipe_keep">Keep</string>
@@ -131,6 +147,7 @@
     <string name="swipe_metadata_resolution">Resolution</string>
     <string name="swipe_loading">Loading…</string>
     <string name="swipe_syncing">Syncing…</string>
+    <string name="swipe_sync_changes">Sync changes</string>
     <string name="swipe_congratulations">Congratulations! Album sorted.</string>
     <string name="swipe_check_before_delete">Check before deletion</string>
 
@@ -155,6 +172,12 @@
     <string name="common_retry">Retry</string>
     <string name="common_close">Close</string>
     <string name="common_loading">Loading…</string>
+    <string name="backup_warning_title">Storage Sync</string>
+    <string name="backup_warning_msg">To prevent Immich from automatically re-uploading photos you delete, you can now enable **\"Sync deletion with device\"** in Settings.\n\nThis will attempt to remove the local copy from your phone whenever you delete a photo from the server.</string>
+    <string name="backup_warning_settings">Go to Settings</string>
+    <string name="swipe_reset_button">Reset album sorting</string>
+    <string name="swipe_reset_confirm_title">Reset Album Sorting?</string>
+    <string name="swipe_reset_confirm_msg">This will permanently delete all local decisions for this album. Previously synced decisions (KEEP/DELETE) on Immich will NOT be undone on the server, but they will be cleared from your local progress in this app.</string>
 
     <!-- Statistics -->
     <string name="stats_popup_title">Usage Statistics</string>
@@ -192,10 +215,4 @@
     <string name="settings_logs_clear">Clear logs</string>
     <string name="settings_logs_empty">No logs available at the moment.</string>
     <string name="settings_logs_copied_toast">Logs copied to clipboard</string>
-    <string name="settings_display_mode_fill">Fill</string>
-    <string name="settings_display_mode_fit">Fit</string>
-    <string name="settings_display_mode_pos_label">Display mode button position</string>
-    <string name="settings_display_mode_label">Default media display</string>
-    <string name="settings_show_swipe_buttons_label">Show Keep/Delete buttons</string>
-    <string name="settings_show_swipe_buttons_desc">Display large red and green buttons for one-tap sorting</string>
 </resources>

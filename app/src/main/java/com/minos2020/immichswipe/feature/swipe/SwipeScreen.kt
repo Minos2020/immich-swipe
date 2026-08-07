@@ -6,6 +6,9 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.view.LayoutInflater
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -25,9 +28,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -82,6 +88,7 @@ import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 
 private val MaterialGreen = Color(0xFF2E7D32) // Un vert plus profond (Green 800)
@@ -103,12 +110,20 @@ fun SwipeScreen(
     swipeDecisionRepository: SwipeDecisionRepository,
     sessionRepository: SessionRepository,
     sessionKey: String,
+    resetSignal: kotlinx.coroutines.flow.SharedFlow<Unit>,
     modifier: Modifier = Modifier
 ) {
     val viewModel: SwipeViewModel = viewModel(
         key = "$sessionKey-${album.id}",
         factory = SwipeViewModelFactory(assetRepository, sessionRepository, swipeDecisionRepository, album)
     )
+    
+    // Observation du signal de reset provenant du TopAppBar (HomeViewModel)
+    LaunchedEffect(resetSignal) {
+        resetSignal.collect {
+            viewModel.toggleResetConfirmation(true)
+        }
+    }
     
     // Rafraîchir les données chaque fois que l'écran devient visible
     // Afin de refléter d'éventuels changements survenus sur l'album
@@ -117,6 +132,25 @@ fun SwipeScreen(
     }
 
     val uiState by viewModel.uiState.collectAsState()
+    
+    val deleteLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { _ ->
+        viewModel.onLocalDeleteIntentHandled()
+    }
+
+    // Gestion de la suppression locale (Android 10+)
+    LaunchedEffect(uiState.localDeletePendingIntent) {
+        uiState.localDeletePendingIntent?.let { pendingIntent ->
+            try {
+                deleteLauncher.launch(
+                    IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                )
+            } catch (_: Exception) {
+                viewModel.onLocalDeleteIntentHandled()
+            }
+        }
+    }
     
     var showSortMenu by remember { mutableStateOf(false) }
 
@@ -200,6 +234,7 @@ fun SwipeScreen(
                             fullscreenButtonPosition = uiState.fullscreenButtonPosition,
                             immichButtonPosition = uiState.immichButtonPosition,
                             cardDisplayButtonPosition = uiState.cardDisplayButtonPosition,
+                            muteButtonPosition = uiState.muteButtonPosition,
                             cardDisplayMode = uiState.cardDisplayMode,
                             onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                             isFullscreenOpen = uiState.isFullscreenMode,
@@ -209,15 +244,37 @@ fun SwipeScreen(
                     }
                 }
             } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(24.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Celebration,
                         contentDescription = null,
-                        modifier = Modifier.size(64.dp),
+                        modifier = Modifier.size(80.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.height(16.dp))
-                    Text(text = stringResource(R.string.swipe_congratulations), fontWeight = FontWeight.Bold)
+                    Text(
+                        text = stringResource(R.string.swipe_congratulations),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(Modifier.height(32.dp))
+                    Button(
+                        onClick = { viewModel.toggleSummary(true) },
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 32.dp, vertical = 12.dp)
+                    ) {
+                        Icon(Icons.Default.Sync, contentDescription = null)
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(R.string.swipe_sync_changes),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -265,14 +322,17 @@ fun SwipeScreen(
                     )
                 }
 
-                // SUMMARY
+                // ARCHIVE OU SUMMARY (Swap option - Archive par défaut)
                 IconButton(
-                    onClick = { viewModel.toggleSummary(true) },
+                    onClick = { 
+                        if (!uiState.swapSummaryArchive) viewModel.toggleArchive()
+                        else viewModel.toggleSummary(true) 
+                    },
                     modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Assessment,
-                        contentDescription = stringResource(R.string.swipe_summary_title),
+                        imageVector = if (!uiState.swapSummaryArchive) Icons.Default.Archive else Icons.Default.Assessment,
+                        contentDescription = if (!uiState.swapSummaryArchive) stringResource(R.string.swipe_archive) else stringResource(R.string.swipe_summary_title),
                         tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
                     )
@@ -292,6 +352,19 @@ fun SwipeScreen(
                             modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
                         )
                     }
+                }
+
+                // LOCK
+                IconButton(
+                    onClick = { viewModel.toggleLock() },
+                    modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = stringResource(R.string.swipe_locked),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
+                    )
                 }
 
                 // SORT MENU
@@ -346,19 +419,6 @@ fun SwipeScreen(
                     }
                 }
 
-                // LOCK
-            IconButton(
-                onClick = { viewModel.toggleLock() },
-                modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = stringResource(R.string.swipe_locked),
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
-                )
-            }
-
                 // BOUTON GARDER (KEEP)
                 if (uiState.showSwipeButtons) {
                     FloatingActionButton(
@@ -394,6 +454,7 @@ fun SwipeScreen(
         FullscreenViewer(
             asset = uiState.currentAsset!!,
             playbackBehavior = uiState.playbackBehavior,
+            muteButtonPosition = uiState.muteButtonPosition,
             onSwipe = {
                 viewModel.onSwipe(it)
                 // On ne ferme PAS isFullscreenMode ici pour rester en plein écran
@@ -407,6 +468,28 @@ fun SwipeScreen(
     // Animation de succès
     if (uiState.showSuccessAnimation) {
         SuccessAnimationOverlay()
+    }
+
+    // Dialogue de confirmation de RESET
+    if (uiState.showResetConfirmation) {
+        AlertDialog(
+            onDismissRequest = { viewModel.toggleResetConfirmation(false) },
+            title = { Text(stringResource(R.string.swipe_reset_confirm_title)) },
+            text = { Text(stringResource(R.string.swipe_reset_confirm_msg)) },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.resetAlbumDecisions() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.swipe_reset_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.toggleResetConfirmation(false) }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 }
 
@@ -844,6 +927,7 @@ fun SwipeCard(
     fullscreenButtonPosition: IconPosition,
     immichButtonPosition: IconPosition,
     cardDisplayButtonPosition: IconPosition,
+    muteButtonPosition: IconPosition,
     cardDisplayMode: CardDisplayMode,
     onToggleDisplayMode: () -> Unit,
     isFullscreenOpen: Boolean,
@@ -859,6 +943,12 @@ fun SwipeCard(
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
     val offsetY = remember { Animatable(0f) }
+    
+    // États pour le mute et le pause temporaire
+    var mutedState by rememberSaveable(asset.id) { mutableStateOf(false) }
+    var pausedByHoldState by remember { mutableStateOf(false) }
+    var ignoreNextTap by remember { mutableStateOf(false) }
+
     // isFullscreenOpen passé en paramètre
     var isVideoReady by remember(asset.id) { mutableStateOf(false) }
     var showLoadingIndicator by remember(asset.id) { mutableStateOf(false) }
@@ -929,6 +1019,11 @@ fun SwipeCard(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+
+        // Gestion du mute et pause hold
+        exoPlayer?.volume = if (mutedState) 0f else 1f
+        if (pausedByHoldState) exoPlayer?.pause() else if (!isNext && !isFullscreenOpen) exoPlayer?.play()
+
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer?.removeListener(listener)
@@ -1017,13 +1112,34 @@ fun SwipeCard(
                         ZoomableBox(
                             modifier = Modifier.fillMaxSize(),
                             resetOnRelease = true,
-                            onDoubleTap = onDoubleTap
+                            onTap = { 
+                                if (!ignoreNextTap) mutedState = !mutedState
+                                ignoreNextTap = false
+                            },
+                            onDoubleTap = onDoubleTap,
+                            onPress = {
+                                ignoreNextTap = false
+                                val wasReleased = withTimeoutOrNull(500) {
+                                    awaitRelease()
+                                    true
+                                }
+                                if (wasReleased == null) {
+                                    ignoreNextTap = true
+                                    pausedByHoldState = true
+                                    try {
+                                        awaitRelease()
+                                    } finally {
+                                        pausedByHoldState = false
+                                    }
+                                }
+                            }
                         ) {
                             SharedVideoPlayer(
                                 player = exoPlayer,
                                 isFullscreen = false,
-                                cardDisplayMode = cardDisplayMode,
-                                onDoubleTap = null // Géré par ZoomableBox
+                                isMuted = mutedState,
+                                isPaused = pausedByHoldState,
+                                cardDisplayMode = cardDisplayMode
                             )
 
                             // Indicateur de chargement si la vidéo n'est pas prête
@@ -1139,6 +1255,13 @@ fun SwipeCard(
                                         }
                                     )
                                 }
+                                if (muteButtonPosition.toHorizontalAlignment() == side && (muteButtonPosition == IconPosition.TOP_LEFT || muteButtonPosition == IconPosition.TOP_RIGHT) && asset.type == "VIDEO") {
+                                    SwipeActionIconButton(
+                                        icon = if (mutedState) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                        contentDescription = "Mute",
+                                        onClick = { mutedState = !mutedState }
+                                    )
+                                }
                             }
 
                             Spacer(Modifier.weight(1f))
@@ -1170,6 +1293,13 @@ fun SwipeCard(
                                         }
                                     )
                                 }
+                                if (muteButtonPosition.toHorizontalAlignment() == side && (muteButtonPosition == IconPosition.BOTTOM_LEFT || muteButtonPosition == IconPosition.BOTTOM_RIGHT) && asset.type == "VIDEO") {
+                                    SwipeActionIconButton(
+                                        icon = if (mutedState) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                        contentDescription = "Mute",
+                                        onClick = { mutedState = !mutedState }
+                                    )
+                                }
                             }
 
                             Spacer(Modifier.height(panelPushDp))
@@ -1197,6 +1327,8 @@ fun SwipeCard(
 fun SharedVideoPlayer(
     player: Player,
     isFullscreen: Boolean,
+    isMuted: Boolean = false,
+    isPaused: Boolean = false,
     cardDisplayMode: com.minos2020.immichswipe.core.CardDisplayMode = CardDisplayMode.FILL,
     onDoubleTap: (() -> Unit)? = null
 ) {
@@ -1225,6 +1357,9 @@ fun SharedVideoPlayer(
                 if (view.player != player) view.player = player
                 view.useController = isFullscreen
 
+                // Applique le mute/unmute
+                player.volume = if (isMuted) 0f else 1f
+
                 // TextureView est indispensable pour une intégration parfaite avec les couches Compose
                 // Cela évite les écrans noirs au retour du plein écran.
                 view.resizeMode = if (isFullscreen) {
@@ -1238,23 +1373,17 @@ fun SharedVideoPlayer(
                 }
 
                 // S'assure que la lecture reprend bien
-                if (player.playbackState == Player.STATE_READY && !player.isPlaying) {
+                if (player.playbackState == Player.STATE_READY && !player.isPlaying && !isPaused) {
                     player.play()
+                } else if (isPaused) {
+                    player.pause()
                 }
             },
             onRelease = { view ->
                 // Détache proprement le player de la vue avant destruction
                 view.player = null
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (onDoubleTap != null) {
-                        Modifier.pointerInput(onDoubleTap) {
-                            detectTapGestures(onDoubleTap = { onDoubleTap() })
-                        }
-                    } else Modifier
-                )
+            modifier = Modifier.fillMaxSize()
         )
 
         // Overlay du timestamp [actuel / total]
@@ -1271,6 +1400,23 @@ fun SharedVideoPlayer(
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+        // Indicateur Pause (Hold)
+        if (isPaused) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Pause,
+                    contentDescription = "Paused",
+                    tint = Color.White,
+                    modifier = Modifier.size(48.dp)
                 )
             }
         }
@@ -1298,6 +1444,7 @@ private fun formatMediaTime(timeMs: Long): String {
 fun FullscreenViewer(
     asset: Asset,
     playbackBehavior: PlaybackBehavior,
+    muteButtonPosition: IconPosition,
     onSwipe: (SwipeDecision) -> Unit,
     onUndo: () -> Unit,
     onDoubleTap: () -> Unit,
@@ -1307,6 +1454,11 @@ fun FullscreenViewer(
     val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
     
+    // États pour le mute et le pause temporaire
+    var mutedState by rememberSaveable(asset.id) { mutableStateOf(false) }
+    var pausedByHoldState by remember { mutableStateOf(false) }
+    var ignoreNextTap by remember { mutableStateOf(false) }
+
     // On utilise des Animatables persistants pour éviter les flashs de recréation
     val swipeY = remember { Animatable(0f) }
     val swipeX = remember { Animatable(0f) }
@@ -1345,6 +1497,14 @@ fun FullscreenViewer(
                 playWhenReady = true
             }
         } else null
+    }
+
+    LaunchedEffect(mutedState, exoPlayer) {
+        exoPlayer?.volume = if (mutedState) 0f else 1f
+    }
+
+    LaunchedEffect(pausedByHoldState, exoPlayer) {
+        if (pausedByHoldState) exoPlayer?.pause() else exoPlayer?.play()
     }
 
     DisposableEffect(exoPlayer, asset.id) {
@@ -1404,11 +1564,36 @@ fun FullscreenViewer(
             ZoomableBox(
                 modifier = Modifier.fillMaxSize(),
                 resetOnRelease = false,
+                onTap = { 
+                    if (!ignoreNextTap) mutedState = !mutedState
+                    ignoreNextTap = false
+                },
                 onDoubleTap = onDoubleTap,
+                onPress = {
+                    ignoreNextTap = false
+                    val wasReleased = withTimeoutOrNull(500) {
+                        awaitRelease()
+                        true
+                    }
+                    if (wasReleased == null) {
+                        ignoreNextTap = true
+                        pausedByHoldState = true
+                        try {
+                            awaitRelease()
+                        } finally {
+                            pausedByHoldState = false
+                        }
+                    }
+                },
                 aspectRatio = asset.exifInfo?.let { it.imageWidth?.toFloat()?.div(it.imageHeight?.toFloat() ?: 1f) }
             ) {
                 if (asset.type == "VIDEO" && exoPlayer != null) {
-                    SharedVideoPlayer(player = exoPlayer, isFullscreen = true)
+                    SharedVideoPlayer(
+                        player = exoPlayer,
+                        isFullscreen = true,
+                        isMuted = mutedState,
+                        isPaused = pausedByHoldState
+                    )
                 } else {
                     val baseUrlClean = SessionManager.getBaseUrl()?.removeSuffix("/")
                     AsyncImage(
@@ -1453,6 +1638,38 @@ fun FullscreenViewer(
                     contentDescription = stringResource(R.string.nav_back),
                     tint = Color.White
                 )
+            }
+
+            // Bouton Mute
+            if (asset.type == "VIDEO") {
+                val muteAlign = when (muteButtonPosition) {
+                    IconPosition.TOP_LEFT -> Alignment.TopStart
+                    IconPosition.TOP_RIGHT -> Alignment.TopEnd
+                    IconPosition.BOTTOM_LEFT -> Alignment.BottomStart
+                    IconPosition.BOTTOM_RIGHT -> Alignment.BottomEnd
+                }
+                
+                // On ajuste le padding pour ne pas chevaucher les boutons existants
+                val mutePadding = when (muteButtonPosition) {
+                    IconPosition.TOP_LEFT -> Modifier.padding(top = 50.dp, start = 20.dp)
+                    IconPosition.TOP_RIGHT -> Modifier.padding(top = 110.dp, end = 20.dp) // Sous le bouton Close
+                    IconPosition.BOTTOM_LEFT -> Modifier.padding(bottom = 160.dp, start = 24.dp) // Au-dessus du bouton Undo
+                    IconPosition.BOTTOM_RIGHT -> Modifier.padding(bottom = 100.dp, end = 24.dp) // Symétrique à l'Undo
+                }
+
+                IconButton(
+                    onClick = { mutedState = !mutedState },
+                    modifier = Modifier
+                        .align(muteAlign)
+                        .then(mutePadding)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = if (mutedState) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = "Mute",
+                        tint = Color.White
+                    )
+                }
             }
         }
     }
@@ -1884,7 +2101,9 @@ fun ZoomableBox(
     enabled: Boolean = true,
     aspectRatio: Float? = null,
     isFillMode: Boolean = false,
+    onTap: (() -> Unit)? = null,
     onDoubleTap: (() -> Unit)? = null,
+    onPress: (suspend PressGestureScope.(Offset) -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     if (!enabled) {
@@ -1893,6 +2112,8 @@ fun ZoomableBox(
     }
 
     val scope = rememberCoroutineScope()
+    
+    // ...
 
     // Calcul de la "base" pour le mode FILL si l'aspect ratio est connu
     var fillScale by remember(aspectRatio) { mutableFloatStateOf(1f) }
@@ -2059,67 +2280,73 @@ fun ZoomableBox(
                 }
             }
             .then(
-                Modifier.pointerInput(resetOnRelease, scale, onDoubleTap) {
-                    detectTapGestures(onDoubleTap = { tapOffset ->
-                        if (onDoubleTap != null) {
-                            onDoubleTap()
-                        } else if (!resetOnRelease) {
-                            // Mode plein écran (zoom par défaut si pas de callback spécifique)
-                            if (scale > 1.01f) {
-                                scope.launch {
-                                    launch {
-                                        androidx.compose.animation.core.animate(scale, 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { value, _ ->
-                                            scale = value
+                Modifier.pointerInput(resetOnRelease, scale, onDoubleTap, onTap, onPress) {
+                    detectTapGestures(
+                        onTap = { onTap?.invoke() },
+                        onDoubleTap = { tapOffset ->
+                            if (onDoubleTap != null) {
+                                onDoubleTap()
+                            } else if (!resetOnRelease) {
+                                // Mode plein écran : Bascule x1 / x3
+                                if (scale > 1.01f) {
+                                    scope.launch {
+                                        launch {
+                                            animate(scale, 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { value, _ ->
+                                                scale = value
+                                            }
+                                        }
+                                        launch {
+                                            animate(
+                                                typeConverter = Offset.VectorConverter,
+                                                initialValue = offset,
+                                                targetValue = Offset.Zero,
+                                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)
+                                            ) { value, _ ->
+                                                offset = value
+                                            }
                                         }
                                     }
-                                    launch {
-                                        androidx.compose.animation.core.animate(
-                                            typeConverter = Offset.VectorConverter,
-                                            initialValue = offset,
-                                            targetValue = Offset.Zero,
-                                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)
-                                        ) { value, _ ->
-                                            offset = value
-                                        }
-                                    }
-                                }
-                            } else {
-                                // Zoom x3 à l'endroit du tap
-                                val targetScale = 3f
-                                val center = Offset(size.width / 2f, size.height / 2f)
-                                val centroidInCenter = tapOffset - center
-                                
-                                // Calcul de l'offset cible pour centrer sur le tap
-                                val targetOffsetRaw = centroidInCenter * (1f - targetScale)
-                                
-                                // On applique les limites immédiatement
-                                val maxX = (size.width * (targetScale - 1f) / 2f).coerceAtLeast(0f)
-                                val maxY = (size.height * (targetScale - 1f) / 2f).coerceAtLeast(0f)
-                                val targetOffset = Offset(
-                                    targetOffsetRaw.x.coerceIn(-maxX, maxX),
-                                    targetOffsetRaw.y.coerceIn(-maxY, maxY)
-                                )
+                                } else {
+                                    // Zoom x3 à l'endroit du tap
+                                    val targetScale = 3f
+                                    val center = Offset(size.width / 2f, size.height / 2f)
+                                    val centroidInCenter = tapOffset - center
+                                    
+                                    // Calcul de l'offset cible pour centrer sur le tap
+                                    val targetOffsetRaw = centroidInCenter * (1f - targetScale)
+                                    
+                                    // On applique les limites immédiatement
+                                    val maxX = (size.width * (targetScale - 1f) / 2f).coerceAtLeast(0f)
+                                    val maxY = (size.height * (targetScale - 1f) / 2f).coerceAtLeast(0f)
+                                    val targetOffset = Offset(
+                                        targetOffsetRaw.x.coerceIn(-maxX, maxX),
+                                        targetOffsetRaw.y.coerceIn(-maxY, maxY)
+                                    )
 
-                                scope.launch {
-                                    launch {
-                                        androidx.compose.animation.core.animate(scale, targetScale, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { value, _ ->
-                                            scale = value
+                                    scope.launch {
+                                        launch {
+                                            animate(scale, targetScale, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { value, _ ->
+                                                scale = value
+                                            }
                                         }
-                                    }
-                                    launch {
-                                        androidx.compose.animation.core.animate(
-                                            typeConverter = Offset.VectorConverter,
-                                            initialValue = offset,
-                                            targetValue = targetOffset,
-                                            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)
-                                        ) { value, _ ->
-                                            offset = value
+                                        launch {
+                                            animate(
+                                                typeConverter = Offset.VectorConverter,
+                                                initialValue = offset,
+                                                targetValue = targetOffset,
+                                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)
+                                            ) { value, _ ->
+                                                offset = value
+                                            }
                                         }
                                     }
                                 }
                             }
+                        },
+                        onPress = { offset ->
+                            onPress?.invoke(this, offset)
                         }
-                    })
+                    )
                 }
             )
             .graphicsLayer {

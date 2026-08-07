@@ -136,6 +136,15 @@ fun HomeScreen(
                                     contentDescription = stringResource(R.string.settings_layout_label)
                                 )
                             }
+                        } else if (uiState.currentTab == HomeTab.SWIPE) {
+                            // Bouton Reset (Nouveau)
+                            IconButton(onClick = { viewModel.requestReset() }) {
+                                Icon(
+                                    imageVector = Icons.Default.RestartAlt,
+                                    contentDescription = stringResource(R.string.swipe_reset_button),
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                                )
+                            }
                         }
 
                         val baseUrl = SessionManager.getBaseUrl()
@@ -298,7 +307,8 @@ fun HomeScreen(
                                     assetRepository = assetRepository,
                                     swipeDecisionRepository = swipeDecisionRepository,
                                     sessionRepository = viewModel.getSessionRepository(),
-                                    sessionKey = sessionKey
+                                    sessionKey = sessionKey,
+                                    resetSignal = viewModel.resetRequestSignal
                                 )
                             } else {
                                 SwipePlaceholder(selectedAlbum = null)
@@ -369,6 +379,35 @@ fun HomeScreen(
     }
 
     // Affichage de la fenêtre popup de profil
+    // Animation de succès
+    if (uiState.showBackupWarning) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissBackupWarning() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.SyncLock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(R.string.backup_warning_title))
+                }
+            },
+            text = { Text(stringResource(R.string.backup_warning_msg)) },
+            confirmButton = {
+                Button(onClick = { viewModel.dismissBackupWarning() }) {
+                    Text(stringResource(R.string.common_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    viewModel.onTabSelected(HomeTab.SETTINGS)
+                    viewModel.dismissBackupWarning()
+                }) {
+                    Text(stringResource(R.string.backup_warning_settings))
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
+
     if (uiState.showProfilePopup) {
         ProfilePopup(
             user = uiState.user,
@@ -946,6 +985,23 @@ fun ProfilePopup(
                         fontWeight = FontWeight.Bold
                     )
                 }
+
+                // Version de l'application
+                val packageInfo = remember {
+                    try {
+                        context.packageManager.getPackageInfo(context.packageName, 0)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                val versionName = packageInfo?.versionName ?: "2.2.2"
+                
+                Text(
+                    text = "v$versionName",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
         }
     }

@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                 AppTheme.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
             }
 
-            ImmichSwipeTheme(darkTheme = useDarkTheme) {
+            ImmichSwipeTheme(darkTheme = useDarkTheme, dynamicColor = state.dynamicColor) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
                                         val albumRepository = remember(sessionKey) { AlbumRepository(api) }
                                         val assetRepository = remember(sessionKey) { 
                                             AssetRepository(
+                                                applicationContext,
                                                 api, 
                                                 database.albumAssetDao()
                                             ) 

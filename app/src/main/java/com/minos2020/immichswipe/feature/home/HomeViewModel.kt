@@ -6,18 +6,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minos2020.immichswipe.data.repository.UserRepository
 import com.minos2020.immichswipe.data.repository.AlbumRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.AppLogger
-import com.minos2020.immichswipe.core.SortOrder
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
@@ -174,6 +175,13 @@ class HomeViewModel(
                 _uiState.update { it.copy(savedAccounts = accounts) }
             }
         }
+
+        // Observe l'avertissement de backup
+        viewModelScope.launch {
+            sessionRepository.backupWarningShown.collect { shown ->
+                _uiState.update { it.copy(showBackupWarning = !shown) }
+            }
+        }
     }
 
     fun loadUser() {
@@ -286,10 +294,6 @@ class HomeViewModel(
         _uiState.update { it.copy(showStatsPopup = visible) }
     }
 
-    fun setSortOrder(order: SortOrder) = viewModelScope.launch {
-        sessionRepository.saveSortOrder(order)
-    }
-
     fun logout() = viewModelScope.launch {
         val currentUserId = _uiState.value.user?.id
         _uiState.update { it.copy(currentTab = HomeTab.HOME, showProfilePopup = false) }
@@ -358,6 +362,21 @@ class HomeViewModel(
                 newCollapsed.add(status)
             }
             state.copy(collapsedCategories = newCollapsed)
+        }
+    }
+
+    fun dismissBackupWarning() {
+        viewModelScope.launch {
+            sessionRepository.saveBackupWarningShown(true)
+        }
+    }
+
+    private val _resetRequestSignal = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val resetRequestSignal = _resetRequestSignal.asSharedFlow()
+
+    fun requestReset() {
+        viewModelScope.launch {
+            _resetRequestSignal.emit(Unit)
         }
     }
 

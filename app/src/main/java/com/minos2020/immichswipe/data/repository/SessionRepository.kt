@@ -59,10 +59,15 @@ class SessionRepository(context: Context) {
     }
 
     /**
+     * Expose si les couleurs dynamiques (Material You) sont activées.
+     */
+    val dynamicColor: Flow<Boolean> = dataStore.isDynamicColor()
+
+    /**
      * Expose la position de l'icône plein écran.
      */
     val fullscreenButtonPosition: Flow<IconPosition> = dataStore.getFullscreenIconPosition().map {
-        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.TOP_RIGHT } } ?: IconPosition.TOP_RIGHT
     }
 
     /**
@@ -80,6 +85,13 @@ class SessionRepository(context: Context) {
     }
 
     /**
+     * Expose la position de l'icône mute.
+     */
+    val muteButtonPosition: Flow<IconPosition> = dataStore.getMuteIconPosition().map {
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
+    }
+
+    /**
      * Expose la préférence du mode d'affichage par défaut.
      */
     val defaultLayoutGrid: Flow<Boolean> = dataStore.isDefaultLayoutGrid()
@@ -88,6 +100,10 @@ class SessionRepository(context: Context) {
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
     val showSwipeButtons: Flow<Boolean> = dataStore.isShowSwipeButtons()
+    val swapSummaryArchive: Flow<Boolean> = dataStore.isSwapSummaryArchive()
+    val backupWarningShown: Flow<Boolean> = dataStore.isBackupWarningShown()
+    val syncLocalDeletion: Flow<Boolean> = dataStore.isSyncLocalDeletion()
+    val trashLocalDeletion: Flow<Boolean> = dataStore.isTrashLocalDeletion()
     
     val sortOrder: Flow<SortOrder> = dataStore.getSortOrder().map {
         it?.let { try { SortOrder.valueOf(it) } catch(e: Exception) { SortOrder.CHRONOLOGICAL_DESC } } ?: SortOrder.CHRONOLOGICAL_DESC
@@ -123,6 +139,13 @@ class SessionRepository(context: Context) {
     }
 
     /**
+     * Sauvegarde si les couleurs dynamiques sont activées.
+     */
+    suspend fun saveDynamicColor(enabled: Boolean) {
+        dataStore.saveDynamicColor(enabled)
+    }
+
+    /**
      * Sauvegarde la position de l'icône plein écran.
      */
     suspend fun saveFullscreenButtonPosition(pos: IconPosition) {
@@ -144,6 +167,13 @@ class SessionRepository(context: Context) {
     }
 
     /**
+     * Sauvegarde la position de l'icône mute.
+     */
+    suspend fun saveMuteButtonPosition(pos: IconPosition) {
+        dataStore.saveMuteIconPosition(pos.name)
+    }
+
+    /**
      * Sauvegarde le mode d'affichage par défaut.
      */
     suspend fun saveDefaultLayoutGrid(isGrid: Boolean) {
@@ -154,6 +184,10 @@ class SessionRepository(context: Context) {
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
     suspend fun saveShowSwipeButtons(show: Boolean) { dataStore.saveShowSwipeButtons(show) }
+    suspend fun saveSwapSummaryArchive(swap: Boolean) { dataStore.saveSwapSummaryArchive(swap) }
+    suspend fun saveBackupWarningShown(shown: Boolean) { dataStore.saveBackupWarningShown(shown) }
+    suspend fun saveSyncLocalDeletion(sync: Boolean) { dataStore.saveSyncLocalDeletion(sync) }
+    suspend fun saveTrashLocalDeletion(trash: Boolean) { dataStore.saveTrashLocalDeletion(trash) }
     suspend fun saveSortOrder(order: SortOrder) { dataStore.saveSortOrder(order.name) }
 
     suspend fun saveDefaultCardDisplayMode(mode: CardDisplayMode) {

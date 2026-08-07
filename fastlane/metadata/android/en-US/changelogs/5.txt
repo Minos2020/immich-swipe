@@ -1,4 +1,4 @@
-Immich Swipe v2.1.0
+Immich Swipe v2.2.2
 
 - Added 2 new collections : All assets and Orphans (assets that are not in any album)
 - Added option to choose how images are displayed (fill or fit), both with a default parameter AND a quick button on the card.
