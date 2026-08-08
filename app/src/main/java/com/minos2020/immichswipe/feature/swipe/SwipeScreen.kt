@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -48,12 +49,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -163,6 +167,11 @@ fun SwipeScreen(
         } else null
     }
 
+    // Mise à jour du volume quand isMuted change
+    LaunchedEffect(sharedPlayer, uiState.isMuted) {
+        sharedPlayer?.volume = if (uiState.isMuted) 0f else 1f
+    }
+
     DisposableEffect(sharedPlayer) {
         onDispose { sharedPlayer?.release() }
     }
@@ -258,12 +267,19 @@ fun SwipeScreen(
                             immichButtonPosition = uiState.immichButtonPosition,
                             cardDisplayButtonPosition = uiState.cardDisplayButtonPosition,
                             muteButtonPosition = uiState.muteButtonPosition,
+                            showFullscreenButton = uiState.showFullscreenButton,
+                            showImmichButton = uiState.showImmichButton,
+                            showCardDisplayButton = uiState.showCardDisplayButton,
+                            showMuteButton = uiState.showMuteButton,
                             cardDisplayMode = uiState.cardDisplayMode,
                             onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                             isFullscreenOpen = uiState.isFullscreenMode,
                             onDoubleTap = { viewModel.toggleFavorite() },
                             onOpenFullscreen = { viewModel.toggleFullscreen(true) },
-                            providedPlayer = if (!isNextCard) sharedPlayer else null
+                            providedPlayer = if (!isNextCard) sharedPlayer else null,
+                            showSizeIndicator = uiState.sortOrder == SortOrder.SIZE_DESC || uiState.sortOrder == SortOrder.SIZE_ASC,
+                            isMuted = uiState.isMuted,
+                            onToggleMute = { viewModel.toggleMute() }
                         )
                     }
                 }
@@ -580,7 +596,11 @@ fun SwipeScreen(
             onUndo = { viewModel.undo() },
             onDoubleTap = { viewModel.toggleFavorite() },
             onClose = { viewModel.toggleFullscreen(false) },
-            providedPlayer = sharedPlayer
+            providedPlayer = sharedPlayer,
+            showSizeIndicator = uiState.sortOrder == SortOrder.SIZE_DESC || uiState.sortOrder == SortOrder.SIZE_ASC,
+            isMuted = uiState.isMuted,
+            onToggleMute = { viewModel.toggleMute() },
+            showMuteButton = uiState.showMuteButton
         )
     }
 
@@ -1032,12 +1052,19 @@ fun SwipeCard(
     immichButtonPosition: IconPosition,
     cardDisplayButtonPosition: IconPosition,
     muteButtonPosition: IconPosition,
+    showFullscreenButton: Boolean = true,
+    showImmichButton: Boolean = true,
+    showCardDisplayButton: Boolean = true,
+    showMuteButton: Boolean = true,
     cardDisplayMode: CardDisplayMode,
     onToggleDisplayMode: () -> Unit,
     isFullscreenOpen: Boolean,
     onDoubleTap: () -> Unit,
     onOpenFullscreen: () -> Unit,
-    providedPlayer: ExoPlayer? = null
+    providedPlayer: ExoPlayer? = null,
+    showSizeIndicator: Boolean = false,
+    isMuted: Boolean = false,
+    onToggleMute: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -1049,7 +1076,6 @@ fun SwipeCard(
     val offsetX = remember { Animatable(0f) }
     val offsetY = remember { Animatable(0f) }
 
-    var mutedState by rememberSaveable(asset.id) { mutableStateOf(false) }
     var pausedByHoldState by remember { mutableStateOf(false) }
     var ignoreNextTap by remember { mutableStateOf(false) }
 
@@ -1094,6 +1120,11 @@ fun SwipeCard(
 
     val exoPlayer = providedPlayer ?: internalExoPlayer
 
+    // Mise à jour du volume quand isMuted change pour le player interne
+    LaunchedEffect(internalExoPlayer, isMuted) {
+        internalExoPlayer?.volume = if (isMuted) 0f else 1f
+    }
+
     DisposableEffect(exoPlayer, lifecycleOwner) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
@@ -1119,7 +1150,7 @@ fun SwipeCard(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
 
-        exoPlayer?.volume = if (mutedState) 0f else 1f
+        exoPlayer?.volume = if (isMuted) 0f else 1f
         if (pausedByHoldState) exoPlayer?.pause() else if (!isNext && !isFullscreenOpen) exoPlayer?.play()
 
         onDispose {
@@ -1201,7 +1232,7 @@ fun SwipeCard(
                             modifier = Modifier.fillMaxSize(),
                             resetOnRelease = true,
                             onTap = {
-                                if (!ignoreNextTap) mutedState = !mutedState
+                                if (!ignoreNextTap) onToggleMute()
                                 ignoreNextTap = false
                             },
                             onDoubleTap = onDoubleTap,
@@ -1225,9 +1256,11 @@ fun SwipeCard(
                             SharedVideoPlayer(
                                 player = exoPlayer,
                                 isFullscreen = false,
-                                isMuted = mutedState,
+                                isMuted = isMuted,
                                 isPaused = pausedByHoldState,
-                                cardDisplayMode = cardDisplayMode
+                                cardDisplayMode = cardDisplayMode,
+                                fileSize = asset.exifInfo?.fileSizeInBytes,
+                                showSize = showSizeIndicator
                             )
 
                             if (showLoadingIndicator) {
@@ -1285,6 +1318,24 @@ fun SwipeCard(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+
+                    if (showSizeIndicator && !isNext) {
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 32.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = formatSize(asset.exifInfo?.fileSizeInBytes ?: 0L),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
 
                 if (!isNext) {
@@ -1312,14 +1363,14 @@ fun SwipeCard(
                             horizontalAlignment = side
                         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (fullscreenButtonPosition.toHorizontalAlignment() == side && (fullscreenButtonPosition == IconPosition.TOP_LEFT || fullscreenButtonPosition == IconPosition.TOP_RIGHT)) {
+                                if (showFullscreenButton && fullscreenButtonPosition.toHorizontalAlignment() == side && (fullscreenButtonPosition == IconPosition.TOP_LEFT || fullscreenButtonPosition == IconPosition.TOP_RIGHT)) {
                                     SwipeActionIconButton(
                                         icon = Icons.Default.Fullscreen,
                                         contentDescription = stringResource(R.string.settings_fullscreen_pos_label),
                                         onClick = onOpenFullscreen
                                     )
                                 }
-                                if (cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.TOP_LEFT || cardDisplayButtonPosition == IconPosition.TOP_RIGHT)) {
+                                if (showCardDisplayButton && cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.TOP_LEFT || cardDisplayButtonPosition == IconPosition.TOP_RIGHT)) {
                                     SwipeActionIconButton(
                                         icon = if (cardDisplayMode == CardDisplayMode.FILL)
                                             Icons.Default.FitScreen else Icons.Default.AspectRatio,
@@ -1327,7 +1378,7 @@ fun SwipeCard(
                                         onClick = onToggleDisplayMode
                                     )
                                 }
-                                if (immichButtonPosition.toHorizontalAlignment() == side && (immichButtonPosition == IconPosition.TOP_LEFT || immichButtonPosition == IconPosition.TOP_RIGHT)) {
+                                if (showImmichButton && immichButtonPosition.toHorizontalAlignment() == side && (immichButtonPosition == IconPosition.TOP_LEFT || immichButtonPosition == IconPosition.TOP_RIGHT)) {
                                     SwipeActionIconButton(
                                         icon = Icons.AutoMirrored.Filled.OpenInNew,
                                         contentDescription = stringResource(R.string.settings_immich_pos_label),
@@ -1337,11 +1388,11 @@ fun SwipeCard(
                                         }
                                     )
                                 }
-                                if (muteButtonPosition.toHorizontalAlignment() == side && (muteButtonPosition == IconPosition.TOP_LEFT || muteButtonPosition == IconPosition.TOP_RIGHT) && asset.type == "VIDEO") {
+                                if (showMuteButton && muteButtonPosition.toHorizontalAlignment() == side && (muteButtonPosition == IconPosition.TOP_LEFT || muteButtonPosition == IconPosition.TOP_RIGHT) && asset.type == "VIDEO") {
                                     SwipeActionIconButton(
-                                        icon = if (mutedState) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                        icon = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                                         contentDescription = "Mute",
-                                        onClick = { mutedState = !mutedState }
+                                        onClick = onToggleMute
                                     )
                                 }
                             }
@@ -1349,14 +1400,14 @@ fun SwipeCard(
                             Spacer(Modifier.weight(1f))
 
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (fullscreenButtonPosition.toHorizontalAlignment() == side && (fullscreenButtonPosition == IconPosition.BOTTOM_LEFT || fullscreenButtonPosition == IconPosition.BOTTOM_RIGHT)) {
+                                if (showFullscreenButton && fullscreenButtonPosition.toHorizontalAlignment() == side && (fullscreenButtonPosition == IconPosition.BOTTOM_LEFT || fullscreenButtonPosition == IconPosition.BOTTOM_RIGHT)) {
                                     SwipeActionIconButton(
                                         icon = Icons.Default.Fullscreen,
                                         contentDescription = stringResource(R.string.settings_fullscreen_pos_label),
                                         onClick = onOpenFullscreen
                                     )
                                 }
-                                if (cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.BOTTOM_LEFT || cardDisplayButtonPosition == IconPosition.BOTTOM_RIGHT)) {
+                                if (showCardDisplayButton && cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.BOTTOM_LEFT || cardDisplayButtonPosition == IconPosition.BOTTOM_RIGHT)) {
                                     SwipeActionIconButton(
                                         icon = if (cardDisplayMode == CardDisplayMode.FILL)
                                             Icons.Default.FitScreen else Icons.Default.AspectRatio,
@@ -1364,7 +1415,7 @@ fun SwipeCard(
                                         onClick = onToggleDisplayMode
                                     )
                                 }
-                                if (immichButtonPosition.toHorizontalAlignment() == side && (immichButtonPosition == IconPosition.BOTTOM_LEFT || immichButtonPosition == IconPosition.BOTTOM_RIGHT)) {
+                                if (showImmichButton && immichButtonPosition.toHorizontalAlignment() == side && (immichButtonPosition == IconPosition.BOTTOM_LEFT || immichButtonPosition == IconPosition.BOTTOM_RIGHT)) {
                                     SwipeActionIconButton(
                                         icon = Icons.AutoMirrored.Filled.OpenInNew,
                                         contentDescription = stringResource(R.string.settings_immich_pos_label),
@@ -1374,11 +1425,11 @@ fun SwipeCard(
                                         }
                                     )
                                 }
-                                if (muteButtonPosition.toHorizontalAlignment() == side && (muteButtonPosition == IconPosition.BOTTOM_LEFT || muteButtonPosition == IconPosition.BOTTOM_RIGHT) && asset.type == "VIDEO") {
+                                if (showMuteButton && muteButtonPosition.toHorizontalAlignment() == side && (muteButtonPosition == IconPosition.BOTTOM_LEFT || muteButtonPosition == IconPosition.BOTTOM_RIGHT) && asset.type == "VIDEO") {
                                     SwipeActionIconButton(
-                                        icon = if (mutedState) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                        icon = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                                         contentDescription = "Mute",
-                                        onClick = { mutedState = !mutedState }
+                                        onClick = onToggleMute
                                     )
                                 }
                             }
@@ -1410,7 +1461,11 @@ fun SharedVideoPlayer(
     isMuted: Boolean = false,
     isPaused: Boolean = false,
     cardDisplayMode: com.minos2020.immichswipe.core.CardDisplayMode = CardDisplayMode.FILL,
-    onDoubleTap: (() -> Unit)? = null
+    onDoubleTap: (() -> Unit)? = null,
+    fileSize: Long? = null,
+    showSize: Boolean = false,
+    onControllerVisibilityChanged: ((Boolean) -> Unit)? = null,
+    controlsOffset: Dp = 0.dp
 ) {
     var currentTime by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
@@ -1427,6 +1482,9 @@ fun SharedVideoPlayer(
         AndroidView(
             factory = { context ->
                 val view = LayoutInflater.from(context).inflate(R.layout.view_player_texture, null) as PlayerView
+                view.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+                    onControllerVisibilityChanged?.invoke(visibility == android.view.View.VISIBLE)
+                })
                 view
             },
             update = { view ->
@@ -1455,7 +1513,29 @@ fun SharedVideoPlayer(
             modifier = Modifier.fillMaxSize()
         )
 
-        if (duration > 0) {
+        // Size tag at BottomCenter
+        if (showSize && fileSize != null) {
+            val configuration = LocalConfiguration.current
+            val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = (if (isFullscreen) (if (isLandscape) 80.dp else 80.dp) else 12.dp) + controlsOffset),
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = formatSize(fileSize),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+        if (duration > 0 && !isFullscreen) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -1500,13 +1580,16 @@ fun FullscreenViewer(
     onUndo: () -> Unit,
     onDoubleTap: () -> Unit,
     onClose: () -> Unit,
-    providedPlayer: ExoPlayer? = null
+    providedPlayer: ExoPlayer? = null,
+    showSizeIndicator: Boolean = false,
+    isMuted: Boolean = false,
+    onToggleMute: () -> Unit = {},
+    showMuteButton: Boolean = true
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
 
-    var mutedState by rememberSaveable(asset.id) { mutableStateOf(false) }
     var pausedByHoldState by remember { mutableStateOf(false) }
     var ignoreNextTap by remember { mutableStateOf(false) }
 
@@ -1514,6 +1597,16 @@ fun FullscreenViewer(
     val swipeX = remember { Animatable(0f) }
 
     val currentOnSwipe by rememberUpdatedState(onSwipe)
+
+    var controlsVisible by remember { mutableStateOf(false) }
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    
+    val controlsOffset by animateDpAsState(
+        targetValue = if (controlsVisible && isLandscape) 64.dp else 0.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "ControlsShift"
+    )
 
     LaunchedEffect(asset.id) {
         swipeX.snapTo(0f)
@@ -1548,8 +1641,8 @@ fun FullscreenViewer(
 
     val exoPlayer = providedPlayer ?: internalExoPlayer
 
-    LaunchedEffect(mutedState, exoPlayer) {
-        exoPlayer?.volume = if (mutedState) 0f else 1f
+    LaunchedEffect(exoPlayer, isMuted) {
+        exoPlayer?.volume = if (isMuted) 0f else 1f
     }
 
     LaunchedEffect(pausedByHoldState, exoPlayer) {
@@ -1623,7 +1716,7 @@ fun FullscreenViewer(
                 modifier = Modifier.fillMaxSize(),
                 resetOnRelease = false,
                 onTap = {
-                    if (!ignoreNextTap) mutedState = !mutedState
+                    if (!ignoreNextTap) onToggleMute()
                     ignoreNextTap = false
                 },
                 onDoubleTap = onDoubleTap,
@@ -1649,8 +1742,12 @@ fun FullscreenViewer(
                     SharedVideoPlayer(
                         player = exoPlayer,
                         isFullscreen = true,
-                        isMuted = mutedState,
-                        isPaused = pausedByHoldState
+                        isMuted = isMuted,
+                        isPaused = pausedByHoldState,
+                        fileSize = asset.exifInfo?.fileSizeInBytes,
+                        showSize = showSizeIndicator,
+                        onControllerVisibilityChanged = { controlsVisible = it },
+                        controlsOffset = controlsOffset
                     )
                 } else {
                     val baseUrlClean = SessionManager.getBaseUrl()?.removeSuffix("/")
@@ -1662,6 +1759,24 @@ fun FullscreenViewer(
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit
+                    )
+                }
+            }
+
+            if (showSizeIndicator && asset.type != "VIDEO") {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = (if (isLandscape) 80.dp else 80.dp) + controlsOffset),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = formatSize(asset.exifInfo?.fileSizeInBytes ?: 0L),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
             }
@@ -1678,7 +1793,7 @@ fun FullscreenViewer(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 106.dp) 
+                    .padding(bottom = (if (isLandscape) 20.dp else 106.dp) + controlsOffset)
                     .graphicsLayer {
                         scaleX = heartScale
                         scaleY = heartScale
@@ -1710,7 +1825,7 @@ fun FullscreenViewer(
                 onClick = onUndo,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 24.dp, bottom = 100.dp)
+                    .padding(start = 24.dp, bottom = (if (isLandscape) 20.dp else 100.dp) + controlsOffset)
                     .background(Color.Black.copy(alpha = 0.5f), CircleShape)
             ) {
                 Icon(
@@ -1720,7 +1835,7 @@ fun FullscreenViewer(
                 )
             }
 
-            if (asset.type == "VIDEO") {
+            if (showMuteButton && asset.type == "VIDEO") {
                 val muteAlign = when (muteButtonPosition) {
                     IconPosition.TOP_LEFT -> Alignment.TopStart
                     IconPosition.TOP_RIGHT -> Alignment.TopEnd
@@ -1731,19 +1846,19 @@ fun FullscreenViewer(
                 val mutePadding = when (muteButtonPosition) {
                     IconPosition.TOP_LEFT -> Modifier.padding(top = 50.dp, start = 20.dp)
                     IconPosition.TOP_RIGHT -> Modifier.padding(top = 110.dp, end = 20.dp)
-                    IconPosition.BOTTOM_LEFT -> Modifier.padding(bottom = 160.dp, start = 24.dp)
-                    IconPosition.BOTTOM_RIGHT -> Modifier.padding(bottom = 100.dp, end = 24.dp)
+                    IconPosition.BOTTOM_LEFT -> Modifier.padding(bottom = (if (isLandscape) 80.dp else 160.dp) + controlsOffset, start = 24.dp)
+                    IconPosition.BOTTOM_RIGHT -> Modifier.padding(bottom = (if (isLandscape) 20.dp else 100.dp) + controlsOffset, end = 24.dp)
                 }
 
                 IconButton(
-                    onClick = { mutedState = !mutedState },
+                    onClick = onToggleMute,
                     modifier = Modifier
                         .align(muteAlign)
                         .then(mutePadding)
                         .background(Color.Black.copy(alpha = 0.5f), CircleShape)
                 ) {
                     Icon(
-                        imageVector = if (mutedState) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                        imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = "Mute",
                         tint = Color.White
                     )
@@ -2170,6 +2285,7 @@ fun ZoomableBox(
     var fillScale by remember(aspectRatio) { mutableFloatStateOf(1f) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    var boxSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
 
     val animatedScale = remember { Animatable(1f) }
     val animatedOffset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
@@ -2189,6 +2305,7 @@ fun ZoomableBox(
         modifier = modifier
             .clipToBounds()
             .onSizeChanged { intSize ->
+                boxSize = intSize
                 if (aspectRatio != null && intSize.width > 0 && intSize.height > 0) {
                     val boxRatio = intSize.width.toFloat() / intSize.height.toFloat()
                     fillScale = if (aspectRatio > boxRatio) {
@@ -2204,6 +2321,7 @@ fun ZoomableBox(
                         val event = awaitPointerEvent()
                         val zoomChange = event.calculateZoom()
                         val panChange = event.calculatePan()
+                        val centroid = event.calculateCentroid(useCurrent = false)
 
                         if (event.changes.size >= 2) {
                             // Zooming with 2 fingers
@@ -2211,16 +2329,23 @@ fun ZoomableBox(
                                 val oldScale = if (resetOnRelease) animatedScale.value else scale
                                 val newScale = (oldScale * zoomChange).coerceIn(0.7f, 5f)
                                 
+                                val oldOffset = if (resetOnRelease) animatedOffset.value else offset
+                                // Correct formula for zooming around centroid with default Center origin
+                                val newOffset = (centroid - size.toSize().center) * (1f - zoomChange) + (oldOffset * zoomChange) + panChange
+
                                 if (resetOnRelease) {
                                     scope.launch {
                                         animatedScale.snapTo(newScale)
+                                        animatedOffset.snapTo(newOffset)
                                     }
                                 } else {
                                     scale = newScale
+                                    offset = newOffset
                                 }
                                 event.changes.forEach { it.consume() }
                             }
-                        } else if (event.changes.size == 1 && (if(resetOnRelease) animatedScale.value else scale) > 1.05f) {
+                        }
+else if (event.changes.size == 1 && (if(resetOnRelease) animatedScale.value else scale) > 1.05f) {
                             // Panning with 1 finger ONLY if zoomed in
                             if (panChange != Offset.Zero) {
                                 if (resetOnRelease) {
@@ -2240,6 +2365,12 @@ fun ZoomableBox(
                             launch { animatedScale.animateTo(if (isFillMode) fillScale else 1f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
                             launch { animatedOffset.animateTo(Offset.Zero, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
                         }
+                    } else if (scale < 1.01f) {
+                        // Snap back to default if zoomed out in fullscreen
+                        scope.launch {
+                            launch { animate(scale, 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> scale = v } }
+                            launch { animate(typeConverter = Offset.VectorConverter, initialValue = offset, targetValue = Offset.Zero, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> offset = v } }
+                        }
                     }
                 }
             }
@@ -2257,8 +2388,12 @@ fun ZoomableBox(
                                         launch { animate(typeConverter = Offset.VectorConverter, initialValue = offset, targetValue = Offset.Zero, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> offset = v } }
                                     }
                                 } else {
+                                    val targetScale = 3f
+                                    val zoomChange = targetScale / scale
+                                    val targetOffset = (tapOffset - boxSize.toSize().center) * (1f - zoomChange) + offset * zoomChange
                                     scope.launch {
-                                        launch { animate(scale, 3f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> scale = v } }
+                                        launch { animate(scale, targetScale, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> scale = v } }
+                                        launch { animate(typeConverter = Offset.VectorConverter, initialValue = offset, targetValue = targetOffset, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> offset = v } }
                                     }
                                 }
                             }

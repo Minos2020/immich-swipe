@@ -85,6 +85,26 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.showFullscreenButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showFullscreenButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showImmichButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showImmichButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showCardDisplayButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showCardDisplayButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showMuteButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showMuteButton = show)
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.defaultLayoutGrid.collect { isGrid ->
                 _uiState.value = _uiState.value.copy(isDefaultLayoutGrid = isGrid)
             }
@@ -176,6 +196,22 @@ class SettingsViewModel(
         viewModelScope.launch {
             sessionRepository.saveMuteButtonPosition(pos)
         }
+    }
+
+    fun setShowFullscreenButton(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowFullscreenButton(show) }
+    }
+
+    fun setShowImmichButton(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowImmichButton(show) }
+    }
+
+    fun setShowCardDisplayButton(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowCardDisplayButton(show) }
+    }
+
+    fun setShowMuteButton(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowMuteButton(show) }
     }
 
     fun setDefaultLayoutGrid(isGrid: Boolean) {

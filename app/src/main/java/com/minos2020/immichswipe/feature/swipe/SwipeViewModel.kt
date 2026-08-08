@@ -43,6 +43,10 @@ class SwipeViewModel(
         observeImmichButtonPosition()
         observeCardDisplayButtonPosition()
         observeMuteButtonPosition()
+        observeFullscreenButtonVisibility()
+        observeImmichButtonVisibility()
+        observeCardDisplayButtonVisibility()
+        observeMuteButtonVisibility()
         observeButtonVisibility()
         observeAutoNextOnFav()
         observeSortOrder()
@@ -87,6 +91,38 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.muteButtonPosition.collect { pos ->
                 _uiState.update { it.copy(muteButtonPosition = pos) }
+            }
+        }
+    }
+
+    private fun observeFullscreenButtonVisibility() {
+        viewModelScope.launch {
+            sessionRepository.showFullscreenButton.collect { show ->
+                _uiState.update { it.copy(showFullscreenButton = show) }
+            }
+        }
+    }
+
+    private fun observeImmichButtonVisibility() {
+        viewModelScope.launch {
+            sessionRepository.showImmichButton.collect { show ->
+                _uiState.update { it.copy(showImmichButton = show) }
+            }
+        }
+    }
+
+    private fun observeCardDisplayButtonVisibility() {
+        viewModelScope.launch {
+            sessionRepository.showCardDisplayButton.collect { show ->
+                _uiState.update { it.copy(showCardDisplayButton = show) }
+            }
+        }
+    }
+
+    private fun observeMuteButtonVisibility() {
+        viewModelScope.launch {
+            sessionRepository.showMuteButton.collect { show ->
+                _uiState.update { it.copy(showMuteButton = show) }
             }
         }
     }
@@ -363,6 +399,10 @@ class SwipeViewModel(
             CardDisplayMode.FILL
         }
         _uiState.update { it.copy(cardDisplayMode = nextMode) }
+    }
+
+    fun toggleMute() {
+        _uiState.update { it.copy(isMuted = !it.isMuted) }
     }
 
     fun undo() {

@@ -118,6 +118,7 @@
     <string name="settings_pos_top_right">Haut-Droite</string>
     <string name="settings_pos_bottom_left">Bas-Gauche</string>
     <string name="settings_pos_bottom_right">Bas-Droite</string>
+    <string name="settings_show_button">Afficher le bouton</string>
 
     <!-- Écran Swipe -->
     <string name="swipe_keep">Garder</string>

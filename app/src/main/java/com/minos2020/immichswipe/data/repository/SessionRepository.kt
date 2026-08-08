@@ -91,6 +91,11 @@ class SessionRepository(context: Context) {
         it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
     }
 
+    val showFullscreenButton: Flow<Boolean> = dataStore.isShowFullscreenIcon()
+    val showImmichButton: Flow<Boolean> = dataStore.isShowImmichIcon()
+    val showCardDisplayButton: Flow<Boolean> = dataStore.isShowCardDisplayIcon()
+    val showMuteButton: Flow<Boolean> = dataStore.isShowMuteIcon()
+
     /**
      * Expose la préférence du mode d'affichage par défaut.
      */
@@ -172,6 +177,11 @@ class SessionRepository(context: Context) {
     suspend fun saveMuteButtonPosition(pos: IconPosition) {
         dataStore.saveMuteIconPosition(pos.name)
     }
+
+    suspend fun saveShowFullscreenButton(show: Boolean) { dataStore.saveShowFullscreenIcon(show) }
+    suspend fun saveShowImmichButton(show: Boolean) { dataStore.saveShowImmichIcon(show) }
+    suspend fun saveShowCardDisplayButton(show: Boolean) { dataStore.saveShowCardDisplayIcon(show) }
+    suspend fun saveShowMuteButton(show: Boolean) { dataStore.saveShowMuteIcon(show) }
 
     /**
      * Sauvegarde le mode d'affichage par défaut.

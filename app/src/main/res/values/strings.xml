@@ -118,6 +118,7 @@
     <string name="settings_pos_top_right">Top-Right</string>
     <string name="settings_pos_bottom_left">Bottom-Left</string>
     <string name="settings_pos_bottom_right">Bottom-Right</string>
+    <string name="settings_show_button">Show button</string>
     <string name="settings_display_mode_label">Default media display</string>
     <string name="settings_display_mode_fill">Fill</string>
     <string name="settings_display_mode_fit">Fit</string>

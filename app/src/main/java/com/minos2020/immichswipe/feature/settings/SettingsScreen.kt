@@ -466,7 +466,9 @@ fun SettingsScreen(
                     IconPositionPicker(
                         title = stringResource(R.string.settings_fullscreen_pos_label),
                         selectedPosition = uiState.fullscreenButtonPosition,
-                        onPositionSelected = { viewModel.setFullscreenButtonPosition(it) }
+                        onPositionSelected = { viewModel.setFullscreenButtonPosition(it) },
+                        showIcon = uiState.showFullscreenButton,
+                        onShowIconChange = { viewModel.setShowFullscreenButton(it) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -475,7 +477,9 @@ fun SettingsScreen(
                     IconPositionPicker(
                         title = stringResource(R.string.settings_immich_pos_label),
                         selectedPosition = uiState.immichButtonPosition,
-                        onPositionSelected = { viewModel.setImmichButtonPosition(it) }
+                        onPositionSelected = { viewModel.setImmichButtonPosition(it) },
+                        showIcon = uiState.showImmichButton,
+                        onShowIconChange = { viewModel.setShowImmichButton(it) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -484,7 +488,9 @@ fun SettingsScreen(
                     IconPositionPicker(
                         title = stringResource(R.string.settings_display_mode_pos_label),
                         selectedPosition = uiState.cardDisplayButtonPosition,
-                        onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) }
+                        onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) },
+                        showIcon = uiState.showCardDisplayButton,
+                        onShowIconChange = { viewModel.setShowCardDisplayButton(it) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -493,7 +499,9 @@ fun SettingsScreen(
                     IconPositionPicker(
                         title = stringResource(R.string.settings_mute_pos_label),
                         selectedPosition = uiState.muteButtonPosition,
-                        onPositionSelected = { viewModel.setMuteButtonPosition(it) }
+                        onPositionSelected = { viewModel.setMuteButtonPosition(it) },
+                        showIcon = uiState.showMuteButton,
+                        onShowIconChange = { viewModel.setShowMuteButton(it) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -885,44 +893,67 @@ fun SettingsToggleItemSmall(
 fun IconPositionPicker(
     title: String,
     selectedPosition: IconPosition,
-    onPositionSelected: (IconPosition) -> Unit
+    onPositionSelected: (IconPosition) -> Unit,
+    showIcon: Boolean,
+    onShowIconChange: (Boolean) -> Unit
 ) {
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = showIcon,
+                onCheckedChange = onShowIconChange,
+                modifier = Modifier.scale(0.7f)
+            )
+        }
+        
+        AnimatedVisibility(
+            visible = showIcon,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column {
+                Spacer(Modifier.height(12.dp))
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CornerButton(
-                    text = stringResource(R.string.settings_pos_top_left),
-                    selected = selectedPosition == IconPosition.TOP_LEFT,
-                    onClick = { onPositionSelected(IconPosition.TOP_LEFT) },
-                    modifier = Modifier.weight(1f)
-                )
-                CornerButton(
-                    text = stringResource(R.string.settings_pos_top_right),
-                    selected = selectedPosition == IconPosition.TOP_RIGHT,
-                    onClick = { onPositionSelected(IconPosition.TOP_RIGHT) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CornerButton(
-                    text = stringResource(R.string.settings_pos_bottom_left),
-                    selected = selectedPosition == IconPosition.BOTTOM_LEFT,
-                    onClick = { onPositionSelected(IconPosition.BOTTOM_LEFT) },
-                    modifier = Modifier.weight(1f)
-                )
-                CornerButton(
-                    text = stringResource(R.string.settings_pos_bottom_right),
-                    selected = selectedPosition == IconPosition.BOTTOM_RIGHT,
-                    onClick = { onPositionSelected(IconPosition.BOTTOM_RIGHT) },
-                    modifier = Modifier.weight(1f)
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CornerButton(
+                            text = stringResource(R.string.settings_pos_top_left),
+                            selected = selectedPosition == IconPosition.TOP_LEFT,
+                            onClick = { onPositionSelected(IconPosition.TOP_LEFT) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        CornerButton(
+                            text = stringResource(R.string.settings_pos_top_right),
+                            selected = selectedPosition == IconPosition.TOP_RIGHT,
+                            onClick = { onPositionSelected(IconPosition.TOP_RIGHT) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CornerButton(
+                            text = stringResource(R.string.settings_pos_bottom_left),
+                            selected = selectedPosition == IconPosition.BOTTOM_LEFT,
+                            onClick = { onPositionSelected(IconPosition.BOTTOM_LEFT) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        CornerButton(
+                            text = stringResource(R.string.settings_pos_bottom_right),
+                            selected = selectedPosition == IconPosition.BOTTOM_RIGHT,
+                            onClick = { onPositionSelected(IconPosition.BOTTOM_RIGHT) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
     }
