@@ -39,32 +39,35 @@ class AssetRepository(
             albumAssetDao?.clearAlbumRelations(albumId, userId)
         }
 
+        // On a besoin de l'EXIF seulement pour le tri par taille
+        val needsExif = sortOrder == SortOrder.SIZE_DESC || sortOrder == SortOrder.SIZE_ASC
+
         val assets = if (albumId == Album.VIRTUAL_ALL_ID) {
             if (includeArchived) {
                 // Return everything (by combining timeline + archive)
                 coroutineScope {
-                    val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId, userId) }
-                    val archive = async { fetchAllAssets(SearchAssetsRequest(visibility = "archive"), albumId, userId) }
+                    val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId, userId, needsExif) }
+                    val archive = async { fetchAllAssets(SearchAssetsRequest(visibility = "archive"), albumId, userId, needsExif) }
                     (timeline.await() + archive.await())
                 }
             } else {
-                fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId, userId)
+                fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId, userId, needsExif)
             }
         } else if (albumId == Album.VIRTUAL_ORPHANS_ID) {
             if (includeArchived) {
                 coroutineScope {
-                    val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId) }
-                    val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId, userId) }
+                    val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId, needsExif) }
+                    val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId, userId, needsExif) }
                     (timeline.await() + archive.await())
                 }
             } else {
-                fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId)
+                fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId, needsExif)
             }
         } else {
             if (includeArchived) {
                 coroutineScope {
-                    val timelineDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId) }
-                    val archiveDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId, userId) }
+                    val timelineDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId, needsExif) }
+                    val archiveDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId, userId, needsExif) }
                     
                     val timeline = try { timelineDeferred.await() } catch (_: Exception) { emptyList() }
                     val archive = try { archiveDeferred.await() } catch (_: Exception) { emptyList() }
@@ -73,7 +76,7 @@ class AssetRepository(
                 }
             } else {
                 try {
-                    fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId)
+                    fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId, needsExif)
                 } catch (_: Exception) {
                     emptyList()
                 }
@@ -89,6 +92,24 @@ class AssetRepository(
                 } else {
                     assets.shuffled()
                 }
+            }
+            SortOrder.SIZE_DESC -> assets.sortedByDescending { it.exifInfo?.fileSizeInBytes ?: 0L }
+            SortOrder.SIZE_ASC -> assets.sortedBy { it.exifInfo?.fileSizeInBytes ?: 0L }
+            SortOrder.TYPE_VIDEO_FIRST -> assets.sortedWith(compareByDescending<Asset> { it.type == "VIDEO" }.thenByDescending { it.fileCreatedAt })
+            SortOrder.TYPE_PHOTO_FIRST -> assets.sortedWith(compareByDescending<Asset> { it.type == "IMAGE" }.thenByDescending { it.fileCreatedAt })
+            SortOrder.TYPE_VIDEO_FIRST_SHUFFLED -> {
+                val seed = shuffleSeed ?: System.currentTimeMillis()
+                val random = java.util.Random(seed)
+                val videos = assets.filter { it.type == "VIDEO" }.shuffled(random)
+                val photos = assets.filter { it.type != "VIDEO" }.shuffled(random)
+                videos + photos
+            }
+            SortOrder.TYPE_PHOTO_FIRST_SHUFFLED -> {
+                val seed = shuffleSeed ?: System.currentTimeMillis()
+                val random = java.util.Random(seed)
+                val photos = assets.filter { it.type == "IMAGE" }.shuffled(random)
+                val others = assets.filter { it.type != "IMAGE" }.shuffled(random)
+                photos + others
             }
         }
     }
@@ -186,9 +207,9 @@ class AssetRepository(
     /**
      * Récupère TOUS les assets correspondant à une requête en gérant la pagination de manière parallélisée.
      */
-    private suspend fun fetchAllAssets(baseRequest: SearchAssetsRequest, albumIdForMapping: String? = null, userId: String? = null): List<Asset> {
+    private suspend fun fetchAllAssets(baseRequest: SearchAssetsRequest, albumIdForMapping: String? = null, userId: String? = null, withExif: Boolean = false): List<Asset> {
         // 1. On récupère d'abord le TOTAL réel via l'endpoint dédié (plus fiable que le champ total de search)
-        val statsRequest = baseRequest.copy(withExif = false)
+        val statsRequest = baseRequest.copy(withExif = withExif)
         val total = try {
             api.getSearchStatistics(statsRequest).total
         } catch (e: Exception) {
@@ -205,7 +226,7 @@ class AssetRepository(
         
         // On limite le parallélisme à 5 requêtes simultanées
         val semaphore = Semaphore(5)
-        val fetchRequest = baseRequest.copy(size = size, withExif = false)
+        val fetchRequest = baseRequest.copy(size = size, withExif = withExif)
 
         coroutineScope {
             val deferredPages = (1..totalPages).map { page ->

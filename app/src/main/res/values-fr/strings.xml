@@ -93,6 +93,13 @@
     <string name="settings_sort_newest">Plus récents d\'abord</string>
     <string name="settings_sort_oldest">Plus anciens d\'abord</string>
     <string name="settings_sort_shuffled">Mélanger</string>
+    <string name="settings_sort_biggest">Plus gros d\'abord</string>
+    <string name="settings_sort_smallest">Plus petits d\'abord</string>
+    <string name="settings_sort_videos">Vidéos d\'abord</string>
+    <string name="settings_sort_photos">Photos d\'abord</string>
+    <string name="sort_category_time">Date</string>
+    <string name="sort_category_size">Taille</string>
+    <string name="sort_category_type">Type</string>
     <string name="settings_section_interaction">Interaction</string>
     <string name="settings_fullscreen_pos_label">Position du bouton Plein Écran</string>
     <string name="settings_immich_pos_label">Position du bouton Ouvrir dans Immich</string>

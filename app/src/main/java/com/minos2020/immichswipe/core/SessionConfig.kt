@@ -38,5 +38,20 @@ enum class CardDisplayMode {
 enum class SortOrder {
     CHRONOLOGICAL_DESC, // Nouveau -> Ancien (Par défaut)
     CHRONOLOGICAL_ASC,  // Ancien -> Nouveau
-    SHUFFLED            // Aléatoire
+    SHUFFLED,           // Aléatoire
+    SIZE_DESC,          // Plus gros -> Plus petit
+    SIZE_ASC,           // Plus petit -> Plus gros
+    TYPE_VIDEO_FIRST,   // Vidéos -> Photos (Date)
+    TYPE_PHOTO_FIRST,   // Photos -> Vidéos (Date)
+    TYPE_VIDEO_FIRST_SHUFFLED, // Vidéos -> Photos (Aléatoire)
+    TYPE_PHOTO_FIRST_SHUFFLED  // Photos -> Vidéos (Aléatoire)
+}
+
+/**
+ * Catégories de tri.
+ */
+enum class SortCategory {
+    TIME,
+    SIZE,
+    TYPE
 }

@@ -241,8 +241,11 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(12.dp))
+                    
+                    // TIME CATEGORY
+                    Text(text = stringResource(R.string.sort_category_time), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ThemeButton(
@@ -266,6 +269,56 @@ fun SettingsScreen(
                             onClick = { viewModel.setSortOrder(SortOrder.SHUFFLED) },
                             modifier = Modifier.weight(1f)
                         )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    
+                    // SIZE CATEGORY
+                    Text(text = stringResource(R.string.sort_category_size), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeButton(
+                            text = stringResource(R.string.settings_sort_biggest),
+                            icon = Icons.Default.ExpandMore,
+                            selected = uiState.sortOrder == SortOrder.SIZE_DESC,
+                            onClick = { viewModel.setSortOrder(SortOrder.SIZE_DESC) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeButton(
+                            text = stringResource(R.string.settings_sort_smallest),
+                            icon = Icons.Default.ExpandLess,
+                            selected = uiState.sortOrder == SortOrder.SIZE_ASC,
+                            onClick = { viewModel.setSortOrder(SortOrder.SIZE_ASC) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.weight(1f))
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // TYPE CATEGORY
+                    Text(text = stringResource(R.string.sort_category_type), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeButton(
+                            text = stringResource(R.string.settings_sort_videos),
+                            icon = Icons.Default.Videocam,
+                            selected = uiState.sortOrder == SortOrder.TYPE_VIDEO_FIRST,
+                            onClick = { viewModel.setSortOrder(SortOrder.TYPE_VIDEO_FIRST) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeButton(
+                            text = stringResource(R.string.settings_sort_photos),
+                            icon = Icons.Default.Image,
+                            selected = uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST,
+                            onClick = { viewModel.setSortOrder(SortOrder.TYPE_PHOTO_FIRST) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.weight(1f))
                     }
                 }
             }

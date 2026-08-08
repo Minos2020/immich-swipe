@@ -92,6 +92,13 @@
     <string name="settings_sort_newest">Más recientes primero</string>
     <string name="settings_sort_oldest">Más antiguos primero</string>
     <string name="settings_sort_shuffled">Mezclar</string>
+    <string name="settings_sort_biggest">Más grandes primero</string>
+    <string name="settings_sort_smallest">Más pequeños primero</string>
+    <string name="settings_sort_videos">Vídeos primero</string>
+    <string name="settings_sort_photos">Fotos primero</string>
+    <string name="sort_category_time">Fecha</string>
+    <string name="sort_category_size">Tamaño</string>
+    <string name="sort_category_type">Tipo</string>
     <string name="settings_section_interaction">Interacción</string>
     <string name="settings_fullscreen_pos_label">Posición del botón de pantalla completa</string>
     <string name="settings_immich_pos_label">Posición del botón Abrir en Immich</string>

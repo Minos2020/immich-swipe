@@ -92,6 +92,13 @@
     <string name="settings_sort_newest">Newest first</string>
     <string name="settings_sort_oldest">Oldest first</string>
     <string name="settings_sort_shuffled">Shuffle</string>
+    <string name="settings_sort_biggest">Largest first</string>
+    <string name="settings_sort_smallest">Smallest first</string>
+    <string name="settings_sort_videos">Videos first</string>
+    <string name="settings_sort_photos">Photos first</string>
+    <string name="sort_category_time">Date</string>
+    <string name="sort_category_size">Size</string>
+    <string name="sort_category_type">Type</string>
     <string name="settings_section_interaction">Interaction</string>
     <string name="settings_fullscreen_pos_label">Fullscreen button position</string>
     <string name="settings_immich_pos_label">Open in Immich button position</string>

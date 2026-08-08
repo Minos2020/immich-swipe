@@ -50,6 +50,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -58,8 +59,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.draw.scale
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -76,11 +83,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.minos2020.immichswipe.R
-import com.minos2020.immichswipe.core.CardDisplayMode
-import com.minos2020.immichswipe.core.IconPosition
-import com.minos2020.immichswipe.core.PlaybackBehavior
-import com.minos2020.immichswipe.core.SortOrder
-import com.minos2020.immichswipe.core.SessionManager
+import com.minos2020.immichswipe.core.*
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
@@ -89,10 +92,11 @@ import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private val MaterialGreen = Color(0xFF2E7D32) // Un vert plus profond (Green 800)
-private val MaterialRed = Color(0xFFC62828)   // Un rouge plus marqué (Red 800)
+private val MaterialGreen = Color(0xFF2E7D32)
+private val MaterialRed = Color(0xFFC62828)
 
 /**
  * Helper pour trouver l'Activity à partir du Context.
@@ -118,28 +122,57 @@ fun SwipeScreen(
         factory = SwipeViewModelFactory(assetRepository, sessionRepository, swipeDecisionRepository, album)
     )
     
-    // Observation du signal de reset provenant du TopAppBar (HomeViewModel)
     LaunchedEffect(resetSignal) {
         resetSignal.collect {
             viewModel.toggleResetConfirmation(true)
         }
     }
-    
-    // Rafraîchir les données chaque fois que l'écran devient visible
-    // Afin de refléter d'éventuels changements survenus sur l'album
+
     LaunchedEffect(album.id) {
         viewModel.retryLoading()
     }
 
     val uiState by viewModel.uiState.collectAsState()
-    
+
+    // Gestion partagée de l'ExoPlayer pour l'asset courant (Regular <-> Fullscreen)
+    val context = LocalContext.current
+    val playbackBehavior = uiState.playbackBehavior
+    val currentAsset = uiState.currentAsset
+    val sharedPlayer = remember(currentAsset?.id) {
+        if (currentAsset?.type == "VIDEO") {
+            val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/")
+            val apiKey = SessionManager.getApiKey() ?: ""
+            ExoPlayer.Builder(context).build().apply {
+                if (playbackBehavior != PlaybackBehavior.IGNORE) {
+                    val audioAttributes = AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                        .build()
+                    setAudioAttributes(audioAttributes, true)
+                }
+                repeatMode = Player.REPEAT_MODE_ONE
+                val videoUrl = "$baseUrl/api/assets/${currentAsset.id}/video/playback"
+                val dataSourceFactory = DefaultHttpDataSource.Factory()
+                    .setDefaultRequestProperties(mapOf("x-api-key" to apiKey))
+                val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+                    .createMediaSource(MediaItem.fromUri(videoUrl))
+                setMediaSource(mediaSource)
+                prepare()
+                playWhenReady = true
+            }
+        } else null
+    }
+
+    DisposableEffect(sharedPlayer) {
+        onDispose { sharedPlayer?.release() }
+    }
+
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { _ ->
         viewModel.onLocalDeleteIntentHandled()
     }
 
-    // Gestion de la suppression locale (Android 10+)
     LaunchedEffect(uiState.localDeletePendingIntent) {
         uiState.localDeletePendingIntent?.let { pendingIntent ->
             try {
@@ -153,12 +186,8 @@ fun SwipeScreen(
     }
     
     var showSortMenu by remember { mutableStateOf(false) }
-
-    // On observe la santé globale de la connexion
     val connectionStatus by SessionManager.connectionStatus.collectAsState()
 
-    // SOLUTION ROBUSTE : Relancer le chargement UNIQUEMENT si on passe de OFFLINE à ONLINE
-    // et qu'on était en erreur. On ne surveille plus uiState.error ici pour éviter les boucles.
     LaunchedEffect(connectionStatus.level) {
         if (uiState.error != null && connectionStatus.level == com.minos2020.immichswipe.core.ConnectionLevel.ONLINE) {
             viewModel.retryLoading()
@@ -169,13 +198,11 @@ fun SwipeScreen(
         modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 0. En-tête avec nom de l'album et statistiques
         SwipeHeader(
             uiState = uiState,
             onSummaryClick = { viewModel.toggleSummary(true) }
         )
 
-        // 1. Timeline (Barre du haut avec vignettes)
         AssetTimeline(
             assets = uiState.assets,
             decisions = uiState.decisions,
@@ -186,7 +213,6 @@ fun SwipeScreen(
             onAssetClick = { viewModel.onMoveToAsset(it) }
         )
 
-        // 2. Zone centrale : La pile de cartes
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -199,7 +225,7 @@ fun SwipeScreen(
             } else if (uiState.error != null) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = uiState.error!!, 
+                        text = uiState.error!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(16.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -213,9 +239,6 @@ fun SwipeScreen(
             } else if (uiState.currentIndex < uiState.assets.size) {
                 val currentIndex = uiState.currentIndex
                 val assets = uiState.assets
-
-                // On affiche les 2 assets (courant et prochain non traité)
-                // On inverse l'ordre (reversed) pour que l'asset courant soit au dessus.
                 val nextUnprocessedIndex = viewModel.getNextUnprocessedIndex()
                 val visibleIndices = listOfNotNull(
                     currentIndex,
@@ -226,7 +249,7 @@ fun SwipeScreen(
                     val asset = assets[index]
                     val isNextCard = index > currentIndex
                     key(asset.id) {
-                                SwipeCard(
+                        SwipeCard(
                             asset = asset,
                             onSwipe = { viewModel.onSwipe(it) },
                             isNext = isNextCard,
@@ -239,7 +262,8 @@ fun SwipeScreen(
                             onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                             isFullscreenOpen = uiState.isFullscreenMode,
                             onDoubleTap = { viewModel.toggleFavorite() },
-                            onOpenFullscreen = { viewModel.toggleFullscreen(true) }
+                            onOpenFullscreen = { viewModel.toggleFullscreen(true) },
+                            providedPlayer = if (!isNextCard) sharedPlayer else null
                         )
                     }
                 }
@@ -279,16 +303,14 @@ fun SwipeScreen(
             }
         }
 
-        // 3. Barre d'actions en bas (Version compacte sans boutons KEEP/DELETE)
-        // On utilise une Column de hauteur fixe avec des Spacers pour centrer les boutons entre l'image et la barre de navigation
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(150.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.weight(1f)) // Espace au-dessus des boutons
-            
+            Spacer(Modifier.weight(1f))
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -296,7 +318,6 @@ fun SwipeScreen(
                 horizontalArrangement = if (uiState.showSwipeButtons) Arrangement.SpaceEvenly else Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // BOUTON SUPPRIMER (DELETE)
                 if (uiState.showSwipeButtons) {
                     FloatingActionButton(
                         onClick = { viewModel.onSwipe(SwipeDecision.DELETE) },
@@ -309,7 +330,6 @@ fun SwipeScreen(
                     }
                 }
 
-                // UNDO
                 IconButton(
                     onClick = { viewModel.undo() },
                     enabled = uiState.currentIndex > 0 || uiState.history.isNotEmpty(),
@@ -322,11 +342,10 @@ fun SwipeScreen(
                     )
                 }
 
-                // ARCHIVE OU SUMMARY (Swap option - Archive par défaut)
                 IconButton(
-                    onClick = { 
+                    onClick = {
                         if (!uiState.swapSummaryArchive) viewModel.toggleArchive()
-                        else viewModel.toggleSummary(true) 
+                        else viewModel.toggleSummary(true)
                     },
                     modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
                 ) {
@@ -338,7 +357,6 @@ fun SwipeScreen(
                     )
                 }
 
-                // FAVORITE (Optionnel - Coeur)
                 if (uiState.showFavoriteButton) {
                     val isFav = uiState.currentAsset?.let { uiState.isFavorite(it.id) } ?: false
                     IconButton(
@@ -354,7 +372,6 @@ fun SwipeScreen(
                     }
                 }
 
-                // LOCK
                 IconButton(
                     onClick = { viewModel.toggleLock() },
                     modifier = Modifier.size(if (uiState.showSwipeButtons) 36.dp else 44.dp)
@@ -367,7 +384,6 @@ fun SwipeScreen(
                     )
                 }
 
-                // SORT MENU
                 Box {
                     IconButton(
                         onClick = { showSortMenu = true },
@@ -377,6 +393,12 @@ fun SwipeScreen(
                             SortOrder.SHUFFLED -> Icons.Default.Shuffle
                             SortOrder.CHRONOLOGICAL_ASC -> Icons.Default.ArrowUpward
                             SortOrder.CHRONOLOGICAL_DESC -> Icons.Default.ArrowDownward
+                            SortOrder.SIZE_DESC -> Icons.Default.ExpandMore
+                            SortOrder.SIZE_ASC -> Icons.Default.ExpandLess
+                            SortOrder.TYPE_VIDEO_FIRST -> Icons.Default.Videocam
+                            SortOrder.TYPE_PHOTO_FIRST -> Icons.Default.Image
+                            SortOrder.TYPE_VIDEO_FIRST_SHUFFLED -> Icons.Default.Videocam
+                            SortOrder.TYPE_PHOTO_FIRST_SHUFFLED -> Icons.Default.Image
                         }
                         Icon(
                             imageVector = icon,
@@ -385,41 +407,139 @@ fun SwipeScreen(
                             modifier = Modifier.size(if (uiState.showSwipeButtons) 22.dp else 26.dp)
                         )
                     }
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.settings_sort_newest)) },
-                            onClick = {
-                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC)
-                                showSortMenu = false
-                            },
-                            leadingIcon = { Icon(Icons.Default.ArrowDownward, null) },
-                            trailingIcon = { if (uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC) Icon(Icons.Default.Check, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.settings_sort_oldest)) },
-                            onClick = {
-                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC)
-                                showSortMenu = false
-                            },
-                            leadingIcon = { Icon(Icons.Default.ArrowUpward, null) },
-                            trailingIcon = { if (uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC) Icon(Icons.Default.Check, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.settings_sort_shuffled)) },
-                            onClick = {
-                                viewModel.setSortOrder(SortOrder.SHUFFLED)
-                                showSortMenu = false
-                            },
-                            leadingIcon = { Icon(Icons.Default.Shuffle, null) },
-                            trailingIcon = { if (uiState.sortOrder == SortOrder.SHUFFLED) Icon(Icons.Default.Check, null) }
-                        )
+                    
+                    if (showSortMenu) {
+                        Popup(
+                            alignment = Alignment.BottomCenter,
+                            offset = IntOffset(0, -110),
+                            onDismissRequest = { showSortMenu = false },
+                            properties = PopupProperties(focusable = true)
+                        ) {
+                            Surface(
+                                modifier = Modifier.width(300.dp),
+                                shape = RoundedCornerShape(28.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 8.dp,
+                                shadowElevation = 12.dp,
+                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Column(modifier = Modifier.padding(vertical = 16.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        CategoryButton(
+                                            text = stringResource(R.string.sort_category_time),
+                                            selected = uiState.sortCategory == SortCategory.TIME,
+                                            onClick = { viewModel.setSortCategory(SortCategory.TIME) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        CategoryButton(
+                                            text = stringResource(R.string.sort_category_size),
+                                            selected = uiState.sortCategory == SortCategory.SIZE,
+                                            onClick = { viewModel.setSortCategory(SortCategory.SIZE) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        CategoryButton(
+                                            text = stringResource(R.string.sort_category_type),
+                                            selected = uiState.sortCategory == SortCategory.TYPE,
+                                            onClick = { viewModel.setSortCategory(SortCategory.TYPE) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+
+                                    Spacer(Modifier.height(16.dp))
+                                    HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), thickness = 0.5.dp)
+                                    Spacer(Modifier.height(8.dp))
+
+                                    when (uiState.sortCategory) {
+                                        SortCategory.TIME -> {
+                                            SortPopupItem(R.string.settings_sort_newest, Icons.Default.ArrowDownward, uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC) {
+                                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC)
+                                                showSortMenu = false
+                                            }
+                                            SortPopupItem(R.string.settings_sort_oldest, Icons.Default.ArrowUpward, uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC) {
+                                                viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC)
+                                                showSortMenu = false
+                                            }
+                                            SortPopupItem(R.string.settings_sort_shuffled, Icons.Default.Shuffle, uiState.sortOrder == SortOrder.SHUFFLED) {
+                                                viewModel.setSortOrder(SortOrder.SHUFFLED)
+                                                showSortMenu = false
+                                            }
+                                        }
+                                        SortCategory.SIZE -> {
+                                            SortPopupItem(R.string.settings_sort_biggest, Icons.Default.ExpandMore, uiState.sortOrder == SortOrder.SIZE_DESC) {
+                                                viewModel.setSortOrder(SortOrder.SIZE_DESC)
+                                                showSortMenu = false
+                                            }
+                                            SortPopupItem(R.string.settings_sort_smallest, Icons.Default.ExpandLess, uiState.sortOrder == SortOrder.SIZE_ASC) {
+                                                viewModel.setSortOrder(SortOrder.SIZE_ASC)
+                                                showSortMenu = false
+                                            }
+                                        }
+                                        SortCategory.TYPE -> {
+                                            SortPopupItem(R.string.settings_sort_videos, Icons.Default.Videocam, uiState.sortOrder == SortOrder.TYPE_VIDEO_FIRST || uiState.sortOrder == SortOrder.TYPE_VIDEO_FIRST_SHUFFLED) {
+                                                val isShuffledNow = uiState.sortOrder == SortOrder.TYPE_VIDEO_FIRST_SHUFFLED || uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST_SHUFFLED
+                                                viewModel.setSortOrder(if (isShuffledNow) SortOrder.TYPE_VIDEO_FIRST_SHUFFLED else SortOrder.TYPE_VIDEO_FIRST)
+                                                showSortMenu = false
+                                            }
+                                            SortPopupItem(R.string.settings_sort_photos, Icons.Default.Image, uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST || uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST_SHUFFLED) {
+                                                val isShuffledNow = uiState.sortOrder == SortOrder.TYPE_VIDEO_FIRST_SHUFFLED || uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST_SHUFFLED
+                                                viewModel.setSortOrder(if (isShuffledNow) SortOrder.TYPE_PHOTO_FIRST_SHUFFLED else SortOrder.TYPE_PHOTO_FIRST)
+                                                showSortMenu = false
+                                            }
+                                            
+                                            Spacer(Modifier.height(8.dp))
+                                            HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp)
+                                            
+                                            val isShuffled = uiState.sortOrder == SortOrder.TYPE_VIDEO_FIRST_SHUFFLED || uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST_SHUFFLED
+                                            
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable { 
+                                                        val newOrder = when(uiState.sortOrder) {
+                                                            SortOrder.TYPE_VIDEO_FIRST -> SortOrder.TYPE_VIDEO_FIRST_SHUFFLED
+                                                            SortOrder.TYPE_VIDEO_FIRST_SHUFFLED -> SortOrder.TYPE_VIDEO_FIRST
+                                                            SortOrder.TYPE_PHOTO_FIRST -> SortOrder.TYPE_PHOTO_FIRST_SHUFFLED
+                                                            SortOrder.TYPE_PHOTO_FIRST_SHUFFLED -> SortOrder.TYPE_PHOTO_FIRST
+                                                            else -> SortOrder.TYPE_VIDEO_FIRST_SHUFFLED
+                                                        }
+                                                        viewModel.setSortOrder(newOrder)
+                                                    }
+                                                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(Icons.Default.Shuffle, null, tint = if (isShuffled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                                                Spacer(Modifier.width(16.dp))
+                                                Text(
+                                                    text = stringResource(R.string.settings_sort_shuffled),
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    color = if (isShuffled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                                    fontWeight = if (isShuffled) FontWeight.Bold else FontWeight.Normal,
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                                Switch(
+                                                    checked = isShuffled,
+                                                    onCheckedChange = { checked ->
+                                                        val newOrder = if (checked) {
+                                                            if (uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST) SortOrder.TYPE_PHOTO_FIRST_SHUFFLED else SortOrder.TYPE_VIDEO_FIRST_SHUFFLED
+                                                        } else {
+                                                            if (uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST_SHUFFLED) SortOrder.TYPE_PHOTO_FIRST else SortOrder.TYPE_VIDEO_FIRST
+                                                        }
+                                                        viewModel.setSortOrder(newOrder)
+                                                    },
+                                                    modifier = Modifier.scale(0.8f)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                // BOUTON GARDER (KEEP)
                 if (uiState.showSwipeButtons) {
                     FloatingActionButton(
                         onClick = { viewModel.onSwipe(SwipeDecision.KEEP) },
@@ -432,14 +552,12 @@ fun SwipeScreen(
                     }
                 }
             }
-            
-            Spacer(Modifier.weight(1f)) // Espace en-dessous des boutons pour l'équilibre
-            
-            Spacer(Modifier.height(120.dp)) // Zone réservée augmentée pour la barre de navigation flottante
+
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(120.dp))
         }
     }
 
-    // Affichage du résumé
     if (uiState.showSummary) {
         SummaryDialog(
             uiState = uiState,
@@ -449,28 +567,27 @@ fun SwipeScreen(
         )
     }
 
-    // Affichage Plein Écran PERSISTANT
     if (uiState.isFullscreenMode && uiState.currentAsset != null) {
+        val currentAsset = uiState.currentAsset!!
         FullscreenViewer(
-            asset = uiState.currentAsset!!,
+            asset = currentAsset,
+            isFavorite = uiState.isFavorite(currentAsset.id),
             playbackBehavior = uiState.playbackBehavior,
             muteButtonPosition = uiState.muteButtonPosition,
             onSwipe = {
                 viewModel.onSwipe(it)
-                // On ne ferme PAS isFullscreenMode ici pour rester en plein écran
             },
             onUndo = { viewModel.undo() },
             onDoubleTap = { viewModel.toggleFavorite() },
-            onClose = { viewModel.toggleFullscreen(false) }
+            onClose = { viewModel.toggleFullscreen(false) },
+            providedPlayer = sharedPlayer
         )
     }
 
-    // Animation de succès
     if (uiState.showSuccessAnimation) {
         SuccessAnimationOverlay()
     }
 
-    // Dialogue de confirmation de RESET
     if (uiState.showResetConfirmation) {
         AlertDialog(
             onDismissRequest = { viewModel.toggleResetConfirmation(false) },
@@ -494,14 +611,74 @@ fun SwipeScreen(
 }
 
 @Composable
+fun CategoryButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        border = if (selected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = modifier.height(40.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun SortPopupItem(textRes: Int, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = stringResource(textRes),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun SuccessAnimationOverlay() {
-    // États d'animation internes
     val scale = remember { Animatable(0.7f) }
     val alpha = remember { Animatable(0f) }
     val iconScale = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
-        // Lancement synchronisé des animations
         launch {
             scale.animateTo(
                 targetValue = 1f,
@@ -514,7 +691,6 @@ fun SuccessAnimationOverlay() {
         launch {
             alpha.animateTo(1f, tween(400))
         }
-        // Petit délai pour l'icône pour créer un effet de cascade
         delay(200)
         iconScale.animateTo(
             targetValue = 1.2f,
@@ -548,7 +724,6 @@ fun SuccessAnimationOverlay() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    // Cercle de fond pour l'icône
                     Box(
                         modifier = Modifier
                             .size(100.dp)
@@ -558,7 +733,7 @@ fun SuccessAnimationOverlay() {
                             }
                             .background(MaterialGreen.copy(alpha = 0.15f), CircleShape)
                     )
-                    
+
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
@@ -571,16 +746,16 @@ fun SuccessAnimationOverlay() {
                             }
                     )
                 }
-                
+
                 Spacer(Modifier.height(24.dp))
-                
+
                 Text(
                     text = stringResource(R.string.swipe_sync_success),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                
+
                 Text(
                     text = stringResource(R.string.swipe_sync_success_desc),
                     style = MaterialTheme.typography.bodyMedium,
@@ -596,7 +771,6 @@ fun SwipeHeader(
     uiState: SwipeUiState,
     onSummaryClick: () -> Unit
 ) {
-    // Animation fluide de la progression
     val animatedProgress by animateFloatAsState(
         targetValue = uiState.progress,
         animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
@@ -609,7 +783,6 @@ fun SwipeHeader(
             .padding(horizontal = 16.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Barre de progression avec nom de l'album
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -623,10 +796,8 @@ fun SwipeHeader(
             val progressWidth = totalWidth * animatedProgress
             val density = LocalDensity.current
             val paddingPx = with(density) { 16.dp.toPx() }
-            val spacingPx = paddingPx // Equidistant : 16dp
+            val spacingPx = paddingPx
 
-            // 1. Logique de positionnement du pourcentage/icône (Info)
-            // Fixé à 72dp pour que l'icône ne bouge pas selon le texte
             val infoWidthPx = with(density) { 72.dp.toPx() }
             val infoIsInside = progressWidth > infoWidthPx + paddingPx
             val infoTranslationX by animateFloatAsState(
@@ -638,9 +809,6 @@ fun SwipeHeader(
                 label = "InfoTranslation"
             )
 
-            // 2. Logique de positionnement du Titre
-            // Il est poussé par la barre, puis revient à gauche dès qu'il y a la place
-            // On augmente le seuil à 250dp pour éviter le chevauchement avec le pourcentage
             val titleThreshold = with(density) { 250.dp.toPx() }
             val titleIsPushed = progressWidth > paddingPx && progressWidth < titleThreshold
             val titleTranslationX by animateFloatAsState(
@@ -649,10 +817,6 @@ fun SwipeHeader(
                 label = "TitleTranslation"
             )
 
-            // On dessine le contenu complet deux fois (une sombre, une claire clippée)
-            // Cela gère automatiquement le changement de couleur au passage de la barre
-
-            // --- CALQUE DU DESSOUS (Sombre sur beige) ---
             Box(modifier = Modifier.fillMaxSize()) {
                 HeaderTitle(
                     text = uiState.albumName,
@@ -666,7 +830,6 @@ fun SwipeHeader(
                 )
             }
 
-            // --- CALQUE DU DESSUS (Clair sur dégradé, clippé par la progression) ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth(animatedProgress)
@@ -682,9 +845,6 @@ fun SwipeHeader(
                     )
                     .background(Color.Black.copy(alpha = 0.1f))
             ) {
-                // On utilise une largeur fixe (totalWidth) pour que les textes blancs
-                // soient parfaitement alignés avec les textes sombres en dessous
-                // Correction : on ajoute fillMaxHeight pour que l'alignement vertical soit identique
                 Box(modifier = Modifier.width(with(density) { totalWidth.toDp() }).fillMaxHeight()) {
                     HeaderTitle(
                         text = uiState.albumName,
@@ -702,7 +862,6 @@ fun SwipeHeader(
 
         Spacer(Modifier.height(8.dp))
 
-        // Rangée de statistiques
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -712,59 +871,6 @@ fun SwipeHeader(
             StatBadge(label = stringResource(R.string.swipe_delete), count = uiState.deletedCount, color = MaterialRed)
             StatBadge(label = stringResource(R.string.swipe_remaining), count = uiState.remainingCount, color = MaterialTheme.colorScheme.outline)
         }
-    }
-}
-
-@Composable
-private fun HeaderTitle(text: String, color: Color, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        color = color,
-        maxLines = 1,
-        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-        modifier = modifier.widthIn(max = 170.dp)
-    )
-}
-
-@Composable
-private fun HeaderInfo(progressText: String, color: Color, modifier: Modifier = Modifier) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically, 
-        horizontalArrangement = Arrangement.End,
-        modifier = modifier.width(72.dp)
-    ) {
-        Text(
-            text = progressText,
-            style = MaterialTheme.typography.labelMedium,
-            color = color.copy(alpha = 0.9f)
-        )
-        Spacer(Modifier.width(8.dp))
-        Icon(
-            imageVector = Icons.Default.Assessment,
-            contentDescription = stringResource(R.string.swipe_summary_title),
-            tint = color,
-            modifier = Modifier.size(16.dp)
-        )
-    }
-}
-
-@Composable
-fun StatBadge(label: String, count: Int, color: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = "$count $label",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-        )
     }
 }
 
@@ -833,7 +939,6 @@ fun AssetTimeline(
                     modifier = Modifier.fillMaxSize().alpha(if (isCurrent) 1f else 0.6f)
                 )
 
-                // Icône "Play" pour les vidéos dans la timeline
                 if (asset.type == "VIDEO") {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
@@ -847,7 +952,6 @@ fun AssetTimeline(
                     )
                 }
 
-                // Conteneur de badges en haut à droite
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -932,7 +1036,8 @@ fun SwipeCard(
     onToggleDisplayMode: () -> Unit,
     isFullscreenOpen: Boolean,
     onDoubleTap: () -> Unit,
-    onOpenFullscreen: () -> Unit
+    onOpenFullscreen: () -> Unit,
+    providedPlayer: ExoPlayer? = null
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -943,18 +1048,14 @@ fun SwipeCard(
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
     val offsetY = remember { Animatable(0f) }
-    
-    // États pour le mute et le pause temporaire
+
     var mutedState by rememberSaveable(asset.id) { mutableStateOf(false) }
     var pausedByHoldState by remember { mutableStateOf(false) }
     var ignoreNextTap by remember { mutableStateOf(false) }
 
-    // isFullscreenOpen passé en paramètre
     var isVideoReady by remember(asset.id) { mutableStateOf(false) }
     var showLoadingIndicator by remember(asset.id) { mutableStateOf(false) }
 
-    // On affiche l'indicateur de chargement seulement après un court délai (ex: 400ms)
-    // pour éviter les clignotements si la vidéo est déjà prête ou charge instantanément.
     LaunchedEffect(asset.id, isVideoReady) {
         if (!isVideoReady) {
             delay(500)
@@ -964,24 +1065,17 @@ fun SwipeCard(
         }
     }
 
-    // Hauteur du panneau de métadonnées
     val metadataHeight = 300.dp
     val metadataHeightPx = with(density) { metadataHeight.toPx() }
 
-    // On crée un Player unique pour cette carte si c'est une vidéo
-    // On ajoute isNext dans les clés du remember pour que le player soit créé
-    // au moment où la carte passe du second plan au premier plan.
-    val exoPlayer = remember(asset.id, isNext) {
-        if (asset.type == "VIDEO" && !isNext) {
+    val internalExoPlayer = remember(asset.id, isNext) {
+        if (asset.type == "VIDEO" && !isNext && providedPlayer == null) {
             ExoPlayer.Builder(context).build().apply {
-                // Configuration précise de l'Audio Focus
                 if (playbackBehavior != PlaybackBehavior.IGNORE) {
                     val audioAttributes = AudioAttributes.Builder()
                         .setUsage(C.USAGE_MEDIA)
                         .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                         .build()
-
-                    // On active la gestion automatique du focus (coupe les autres sons)
                     setAudioAttributes(audioAttributes, true)
                 }
 
@@ -998,7 +1092,8 @@ fun SwipeCard(
         } else null
     }
 
-    // Gestion du cycle de vie pour mettre en pause la vidéo quand on quitte l'app
+    val exoPlayer = providedPlayer ?: internalExoPlayer
+
     DisposableEffect(exoPlayer, lifecycleOwner) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
@@ -1006,33 +1101,35 @@ fun SwipeCard(
             }
         }
 
-        // Initialiser l'état immédiatement si le player est déjà prêt
         if (exoPlayer?.playbackState == Player.STATE_READY) {
             isVideoReady = true
         }
         exoPlayer?.addListener(listener)
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> exoPlayer?.playWhenReady = false
-                Lifecycle.Event.ON_RESUME -> if (!isFullscreenOpen) exoPlayer?.playWhenReady = true
+                Lifecycle.Event.ON_PAUSE -> {
+                    // Si on est en fullscreen, on laisse le fullscreenViewer gérer la pause
+                    if (!isFullscreenOpen) exoPlayer?.playWhenReady = false
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    if (!isNext && !isFullscreenOpen) exoPlayer?.playWhenReady = true
+                }
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
 
-        // Gestion du mute et pause hold
         exoPlayer?.volume = if (mutedState) 0f else 1f
         if (pausedByHoldState) exoPlayer?.pause() else if (!isNext && !isFullscreenOpen) exoPlayer?.play()
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer?.removeListener(listener)
-            exoPlayer?.stop()
-            exoPlayer?.release()
+            internalExoPlayer?.stop()
+            internalExoPlayer?.release()
         }
     }
 
-    // Animation de grossissement de la carte suivante (vitesse moyenne 500ms)
     val animatedScale by animateFloatAsState(
         targetValue = if (isNext) 0.85f else 1f,
         animationSpec = tween(durationMillis = 400, easing = LinearOutSlowInEasing),
@@ -1049,7 +1146,6 @@ fun SwipeCard(
                     scaleY = animatedScale
                     if (!isNext) {
                         translationX = offsetX.value
-                        // Photo reste fixe verticalement (offsetY utilisé pour les métadonnées)
                         rotationZ = offsetX.value / 40f
                     }
                 }
@@ -1069,19 +1165,14 @@ fun SwipeCard(
                                 } else {
                                     launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
 
-                                    // Aimantage métadonnées :
-                                    // Si on est en train d'ouvrir (Y < 0) et qu'on dépasse 25% de la hauteur -> on finit l'ouverture
-                                    // Gestion du "cran" pour les métadonnées (Y)
                                     val wasOpen = offsetY.targetValue < -metadataHeightPx / 2
                                     if (wasOpen) {
-                                        // Si c'était ouvert, on ferme au moindre geste vers le bas (seuil 90% de hauteur)
                                         if (currentY < -metadataHeightPx * 0.95f) {
                                             offsetY.animateTo(-metadataHeightPx, spring(dampingRatio = Spring.DampingRatioLowBouncy))
                                         } else {
                                             offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
                                         }
                                     } else {
-                                        // Si c'était fermé, on ouvre si on dépasse 10% de la hauteur vers le haut
                                         if (currentY < -metadataHeightPx * 0.05f) {
                                             offsetY.animateTo(-metadataHeightPx, spring(dampingRatio = Spring.DampingRatioLowBouncy))
                                         } else {
@@ -1105,14 +1196,11 @@ fun SwipeCard(
         ) {
             Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp))) {
                 if (asset.type == "VIDEO" && !isNext && exoPlayer != null) {
-                    // On ne garde qu'un seul PlayerView actif à la fois pour le même player
-                    // Si le plein écran est ouvert, on cache celui de la carte pour qu'il puisse
-                    // être ré-attaché proprement au retour.
                     if (!isFullscreenOpen) {
                         ZoomableBox(
                             modifier = Modifier.fillMaxSize(),
                             resetOnRelease = true,
-                            onTap = { 
+                            onTap = {
                                 if (!ignoreNextTap) mutedState = !mutedState
                                 ignoreNextTap = false
                             },
@@ -1142,7 +1230,6 @@ fun SwipeCard(
                                 cardDisplayMode = cardDisplayMode
                             )
 
-                            // Indicateur de chargement si la vidéo n'est pas prête
                             if (showLoadingIndicator) {
                                 Box(
                                     modifier = Modifier
@@ -1159,7 +1246,6 @@ fun SwipeCard(
                             }
                         }
                     } else {
-                        // Image de remplacement pendant que le player est utilisé en plein écran
                         val placeholderRequest = remember(asset.id, baseUrl, apiKey) {
                             ImageRequest.Builder(context)
                                 .data("$baseUrl/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview")
@@ -1195,13 +1281,12 @@ fun SwipeCard(
                         AsyncImage(
                             model = photoRequest,
                             contentDescription = null,
-                            contentScale = ContentScale.Fit, // Utilisation de Fit + ZoomableBox pour le mode FILL
+                            contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
 
-                // Panneau Métadonnées Interactif (Intégré dans la carte)
                 if (!isNext) {
                     Box(
                         modifier = Modifier
@@ -1214,11 +1299,9 @@ fun SwipeCard(
                     }
                 }
 
-                // Boutons d'action (Plein écran, Immich, Mode d'affichage)
-                // Placés à la fin pour être dessinés AU-DESSUS du dégradé et du panneau de métadonnées
                 if (!isNext) {
-                    val density = LocalDensity.current
-                    val panelPushDp = with(density) { (-offsetY.value).toDp() }
+                    val densityLocal = LocalDensity.current
+                    val panelPushDp = with(densityLocal) { (-offsetY.value).toDp() }
 
                     listOf(Alignment.Start, Alignment.End).forEach { side ->
                         Column(
@@ -1228,7 +1311,6 @@ fun SwipeCard(
                                 .padding(8.dp),
                             horizontalAlignment = side
                         ) {
-                            // Groupe du HAUT
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (fullscreenButtonPosition.toHorizontalAlignment() == side && (fullscreenButtonPosition == IconPosition.TOP_LEFT || fullscreenButtonPosition == IconPosition.TOP_RIGHT)) {
                                     SwipeActionIconButton(
@@ -1239,7 +1321,7 @@ fun SwipeCard(
                                 }
                                 if (cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.TOP_LEFT || cardDisplayButtonPosition == IconPosition.TOP_RIGHT)) {
                                     SwipeActionIconButton(
-                                        icon = if (cardDisplayMode == CardDisplayMode.FILL) 
+                                        icon = if (cardDisplayMode == CardDisplayMode.FILL)
                                             Icons.Default.FitScreen else Icons.Default.AspectRatio,
                                         contentDescription = stringResource(R.string.swipe_toggle_display),
                                         onClick = onToggleDisplayMode
@@ -1266,7 +1348,6 @@ fun SwipeCard(
 
                             Spacer(Modifier.weight(1f))
 
-                            // Groupe du BAS
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (fullscreenButtonPosition.toHorizontalAlignment() == side && (fullscreenButtonPosition == IconPosition.BOTTOM_LEFT || fullscreenButtonPosition == IconPosition.BOTTOM_RIGHT)) {
                                     SwipeActionIconButton(
@@ -1277,7 +1358,7 @@ fun SwipeCard(
                                 }
                                 if (cardDisplayButtonPosition.toHorizontalAlignment() == side && (cardDisplayButtonPosition == IconPosition.BOTTOM_LEFT || cardDisplayButtonPosition == IconPosition.BOTTOM_RIGHT)) {
                                     SwipeActionIconButton(
-                                        icon = if (cardDisplayMode == CardDisplayMode.FILL) 
+                                        icon = if (cardDisplayMode == CardDisplayMode.FILL)
                                             Icons.Default.FitScreen else Icons.Default.AspectRatio,
                                         contentDescription = stringResource(R.string.swipe_toggle_display),
                                         onClick = onToggleDisplayMode
@@ -1310,7 +1391,6 @@ fun SwipeCard(
                 if (!isNext) {
                     val keepAlpha = (offsetX.value / 200f).coerceIn(0f, 1f)
                     val deleteAlpha = (-offsetX.value / 200f).coerceIn(0f, 1f)
-                    // Comportement normal
                     if (keepAlpha > 0f) {
                         IndicatorBadge(stringResource(R.string.swipe_keep_upper), MaterialGreen, Alignment.TopStart, keepAlpha * 0.9f)
                     } else if (deleteAlpha > 0f) {
@@ -1335,7 +1415,6 @@ fun SharedVideoPlayer(
     var currentTime by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
 
-    // Mise à jour périodique du timer
     LaunchedEffect(player) {
         while (true) {
             currentTime = player.currentPosition
@@ -1347,21 +1426,13 @@ fun SharedVideoPlayer(
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { context ->
-                // On utilise un layout XML pour pouvoir spécifier le surface_type="texture_view"
-                // car le setter setSurfaceType n'est pas public dans Media3 PlayerView.
                 val view = LayoutInflater.from(context).inflate(R.layout.view_player_texture, null) as PlayerView
                 view
             },
             update = { view ->
-                // Re-attache le player si nécessaire
                 if (view.player != player) view.player = player
                 view.useController = isFullscreen
-
-                // Applique le mute/unmute
                 player.volume = if (isMuted) 0f else 1f
-
-                // TextureView est indispensable pour une intégration parfaite avec les couches Compose
-                // Cela évite les écrans noirs au retour du plein écran.
                 view.resizeMode = if (isFullscreen) {
                     androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                 } else {
@@ -1372,7 +1443,6 @@ fun SharedVideoPlayer(
                     }
                 }
 
-                // S'assure que la lecture reprend bien
                 if (player.playbackState == Player.STATE_READY && !player.isPlaying && !isPaused) {
                     player.play()
                 } else if (isPaused) {
@@ -1380,13 +1450,11 @@ fun SharedVideoPlayer(
                 }
             },
             onRelease = { view ->
-                // Détache proprement le player de la vue avant destruction
                 view.player = null
             },
             modifier = Modifier.fillMaxSize()
         )
 
-        // Overlay du timestamp [actuel / total]
         if (duration > 0) {
             Surface(
                 modifier = Modifier
@@ -1404,7 +1472,6 @@ fun SharedVideoPlayer(
             }
         }
 
-        // Indicateur Pause (Hold)
         if (isPaused) {
             Box(
                 modifier = Modifier
@@ -1423,50 +1490,31 @@ fun SharedVideoPlayer(
     }
 }
 
-/**
- * Formate le temps média (ms) en H:MM:SS ou MM:SS.
- */
-private fun formatMediaTime(timeMs: Long): String {
-    val totalSeconds = (timeMs / 1000).coerceAtLeast(0)
-    val seconds = totalSeconds % 60
-    val minutes = (totalSeconds / 60) % 60
-    val hours = totalSeconds / 3600
-
-    return if (hours > 0) {
-        String.format(java.util.Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
-    }
-}
-
-@OptIn(UnstableApi::class)
 @Composable
 fun FullscreenViewer(
     asset: Asset,
+    isFavorite: Boolean,
     playbackBehavior: PlaybackBehavior,
     muteButtonPosition: IconPosition,
     onSwipe: (SwipeDecision) -> Unit,
     onUndo: () -> Unit,
     onDoubleTap: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    providedPlayer: ExoPlayer? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
-    
-    // États pour le mute et le pause temporaire
+
     var mutedState by rememberSaveable(asset.id) { mutableStateOf(false) }
     var pausedByHoldState by remember { mutableStateOf(false) }
     var ignoreNextTap by remember { mutableStateOf(false) }
 
-    // On utilise des Animatables persistants pour éviter les flashs de recréation
     val swipeY = remember { Animatable(0f) }
     val swipeX = remember { Animatable(0f) }
-    
-    // On capture les callbacks pour qu'ils soient toujours à jour dans le pointerInput
+
     val currentOnSwipe by rememberUpdatedState(onSwipe)
 
-    // Reset instantané quand l'asset change
     LaunchedEffect(asset.id) {
         swipeX.snapTo(0f)
         swipeY.snapTo(0f)
@@ -1475,9 +1523,8 @@ fun FullscreenViewer(
     val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/")
     val apiKey = SessionManager.getApiKey() ?: ""
 
-    // Gestion autonome du player pour le plein écran
-    val exoPlayer = remember(asset.id) {
-        if (asset.type == "VIDEO") {
+    val internalExoPlayer = remember(asset.id) {
+        if (asset.type == "VIDEO" && providedPlayer == null) {
             ExoPlayer.Builder(context).build().apply {
                 if (playbackBehavior != PlaybackBehavior.IGNORE) {
                     val audioAttributes = AudioAttributes.Builder()
@@ -1499,6 +1546,8 @@ fun FullscreenViewer(
         } else null
     }
 
+    val exoPlayer = providedPlayer ?: internalExoPlayer
+
     LaunchedEffect(mutedState, exoPlayer) {
         exoPlayer?.volume = if (mutedState) 0f else 1f
     }
@@ -1507,11 +1556,11 @@ fun FullscreenViewer(
         if (pausedByHoldState) exoPlayer?.pause() else exoPlayer?.play()
     }
 
-    DisposableEffect(exoPlayer, asset.id) {
+    DisposableEffect(asset.id) {
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-        onDispose { 
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT 
-            exoPlayer?.release()
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            internalExoPlayer?.release()
         }
     }
 
@@ -1519,18 +1568,29 @@ fun FullscreenViewer(
         onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
+        val dialogView = LocalView.current
+
+        SideEffect {
+            val window = (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            if (window != null) {
+                val insetsController = WindowCompat.getInsetsController(window, dialogView)
+                insetsController.hide(WindowInsetsCompat.Type.statusBars())
+                insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = (1f - (swipeY.value / 1000f)).coerceIn(0f, 1f)))
-                .pointerInput(Unit) { // On utilise Unit pour que le détecteur soit persistant
+                .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = {
                             scope.launch {
                                 val currentX = swipeX.value
                                 val currentY = swipeY.value
-                                
-                                if (currentY > 120 && kotlin.math.abs(currentX) < 100) {
+
+                                if (currentY > 120 && abs(currentX) < 100) {
                                     onClose()
                                 } else if (currentX > 250) {
                                     swipeX.animateTo(2000f, tween(200))
@@ -1545,8 +1605,6 @@ fun FullscreenViewer(
                             }
                         },
                         onDrag = { change, dragAmount ->
-                            // Le swipe down n'est déclenché que si le ZoomableBox ne consomme pas l'événement
-                            // (ce qui arrive quand on n'est pas en train de zoomer/panner)
                             change.consume()
                             scope.launch {
                                 swipeY.snapTo((swipeY.value + dragAmount.y).coerceAtLeast(0f))
@@ -1564,7 +1622,7 @@ fun FullscreenViewer(
             ZoomableBox(
                 modifier = Modifier.fillMaxSize(),
                 resetOnRelease = false,
-                onTap = { 
+                onTap = {
                     if (!ignoreNextTap) mutedState = !mutedState
                     ignoreNextTap = false
                 },
@@ -1608,12 +1666,35 @@ fun FullscreenViewer(
                 }
             }
 
-            // Badges de tri en plein écran
             val keepAlpha = (swipeX.value / 200f).coerceIn(0f, 1f)
             val deleteAlpha = (-swipeX.value / 200f).coerceIn(0f, 1f)
-            
+
             if (keepAlpha > 0f) IndicatorBadge(stringResource(R.string.swipe_keep_upper), MaterialGreen, Alignment.TopStart, keepAlpha * 0.9f)
             else if (deleteAlpha > 0f) IndicatorBadge(stringResource(R.string.swipe_delete_upper), MaterialRed, Alignment.TopEnd, deleteAlpha * 0.9f)
+
+            // Indicateur de Favori (Coeur au centre en bas)
+            val heartScale = animateFloatAsState(if (isFavorite) 1.2f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "HeartScale").value
+            
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 106.dp) 
+                    .graphicsLayer {
+                        scaleX = heartScale
+                        scaleY = heartScale
+                    }
+                    .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                    .clip(CircleShape)
+                    .clickable { onDoubleTap() }
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = null,
+                    tint = if (isFavorite) Color.Red else Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
 
             IconButton(
                 onClick = onClose,
@@ -1625,7 +1706,6 @@ fun FullscreenViewer(
                 Icon(Icons.Default.Close, stringResource(R.string.common_close), tint = Color.White)
             }
 
-            // Bouton Undo (Bas Gauche)
             IconButton(
                 onClick = onUndo,
                 modifier = Modifier
@@ -1640,7 +1720,6 @@ fun FullscreenViewer(
                 )
             }
 
-            // Bouton Mute
             if (asset.type == "VIDEO") {
                 val muteAlign = when (muteButtonPosition) {
                     IconPosition.TOP_LEFT -> Alignment.TopStart
@@ -1648,13 +1727,12 @@ fun FullscreenViewer(
                     IconPosition.BOTTOM_LEFT -> Alignment.BottomStart
                     IconPosition.BOTTOM_RIGHT -> Alignment.BottomEnd
                 }
-                
-                // On ajuste le padding pour ne pas chevaucher les boutons existants
+
                 val mutePadding = when (muteButtonPosition) {
                     IconPosition.TOP_LEFT -> Modifier.padding(top = 50.dp, start = 20.dp)
-                    IconPosition.TOP_RIGHT -> Modifier.padding(top = 110.dp, end = 20.dp) // Sous le bouton Close
-                    IconPosition.BOTTOM_LEFT -> Modifier.padding(bottom = 160.dp, start = 24.dp) // Au-dessus du bouton Undo
-                    IconPosition.BOTTOM_RIGHT -> Modifier.padding(bottom = 100.dp, end = 24.dp) // Symétrique à l'Undo
+                    IconPosition.TOP_RIGHT -> Modifier.padding(top = 110.dp, end = 20.dp)
+                    IconPosition.BOTTOM_LEFT -> Modifier.padding(bottom = 160.dp, start = 24.dp)
+                    IconPosition.BOTTOM_RIGHT -> Modifier.padding(bottom = 100.dp, end = 24.dp)
                 }
 
                 IconButton(
@@ -1685,8 +1763,8 @@ fun IndicatorBadge(text: String, color: Color, align: Alignment, alpha: Float) {
         contentAlignment = align
     ) {
         Surface(
-            color = color.copy(alpha = 0.05f), // Fond très léger pour le contraste
-            contentColor = color, 
+            color = color.copy(alpha = 0.05f),
+            contentColor = color,
             shape = RoundedCornerShape(8.dp),
             border = BorderStroke(2.dp, color.copy(alpha = 0.9f))
         ) {
@@ -1740,21 +1818,6 @@ fun MetadataRow(icon: ImageVector, label: String, value: String) {
     }
 }
 
-/**
- * Formate une taille en bytes vers une chaîne lisible (Go, Mo).
- */
-@Composable
-fun formatSize(bytes: Long): String {
-    val kb = bytes / 1024.0
-    val mb = kb / 1024.0
-    val gb = mb / 1024.0
-    return when {
-        gb >= 1.0 -> stringResource(R.string.size_unit_gb, gb)
-        mb >= 1.0 -> stringResource(R.string.size_unit_mb, mb)
-        else -> stringResource(R.string.size_unit_kb, kb)
-    }
-}
-
 @Composable
 fun SummaryDialog(
     uiState: SwipeUiState,
@@ -1786,10 +1849,9 @@ fun SummaryDialog(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 Spacer(Modifier.height(20.dp))
-                
-                // Grille de statistiques (2x2)
+
                 Box(modifier = Modifier.fillMaxWidth()) {
                     val stats = listOf(
                         Triple(stringResource(R.string.swipe_keep), Triple(uiState.keptCount, uiState.keptSize, MaterialGreen), Icons.Default.Check),
@@ -1798,7 +1860,7 @@ fun SummaryDialog(
                         Triple(stringResource(R.string.swipe_locked), Triple(uiState.lockedCount, uiState.lockedSize, MaterialTheme.colorScheme.outline), Icons.Default.Lock),
                         Triple(stringResource(R.string.swipe_remaining), Triple(uiState.remainingCount, uiState.remainingSize, MaterialTheme.colorScheme.outlineVariant), Icons.Default.Pending)
                     )
-                    
+
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (i in 0 until 2) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1824,7 +1886,6 @@ fun SummaryDialog(
                                 )
                             }
                         }
-                        // Remaining box on its own line for balance
                         val last = stats.last()
                         StatSummaryBox(
                             label = last.first,
@@ -1840,13 +1901,12 @@ fun SummaryDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Liste des miniatures à supprimer
                 Text(
                     text = stringResource(R.string.swipe_check_before_delete),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 Spacer(Modifier.height(12.dp))
 
                 val deletedAssets = remember(uiState.decisions) {
@@ -1900,9 +1960,8 @@ fun SummaryDialog(
             }
         },
         confirmButton = {
-            // On veut confirmer la synchro si on a des décisions OU des favoris togglés
             val hasChanges = uiState.processedCount > 0 || uiState.localFavorites.isNotEmpty()
-            
+
             Button(
                 onClick = onApply,
                 enabled = !uiState.isSyncing && hasChanges,
@@ -1950,7 +2009,7 @@ fun StatSummaryBox(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = color.copy(alpha = 1f), // Pleine opacité pour le contraste
+                    color = color.copy(alpha = 1f),
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
@@ -1980,7 +2039,7 @@ fun DeletedAssetThumbnail(
     val context = LocalContext.current
     val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/")
     val apiKey = SessionManager.getApiKey() ?: ""
-    
+
     val hasHeart = uiState.isFavorite(asset.id)
     val hasArchive = asset.isArchived
     val hasLock = asset.isLocked
@@ -2007,7 +2066,6 @@ fun DeletedAssetThumbnail(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Conteneur de badges en haut à gauche (comme timeline)
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -2018,8 +2076,7 @@ fun DeletedAssetThumbnail(
             if (hasArchive) TimelineMiniBadge(Icons.Default.Archive, Color.Black)
             if (hasLock) TimelineMiniBadge(Icons.Default.Lock, Color.Black)
         }
-        
-        // Petit badge "Undo" discret en haut à droite
+
         Surface(
             modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
             color = Color.Black.copy(alpha = 0.6f),
@@ -2032,8 +2089,7 @@ fun DeletedAssetThumbnail(
                 modifier = Modifier.size(16.dp).padding(2.dp)
             )
         }
-        
-        // Icône "Play" pour les vidéos dans le résumé
+
         if (asset.type == "VIDEO") {
             Icon(
                 imageVector = Icons.Default.PlayArrow,
@@ -2047,7 +2103,6 @@ fun DeletedAssetThumbnail(
             )
         }
 
-        // Affichage de la taille de l'asset en bas
         val assetSize = asset.exifInfo?.fileSizeInBytes ?: 0L
         if (assetSize > 0) {
             Box(
@@ -2112,20 +2167,13 @@ fun ZoomableBox(
     }
 
     val scope = rememberCoroutineScope()
-    
-    // ...
-
-    // Calcul de la "base" pour le mode FILL si l'aspect ratio est connu
     var fillScale by remember(aspectRatio) { mutableFloatStateOf(1f) }
-    
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
-    // Animatables pour les transitions fluides et l'inertie
     val animatedScale = remember { Animatable(1f) }
     val animatedOffset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
 
-    // Mise à jour de la configuration quand le mode ou l'aspect ratio change
     LaunchedEffect(isFillMode, fillScale) {
         val target = if (isFillMode) fillScale else 1f
         if (resetOnRelease) {
@@ -2151,130 +2199,46 @@ fun ZoomableBox(
                 }
             }
             .pointerInput(resetOnRelease, isFillMode, fillScale) {
-                val velocityTracker = VelocityTracker()
                 awaitEachGesture {
-                    velocityTracker.resetTracking()
                     do {
                         val event = awaitPointerEvent()
                         val zoomChange = event.calculateZoom()
                         val panChange = event.calculatePan()
-                        val centroid = event.calculateCentroid()
-
-                        // On arrête toute animation en cours dès qu'un doigt touche l'écran
-                        if (event.changes.any { it.pressed }) {
-                            scope.launch {
-                                animatedScale.stop()
-                                animatedOffset.stop()
-                            }
-                        }
 
                         if (event.changes.size >= 2) {
-                            // Pinch to zoom
+                            // Zooming with 2 fingers
                             if (zoomChange != 1f || panChange != Offset.Zero) {
                                 val oldScale = if (resetOnRelease) animatedScale.value else scale
-                                // On permet de dézoomer en dessous du min pendant le geste pour la fluidité (ressort)
-                                val minAllowedScale = if (resetOnRelease) (if (isFillMode) fillScale else 1f) * 0.7f else 0.7f
-                                val newScale = (oldScale * zoomChange).coerceIn(minAllowedScale, 5f)
-
-                                // Calcul du centre relatif pour zoomer au bon endroit
-                                val centroidInCenter = centroid - Offset(size.width / 2f, size.height / 2f)
-                                val oldOffset = if (resetOnRelease) animatedOffset.value else offset
-
-                                // Formule pour garder le point sous les doigts stable pendant le zoom
-                                val newOffset = oldOffset + (centroidInCenter - oldOffset) * ((oldScale - newScale) / oldScale) + panChange
-
+                                val newScale = (oldScale * zoomChange).coerceIn(0.7f, 5f)
+                                
                                 if (resetOnRelease) {
                                     scope.launch {
                                         animatedScale.snapTo(newScale)
-                                        animatedOffset.snapTo(newOffset)
                                     }
                                 } else {
                                     scale = newScale
-                                    offset = newOffset
                                 }
                                 event.changes.forEach { it.consume() }
                             }
-                        } else if (event.changes.size == 1 && !resetOnRelease) {
-                            // Panning (un doigt) - Autorisé UNIQUEMENT en plein écran
-                            val currentScale = scale
-                            val minScale = 1f
-                            
-                            if (currentScale > minScale * 1.01f) {
-                                if (panChange != Offset.Zero) {
-                                    offset += panChange
-                                    event.changes.forEach { 
-                                        velocityTracker.addPosition(it.uptimeMillis, it.position)
-                                        it.consume() 
+                        } else if (event.changes.size == 1 && (if(resetOnRelease) animatedScale.value else scale) > 1.05f) {
+                            // Panning with 1 finger ONLY if zoomed in
+                            if (panChange != Offset.Zero) {
+                                if (resetOnRelease) {
+                                    scope.launch {
+                                        animatedOffset.snapTo(animatedOffset.value + panChange)
                                     }
+                                } else {
+                                    offset += panChange
                                 }
+                                event.changes.forEach { it.consume() }
                             }
                         }
                     } while (event.changes.any { it.pressed })
 
-                    // À la fin du geste
-                    val finalScale = if (resetOnRelease) animatedScale.value else scale
-                    val baseScale = if (isFillMode && resetOnRelease) fillScale else 1f
-
                     if (resetOnRelease) {
-                        // Réinitialisation complète et immédiate pour les swipe cards (retour au centre)
                         scope.launch {
-                            launch { animatedScale.animateTo(baseScale, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
+                            launch { animatedScale.animateTo(if (isFillMode) fillScale else 1f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
                             launch { animatedOffset.animateTo(Offset.Zero, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
-                        }
-                    } else {
-                        // Pour le plein écran : on gère l'inertie
-                        val targetScale = finalScale.coerceAtLeast(1f)
-                        val velocity = velocityTracker.calculateVelocity()
-                        
-                        scope.launch {
-                            // Animation du scale si besoin (retour au x1 si dézoomé)
-                            if (targetScale != finalScale) {
-                                launch {
-                                    animate(finalScale, targetScale, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { value, _ ->
-                                        scale = value
-                                    }
-                                }
-                            }
-                            
-                            // Animation du panoramique avec inertie (Fling)
-                            launch {
-                                val decay = exponentialDecay<Offset>(frictionMultiplier = 1.5f)
-                                animatedOffset.snapTo(offset) // On utilise Animatable pour le fling
-                                animatedOffset.animateDecay(Offset(velocity.x, velocity.y), decay) {
-                                    // Pendant le fling, on contraint l'offset aux limites
-                                    val currentMaxX = (size.width * (scale - 1f) / 2f).coerceAtLeast(0f)
-                                    val currentMaxY = (size.height * (scale - 1f) / 2f).coerceAtLeast(0f)
-                                    
-                                    val constrained = Offset(
-                                        value.x.coerceIn(-currentMaxX, currentMaxX),
-                                        value.y.coerceIn(-currentMaxY, currentMaxY)
-                                    )
-                                    
-                                    offset = constrained
-                                    // Si on touche un bord, on arrête le fling
-                                    if (constrained != value) {
-                                        scope.launch { animatedOffset.stop() }
-                                    }
-                                }
-                                
-                                // Si pas de fling ou après le fling, on s'assure d'être dans les clous
-                                val finalMaxX = (size.width * (scale - 1f) / 2f).coerceAtLeast(0f)
-                                val finalMaxY = (size.height * (scale - 1f) / 2f).coerceAtLeast(0f)
-                                val targetOffset = Offset(
-                                    offset.x.coerceIn(-finalMaxX, finalMaxX),
-                                    offset.y.coerceIn(-finalMaxY, finalMaxY)
-                                )
-                                if (targetOffset != offset) {
-                                    animate(
-                                        typeConverter = Offset.VectorConverter,
-                                        initialValue = offset,
-                                        targetValue = targetOffset,
-                                        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)
-                                    ) { value, _ ->
-                                        offset = value
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -2287,58 +2251,14 @@ fun ZoomableBox(
                             if (onDoubleTap != null) {
                                 onDoubleTap()
                             } else if (!resetOnRelease) {
-                                // Mode plein écran : Bascule x1 / x3
                                 if (scale > 1.01f) {
                                     scope.launch {
-                                        launch {
-                                            animate(scale, 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { value, _ ->
-                                                scale = value
-                                            }
-                                        }
-                                        launch {
-                                            animate(
-                                                typeConverter = Offset.VectorConverter,
-                                                initialValue = offset,
-                                                targetValue = Offset.Zero,
-                                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)
-                                            ) { value, _ ->
-                                                offset = value
-                                            }
-                                        }
+                                        launch { animate(scale, 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> scale = v } }
+                                        launch { animate(typeConverter = Offset.VectorConverter, initialValue = offset, targetValue = Offset.Zero, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> offset = v } }
                                     }
                                 } else {
-                                    // Zoom x3 à l'endroit du tap
-                                    val targetScale = 3f
-                                    val center = Offset(size.width / 2f, size.height / 2f)
-                                    val centroidInCenter = tapOffset - center
-                                    
-                                    // Calcul de l'offset cible pour centrer sur le tap
-                                    val targetOffsetRaw = centroidInCenter * (1f - targetScale)
-                                    
-                                    // On applique les limites immédiatement
-                                    val maxX = (size.width * (targetScale - 1f) / 2f).coerceAtLeast(0f)
-                                    val maxY = (size.height * (targetScale - 1f) / 2f).coerceAtLeast(0f)
-                                    val targetOffset = Offset(
-                                        targetOffsetRaw.x.coerceIn(-maxX, maxX),
-                                        targetOffsetRaw.y.coerceIn(-maxY, maxY)
-                                    )
-
                                     scope.launch {
-                                        launch {
-                                            animate(scale, targetScale, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { value, _ ->
-                                                scale = value
-                                            }
-                                        }
-                                        launch {
-                                            animate(
-                                                typeConverter = Offset.VectorConverter,
-                                                initialValue = offset,
-                                                targetValue = targetOffset,
-                                                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)
-                                            ) { value, _ ->
-                                                offset = value
-                                            }
-                                        }
+                                        launch { animate(scale, 3f, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy)) { v, _ -> scale = v } }
                                     }
                                 }
                             }
@@ -2361,3 +2281,83 @@ fun ZoomableBox(
     )
 }
 
+@Composable
+fun HeaderTitle(text: String, color: Color, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        color = color,
+        maxLines = 1,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun HeaderInfo(progressText: String, color: Color, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = progressText,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Black,
+            color = color
+        )
+        Spacer(Modifier.width(4.dp))
+        Icon(
+            imageVector = Icons.Default.List,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = color
+        )
+    }
+}
+
+@Composable
+fun StatBadge(label: String, count: Int, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = "$count $label",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+    }
+}
+
+/**
+ * Formate une taille en bytes vers une chaîne lisible (Go, Mo).
+ */
+@Composable
+fun formatSize(bytes: Long): String {
+    val kb = bytes / 1024.0
+    val mb = kb / 1024.0
+    val gb = mb / 1024.0
+    return when {
+        gb >= 1.0 -> stringResource(R.string.size_unit_gb, gb)
+        mb >= 1.0 -> stringResource(R.string.size_unit_mb, mb)
+        else -> stringResource(R.string.size_unit_kb, kb)
+    }
+}
+
+private fun formatMediaTime(ms: Long): String {
+    val totalSeconds = (ms / 1000).toInt()
+    val minutes = (totalSeconds / 60) % 60
+    val hours = totalSeconds / 3600
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        String.format(java.util.Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
+    }
+}

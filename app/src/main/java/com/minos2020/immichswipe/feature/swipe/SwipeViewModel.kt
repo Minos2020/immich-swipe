@@ -17,6 +17,7 @@ import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.core.SortOrder
+import com.minos2020.immichswipe.core.SortCategory
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
@@ -110,7 +111,16 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.sortOrder.collect { order ->
                 val previousOrder = _uiState.value.sortOrder
-                _uiState.update { it.copy(sortOrder = order) }
+                
+                // On met à jour la catégorie en fonction de l'ordre reçu
+                val category = when (order) {
+                    SortOrder.CHRONOLOGICAL_DESC, SortOrder.CHRONOLOGICAL_ASC, SortOrder.SHUFFLED -> SortCategory.TIME
+                    SortOrder.SIZE_DESC, SortOrder.SIZE_ASC -> SortCategory.SIZE
+                    SortOrder.TYPE_VIDEO_FIRST, SortOrder.TYPE_PHOTO_FIRST,
+                    SortOrder.TYPE_VIDEO_FIRST_SHUFFLED, SortOrder.TYPE_PHOTO_FIRST_SHUFFLED -> SortCategory.TYPE
+                }
+
+                _uiState.update { it.copy(sortOrder = order, sortCategory = category) }
                 
                 // Si l'ordre a réellement changé, on recharge tout
                 if (previousOrder != order) {
@@ -146,6 +156,21 @@ class SwipeViewModel(
 
     fun setSortOrder(order: SortOrder) = viewModelScope.launch {
         sessionRepository.saveSortOrder(order)
+    }
+
+    fun setSortCategory(category: SortCategory) {
+        val currentCategory = _uiState.value.sortCategory
+        if (currentCategory == category) return
+
+        _uiState.update { it.copy(sortCategory = category) }
+        
+        // On définit un ordre par défaut pour la nouvelle catégorie
+        val defaultOrder = when (category) {
+            SortCategory.TIME -> SortOrder.CHRONOLOGICAL_DESC
+            SortCategory.SIZE -> SortOrder.SIZE_DESC
+            SortCategory.TYPE -> SortOrder.TYPE_VIDEO_FIRST
+        }
+        setSortOrder(defaultOrder)
     }
 
     /**

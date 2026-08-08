@@ -36,6 +36,7 @@ data class SwipeUiState(
     val showFavoriteButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
+    val sortCategory: com.minos2020.immichswipe.core.SortCategory = com.minos2020.immichswipe.core.SortCategory.TIME,
     val sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
     val cardDisplayMode: CardDisplayMode = CardDisplayMode.FIT,
