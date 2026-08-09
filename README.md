@@ -23,13 +23,8 @@ Inspired by the [Sponge](https://play.google.com/store/apps/details?id=com.prism
 |                                     *Browse your albums*                                     |                                  *Swipe to decide*                                   |                                 *Check before deleting*                                  |
 
 <details>
-<summary>🌙 <b>View Dark Mode Gallery</b></summary>
 
-|                                       Home Screen (Dark)                                       |                                  Sorting Stack (Dark)                                  |                                   Review Mode (Dark)                                    |                                    Settings (Dark)                                     |
-|:----------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|
-| <img src="metadata/en-US/images/phoneScreenshots/05_Dark_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/07_Dark_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/08_Dark_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/Dark_SettingsScreen.png" width="200"> |
 
-</details>
 
 ## ✨ Features
 
