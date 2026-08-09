@@ -11,10 +11,21 @@ import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.domain.model.Asset
 import com.minos2020.immichswipe.core.SortOrder
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+
+/**
+ * Un lot d'assets récupérés avec le total disponible.
+ */
+data class AssetBatch(
+    val assets: List<Asset>,
+    val total: Int
+)
 
 /**
  * Repository gérant les photos et vidéos (Assets).
@@ -25,15 +36,15 @@ class AssetRepository(
     private val albumAssetDao: AlbumAssetDao? = null
 ) {
     /**
-     * Récupère toutes les photos d'un album.
+     * Récupère toutes les photos d'un album sous forme de Flow pour un chargement progressif.
      */
-    suspend fun getAssetsByAlbum(
+    fun getAssetsByAlbum(
         albumId: String,
         includeArchived: Boolean = false,
         userId: String? = null,
         sortOrder: SortOrder = SortOrder.CHRONOLOGICAL_DESC,
         shuffleSeed: Long? = null
-    ): List<Asset> {
+    ): Flow<AssetBatch> = flow {
         // Nettoyage systématique des anciens liens pour cet album et cet utilisateur avant de les recréer
         if (userId != null) {
             albumAssetDao?.clearAlbumRelations(albumId, userId)
@@ -42,76 +53,73 @@ class AssetRepository(
         // On a besoin de l'EXIF seulement pour le tri par taille
         val needsExif = sortOrder == SortOrder.SIZE_DESC || sortOrder == SortOrder.SIZE_ASC
 
-        val assets = if (albumId == Album.VIRTUAL_ALL_ID) {
+        if (albumId == Album.VIRTUAL_ALL_ID) {
             if (includeArchived) {
-                // Return everything (by combining timeline + archive)
-                coroutineScope {
-                    val timeline = async { fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId, userId, needsExif) }
-                    val archive = async { fetchAllAssets(SearchAssetsRequest(visibility = "archive"), albumId, userId, needsExif) }
-                    (timeline.await() + archive.await())
-                }
+                // Pour le mode ALL + Archived, on doit récupérer les deux statistiques d'abord
+                val totalTimeline = try { api.getSearchStatistics(SearchAssetsRequest(visibility = "timeline")).total } catch (_: Exception) { 0 }
+                val totalArchive = try { api.getSearchStatistics(SearchAssetsRequest(visibility = "archive")).total } catch (_: Exception) { 0 }
+                val grandTotal = totalTimeline + totalArchive
+
+                fetchAssetsFlow(SearchAssetsRequest(visibility = "timeline"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
+                fetchAssetsFlow(SearchAssetsRequest(visibility = "archive"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
             } else {
-                fetchAllAssets(SearchAssetsRequest(visibility = "timeline"), albumId, userId, needsExif)
+                fetchAssetsFlow(SearchAssetsRequest(visibility = "timeline"), albumId, userId, needsExif).collect { emit(it) }
             }
         } else if (albumId == Album.VIRTUAL_ORPHANS_ID) {
             if (includeArchived) {
-                coroutineScope {
-                    val timeline = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId, needsExif) }
-                    val archive = async { fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId, userId, needsExif) }
-                    (timeline.await() + archive.await())
-                }
+                val totalTimeline = try { api.getSearchStatistics(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline")).total } catch (_: Exception) { 0 }
+                val totalArchive = try { api.getSearchStatistics(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive")).total } catch (_: Exception) { 0 }
+                val grandTotal = totalTimeline + totalArchive
+
+                fetchAssetsFlow(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
+                fetchAssetsFlow(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
             } else {
-                fetchAllAssets(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId, needsExif)
+                fetchAssetsFlow(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId, needsExif).collect { emit(it) }
             }
         } else {
             if (includeArchived) {
-                coroutineScope {
-                    val timelineDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId, needsExif) }
-                    val archiveDeferred = async { fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId, userId, needsExif) }
-                    
-                    val timeline = try { timelineDeferred.await() } catch (_: Exception) { emptyList() }
-                    val archive = try { archiveDeferred.await() } catch (_: Exception) { emptyList() }
-                    
-                    (timeline + archive)
-                }
+                val totalTimeline = try { api.getSearchStatistics(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline")).total } catch (_: Exception) { 0 }
+                val totalArchive = try { api.getSearchStatistics(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive")).total } catch (_: Exception) { 0 }
+                val grandTotal = totalTimeline + totalArchive
+
+                fetchAssetsFlow(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
+                fetchAssetsFlow(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
             } else {
-                try {
-                    fetchAllAssets(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId, needsExif)
-                } catch (_: Exception) {
-                    emptyList()
-                }
+                fetchAssetsFlow(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId, needsExif).collect { emit(it) }
             }
         }
-
-        return when (sortOrder) {
-            SortOrder.CHRONOLOGICAL_DESC -> assets.sortedByDescending { it.fileCreatedAt }
-            SortOrder.CHRONOLOGICAL_ASC -> assets.sortedBy { it.fileCreatedAt }
+    }.map { batch ->
+        // Tri local par chunk (meilleur effort pour le streaming)
+        val sortedAssets = when (sortOrder) {
+            SortOrder.CHRONOLOGICAL_DESC -> batch.assets.sortedByDescending { it.fileCreatedAt }
+            SortOrder.CHRONOLOGICAL_ASC -> batch.assets.sortedBy { it.fileCreatedAt }
             SortOrder.SHUFFLED -> {
                 if (shuffleSeed != null) {
-                    assets.shuffled(java.util.Random(shuffleSeed))
+                    batch.assets.shuffled(java.util.Random(shuffleSeed))
                 } else {
-                    assets.shuffled()
+                    batch.assets.shuffled()
                 }
             }
-            SortOrder.SIZE_DESC -> assets.sortedByDescending { it.exifInfo?.fileSizeInBytes ?: 0L }
-            SortOrder.SIZE_ASC -> assets.sortedBy { it.exifInfo?.fileSizeInBytes ?: 0L }
-            SortOrder.TYPE_VIDEO_FIRST -> assets.sortedWith(compareByDescending<Asset> { it.type == "VIDEO" }.thenByDescending { it.fileCreatedAt })
-            SortOrder.TYPE_PHOTO_FIRST -> assets.sortedWith(compareByDescending<Asset> { it.type == "IMAGE" }.thenByDescending { it.fileCreatedAt })
+            SortOrder.SIZE_DESC -> batch.assets.sortedByDescending { it.exifInfo?.fileSizeInBytes ?: 0L }
+            SortOrder.SIZE_ASC -> batch.assets.sortedBy { it.exifInfo?.fileSizeInBytes ?: 0L }
+            SortOrder.TYPE_VIDEO_FIRST -> batch.assets.sortedWith(compareByDescending<Asset> { it.type == "VIDEO" }.thenByDescending { it.fileCreatedAt })
+            SortOrder.TYPE_PHOTO_FIRST -> batch.assets.sortedWith(compareByDescending<Asset> { it.type == "IMAGE" }.thenByDescending { it.fileCreatedAt })
             SortOrder.TYPE_VIDEO_FIRST_SHUFFLED -> {
                 val seed = shuffleSeed ?: System.currentTimeMillis()
                 val random = java.util.Random(seed)
-                val videos = assets.filter { it.type == "VIDEO" }.shuffled(random)
-                val photos = assets.filter { it.type != "VIDEO" }.shuffled(random)
+                val videos = batch.assets.filter { it.type == "VIDEO" }.shuffled(random)
+                val photos = batch.assets.filter { it.type != "VIDEO" }.shuffled(random)
                 videos + photos
             }
             SortOrder.TYPE_PHOTO_FIRST_SHUFFLED -> {
                 val seed = shuffleSeed ?: System.currentTimeMillis()
                 val random = java.util.Random(seed)
-                val photos = assets.filter { it.type == "IMAGE" }.shuffled(random)
-                val others = assets.filter { it.type != "IMAGE" }.shuffled(random)
+                val photos = batch.assets.filter { it.type == "IMAGE" }.shuffled(random)
+                val others = batch.assets.filter { it.type != "IMAGE" }.shuffled(random)
                 photos + others
             }
         }
+        batch.copy(assets = sortedAssets)
     }
 
     suspend fun getTotalAssetCount(includeArchived: Boolean = false): Int {
@@ -205,10 +213,16 @@ class AssetRepository(
     }
 
     /**
-     * Récupère TOUS les assets correspondant à une requête en gérant la pagination de manière parallélisée.
+     * Récupère TOUS les assets correspondant à une requête en gérant la pagination de manière progressive via un Flow.
+     * Chaque émission contient un lot d'assets et le total de la requête.
      */
-    private suspend fun fetchAllAssets(baseRequest: SearchAssetsRequest, albumIdForMapping: String? = null, userId: String? = null, withExif: Boolean = false): List<Asset> {
-        // 1. On récupère d'abord le TOTAL réel via l'endpoint dédié (plus fiable que le champ total de search)
+    private fun fetchAssetsFlow(
+        baseRequest: SearchAssetsRequest,
+        albumIdForMapping: String? = null,
+        userId: String? = null,
+        withExif: Boolean = false
+    ): Flow<AssetBatch> = flow {
+        // 1. On récupère d'abord le TOTAL réel via l'endpoint dédié
         val statsRequest = baseRequest.copy(withExif = withExif)
         val total = try {
             api.getSearchStatistics(statsRequest).total
@@ -217,39 +231,26 @@ class AssetRepository(
             0
         }
 
-        if (total <= 0) return emptyList()
+        if (total <= 0) return@flow
 
-        // 2. On prépare le chargement parallèle par pages de 1000
+        // 2. Chargement séquentiel des pages pour streaming immédiat
         val size = 1000
         val totalPages = (total + (size - 1)) / size
-        val allItems = java.util.Collections.synchronizedList(mutableListOf<Asset>())
-        
-        // On limite le parallélisme à 5 requêtes simultanées
-        val semaphore = Semaphore(5)
         val fetchRequest = baseRequest.copy(size = size, withExif = withExif)
 
-        coroutineScope {
-            val deferredPages = (1..totalPages).map { page ->
-                async {
-                    semaphore.withPermit {
-                        try {
-                            val resp = api.searchAssets(fetchRequest.copy(page = page))
-                            val items = resp.assets.items
-                            if (albumIdForMapping != null && userId != null && items.isNotEmpty()) {
-                                albumAssetDao?.insertAlbumAssets(items.map { AlbumAssetEntity(albumIdForMapping, it.id, userId) })
-                            }
-                            items
-                        } catch (e: Exception) {
-                            AppLogger.e("AssetRepo", "Erreur page $page: ${e.message}")
-                            emptyList<Asset>()
-                        }
-                    }
+        for (page in 1..totalPages) {
+            try {
+                val resp = api.searchAssets(fetchRequest.copy(page = page))
+                val items = resp.assets.items
+                if (albumIdForMapping != null && userId != null && items.isNotEmpty()) {
+                    albumAssetDao?.insertAlbumAssets(items.map { AlbumAssetEntity(albumIdForMapping, it.id, userId) })
                 }
+                emit(AssetBatch(items, total))
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("AssetRepo", "Erreur page $page: ${e.message}")
             }
-            allItems.addAll(deferredPages.awaitAll().flatten())
         }
-
-        return allItems
     }
 
     /**

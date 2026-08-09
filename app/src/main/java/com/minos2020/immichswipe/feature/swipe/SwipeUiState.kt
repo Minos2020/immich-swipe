@@ -23,6 +23,7 @@ data class SwipeUiState(
     val showSummary: Boolean = false,
     val albumName: String = "",
     val assets: List<Asset> = emptyList(),
+    val remoteTotalCount: Int = 0,
     val currentIndex: Int = 0,
     val decisions: Map<String, SwipeDecision> = emptyMap(),
     val assetSizes: Map<String, Long> = emptyMap(), // Map de AssetID -> Taille connue (persitée ou chargée)
@@ -135,5 +136,5 @@ data class SwipeUiState(
     val isRemainingEstimated: Boolean get() = assets.any { !decisions.containsKey(it.id) && (assetSizes[it.id] ?: 0L) == 0L }
 
     // Progression (0.0f à 1.0f)
-    val progress: Float get() = if (totalCount > 0) processedCount.toFloat() / totalCount else 0f
+    val progress: Float get() = if (remoteTotalCount > 0) processedCount.toFloat() / remoteTotalCount else 0f
 }

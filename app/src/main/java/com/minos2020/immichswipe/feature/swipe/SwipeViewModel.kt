@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.CardDisplayMode
@@ -21,7 +23,9 @@ import com.minos2020.immichswipe.core.SortCategory
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
+import com.minos2020.immichswipe.data.repository.AssetBatch
 import com.minos2020.immichswipe.domain.model.Album
+import com.minos2020.immichswipe.domain.model.Asset
 
 /**
  * ViewModel de l'écran de tri (Swipe).
@@ -219,10 +223,13 @@ class SwipeViewModel(
     // On garde en mémoire les décisions qui étaient déjà synchronisées au début de la session
     private var initialSyncedDecisions = mapOf<String, SwipeDecision>()
     private var currentShuffleSeed: Long? = null
+    private var loadingJob: Job? = null
 
     private fun loadAssetsAndDecisions() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+        loadingJob?.cancel()
+        loadingJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, assets = emptyList(), decisions = emptyMap(), assetSizes = emptyMap(), currentIndex = 0, remoteTotalCount = 0) }
+            initialSyncedDecisions = emptyMap()
             try {
                 AppLogger.d("Swipe", "Chargement de l'album ${album.albumName} (ID: ${album.id})")
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
@@ -234,73 +241,88 @@ class SwipeViewModel(
                     currentShuffleSeed = System.currentTimeMillis()
                 }
 
-                // On charge les assets depuis l'API
-                val assets = assetRepository.getAssetsByAlbum(
+                // On charge TOUTES les décisions locales de l'utilisateur une fois au début
+                val allLocalDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
+                
+                var isFirstBatch = true
+
+                // On charge les assets depuis l'API de manière progressive
+                assetRepository.getAssetsByAlbum(
                     album.id,
                     includeArchived,
                     config.userId,
                     sortOrder = currentSortOrder,
                     shuffleSeed = currentShuffleSeed
-                )
-                val albumAssetIds = assets.map { it.id }.toSet()
+                ).collect { batch ->
+                    val chunk = batch.assets
+                    val remoteTotal = batch.total
+                    val chunkAssetIds = chunk.map { it.id }.toSet()
+                    val localDecisionsForChunk = allLocalDecisions.filter { chunkAssetIds.contains(it.assetId) }
 
-                // On charge TOUTES les décisions locales de l'utilisateur (partagées entre albums)
-                val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
-                    .filter { albumAssetIds.contains(it.assetId) }
+                    // On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation.
+                    val newSynced = localDecisionsForChunk
+                        .filter { it.isSynced }
+                        .associate { entity ->
+                            val decision = try { SwipeDecision.valueOf(entity.decision) } catch (_: Exception) { SwipeDecision.KEEP }
+                            entity.assetId to decision
+                        }
+                    initialSyncedDecisions = initialSyncedDecisions + newSynced
 
-                AppLogger.d("Swipe", "${assets.size} assets trouvés, ${localDecisions.size} décisions locales pour cet album")
-                
-                // On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation.
-                initialSyncedDecisions = localDecisions
-                    .filter { it.isSynced }
-                    .associate { entity ->
-                        val decision = try { SwipeDecision.valueOf(entity.decision) } catch (_: Exception) { SwipeDecision.KEEP }
-                        entity.assetId to decision
+                    // On transforme les décisions du chunk en Map
+                    val chunkDecisionMap = mutableMapOf<String, SwipeDecision>()
+                    val chunkSizeMap = mutableMapOf<String, Long>()
+
+                    localDecisionsForChunk.forEach { entity ->
+                        try {
+                            chunkDecisionMap[entity.assetId] = SwipeDecision.valueOf(entity.decision)
+                        } catch (_: Exception) {}
+                        
+                        entity.fileSize?.let { chunkSizeMap[entity.assetId] = it }
                     }
 
-                // On transforme la liste de SwipeDecisionEntity en Map<String, SwipeDecision>
-                val decisionMap = mutableMapOf<String, SwipeDecision>()
-                val sizeMap = mutableMapOf<String, Long>()
+                    _uiState.update { state ->
+                        val updatedAssets = state.assets + chunk
+                        val updatedDecisions = state.decisions + chunkDecisionMap
+                        val updatedSizes = state.assetSizes + chunkSizeMap
 
-                localDecisions.forEach { entity ->
-                    val decision = try {
-                        SwipeDecision.valueOf(entity.decision)
-                    } catch (e: Exception) {
-                        null
-                    } ?: return@forEach
+                        // Calcul de l'index : 
+                        // - Si c'est le premier batch, on cherche le premier non traité.
+                        // - Si on était au bout de la liste précédente, on regarde si le nouveau chunk apporte des photos à traiter.
+                        var nextIndex = state.currentIndex
+                        if (isFirstBatch || (state.currentIndex >= state.assets.size && updatedAssets.size > state.assets.size)) {
+                            val firstUnprocessed = updatedAssets.indexOfFirst { !updatedDecisions.containsKey(it.id) }
+                            if (firstUnprocessed != -1) {
+                                nextIndex = firstUnprocessed
+                            } else if (isFirstBatch) {
+                                nextIndex = updatedAssets.size // Tout est déjà traité dans ce premier batch
+                            }
+                        }
 
-                    // On met toutes les décisions dans l'état de l'UI (même synchronisées)
-                    // pour que les tags "KEEP" soient conservés visuellement.
-                    decisionMap[entity.assetId] = decision
-                    
-                    // On garde toujours la taille connue de l'asset
-                    entity.fileSize?.let { sizeMap[entity.assetId] = it }
-                }
+                        state.copy(
+                            assets = updatedAssets,
+                            decisions = updatedDecisions,
+                            assetSizes = updatedSizes,
+                            currentIndex = nextIndex,
+                            remoteTotalCount = remoteTotal,
+                            isLoading = false
+                        )
+                    }
 
-                // On conserve TOUS les assets de l'album pour afficher la progression complète
-                val workPileAssets = assets
-
-                // On cherche le premier index non traité (celui qui n'a aucune décision en base)
-                val firstUnprocessedIndex = workPileAssets.indexOfFirst { !decisionMap.containsKey(it.id) }
-                        .let { if (it == -1) workPileAssets.size else it }
-
-                _uiState.update {
-                    it.copy(
-                        assets = workPileAssets,
-                        decisions = decisionMap,
-                        assetSizes = sizeMap,
-                        history = emptyList(),
-                        localFavorites = emptyMap(),
-                        currentIndex = firstUnprocessedIndex,
-                        isLoading = false
-                    )
+                    // Chargement des détails pour l'asset actuel si c'est le début
+                    if (isFirstBatch) {
+                        val state = _uiState.value
+                        if (state.currentIndex < state.assets.size) {
+                            loadAssetDetail(state.assets[state.currentIndex].id, state.currentIndex)
+                        }
+                        isFirstBatch = false
+                    }
                 }
                 
-                // On charge les détails de l'asset actuel
-                if (firstUnprocessedIndex < workPileAssets.size) {
-                    loadAssetDetail(workPileAssets[firstUnprocessedIndex].id, firstUnprocessedIndex)
-                }
+                _uiState.update { it.copy(isLoading = false) }
+                AppLogger.d("Swipe", "Chargement de l'album terminé : ${_uiState.value.assets.size} assets récupérés")
+
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 AppLogger.e("Swipe", "Erreur lors du chargement de l'album", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -607,7 +629,10 @@ class SwipeViewModel(
                 if (toLock.isNotEmpty()) assetRepository.updateAssets(toLock, visibility = "locked")
 
                 // 2. Vérification et mise à jour de la base locale
-                val freshAssets = assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = config.userId)
+                val freshAssets = mutableListOf<Asset>()
+                assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = config.userId).collect { batch ->
+                    freshAssets.addAll(batch.assets)
+                }
                 val freshIds = freshAssets.map { it.id }.toSet()
 
                 // - Identification des succès (ceux qui ont disparu de l'album)
