@@ -55,7 +55,7 @@ Inspired by the [Sponge](https://play.google.com/store/apps/details?id=com.prism
 
 |                                                                                                                       **Orion Store**                                                                                                                        |   **Direct Download**   |  **IzzyOnDroid / F-Droid**    |
 |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------------:|:----------------------------:|
-| [<img src="https://github.com/RookieEnough/Orion-Store/blob/main/assets/orion-badge.png?raw=true"  alt="Get it on Orion Store" height="50">](https://rookieenough.github.io/Orion-Data/redirect.html?id=immich-swipe-android) | Get the latest APK from the [Releases](https://github.com/markvoronin354/immich-swipe/releases) section   |  Coming soon, hopefully
+| [<img src="https://github.com/RookieEnough/Orion-Store/blob/main/assets/orion-badge.png?raw=true"  alt="Get it on Orion Store" height="50">](https://rookieenough.github.io/Orion-Data/redirect.html?id=immich-swipe-android) | Get the latest APK from the [Releases](https://github.com/markvoronin354/immich-swipe-android/releases) section   |  Coming soon, hopefully
 
 
 ## 🛠️ Build
