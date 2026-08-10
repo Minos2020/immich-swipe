@@ -1,6 +1,6 @@
 # Immich Swipe
 
-![GitHub release (latest by date)](https://img.shields.io/badge/Release-2.4.0-blue)
+![GitHub release (latest by date)](https://img.shields.io/badge/Release-2.4.1-blue)
 ![GitHub License](https://img.shields.io/github/license/markvoronin354/immich-swipe-android)
 ![Kotlin](https://img.shields.io/badge/language-Kotlin-purple)
 ![Android](https://img.shields.io/badge/platform-Android-green)

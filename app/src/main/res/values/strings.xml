@@ -229,4 +229,7 @@
     <string name="settings_logs_clear">Clear logs</string>
     <string name="settings_logs_empty">No logs available at the moment.</string>
     <string name="settings_logs_copied_toast">Logs copied to clipboard</string>
+    <string name="settings_clear_cache_label">Clear app cache</string>
+    <string name="settings_clear_cache_desc">Delete temporary files, thumbnails and cached images</string>
+    <string name="settings_clear_cache_success">Cache cleared successfully</string>
 </resources>

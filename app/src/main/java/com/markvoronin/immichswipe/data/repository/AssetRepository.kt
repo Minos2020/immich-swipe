@@ -53,47 +53,47 @@ class AssetRepository(
         // On a besoin de l'EXIF seulement pour le tri par taille
         val needsExif = sortOrder == SortOrder.SIZE_DESC || sortOrder == SortOrder.SIZE_ASC
 
-        if (albumId == Album.VIRTUAL_ALL_ID) {
-            if (includeArchived) {
-                // Pour le mode ALL + Archived, on doit récupérer les deux statistiques d'abord
-                val totalTimeline = try { api.getSearchStatistics(SearchAssetsRequest(visibility = "timeline")).total } catch (_: Exception) { 0 }
-                val totalArchive = try { api.getSearchStatistics(SearchAssetsRequest(visibility = "archive")).total } catch (_: Exception) { 0 }
-                val grandTotal = totalTimeline + totalArchive
-
-                fetchAssetsFlow(SearchAssetsRequest(visibility = "timeline"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
-                fetchAssetsFlow(SearchAssetsRequest(visibility = "archive"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
-            } else {
-                fetchAssetsFlow(SearchAssetsRequest(visibility = "timeline"), albumId, userId, needsExif).collect { emit(it) }
-            }
-        } else if (albumId == Album.VIRTUAL_ORPHANS_ID) {
-            if (includeArchived) {
-                val totalTimeline = try { api.getSearchStatistics(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline")).total } catch (_: Exception) { 0 }
-                val totalArchive = try { api.getSearchStatistics(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive")).total } catch (_: Exception) { 0 }
-                val grandTotal = totalTimeline + totalArchive
-
-                fetchAssetsFlow(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
-                fetchAssetsFlow(SearchAssetsRequest(isNotInAlbum = true, visibility = "archive"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
-            } else {
-                fetchAssetsFlow(SearchAssetsRequest(isNotInAlbum = true, visibility = "timeline"), albumId, userId, needsExif).collect { emit(it) }
-            }
-        } else {
-            if (includeArchived) {
-                val totalTimeline = try { api.getSearchStatistics(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline")).total } catch (_: Exception) { 0 }
-                val totalArchive = try { api.getSearchStatistics(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive")).total } catch (_: Exception) { 0 }
-                val grandTotal = totalTimeline + totalArchive
-
-                fetchAssetsFlow(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
-                fetchAssetsFlow(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "archive"), albumId, userId, needsExif).collect { emit(it.copy(total = grandTotal)) }
-            } else {
-                fetchAssetsFlow(SearchAssetsRequest(albumIds = listOf(albumId), visibility = "timeline"), albumId, userId, needsExif).collect { emit(it) }
-            }
+        // Mapping de l'ordre de tri pour l'API Immich (v3)
+        val apiOrder = when (sortOrder) {
+            SortOrder.CHRONOLOGICAL_DESC -> "desc"
+            SortOrder.CHRONOLOGICAL_ASC -> "asc"
+            SortOrder.SHUFFLED -> "random"
+            else -> "desc" // Les autres types de tri sont gérés localement ci-après
         }
+
+        // Si on inclut les archives, on ne spécifie pas de visibilité (null) pour récupérer 
+        // à la fois Timeline et Archive de manière entrelacée par le serveur.
+        val visibility = if (includeArchived) null else "timeline"
+
+        val baseRequest = when (albumId) {
+            Album.VIRTUAL_ALL_ID -> SearchAssetsRequest(
+                visibility = visibility,
+                withExif = needsExif,
+                order = apiOrder
+            )
+            Album.VIRTUAL_ORPHANS_ID -> SearchAssetsRequest(
+                isNotInAlbum = true,
+                visibility = visibility,
+                withExif = needsExif,
+                order = apiOrder
+            )
+            else -> SearchAssetsRequest(
+                albumIds = listOf(albumId),
+                visibility = visibility,
+                withExif = needsExif,
+                order = apiOrder
+            )
+        }
+
+        fetchAssetsFlow(baseRequest, albumId, userId, needsExif).collect { emit(it) }
     }.map { batch ->
         // Tri local par chunk (meilleur effort pour le streaming)
+        // Note: Pour les modes chronologiques, on se fie désormais à l'ordre retourné par le serveur (global)
+        // pour éviter tout conflit avec une clé de tri locale différente.
         val sortedAssets = when (sortOrder) {
-            SortOrder.CHRONOLOGICAL_DESC -> batch.assets.sortedByDescending { it.fileCreatedAt }
-            SortOrder.CHRONOLOGICAL_ASC -> batch.assets.sortedBy { it.fileCreatedAt }
+            SortOrder.CHRONOLOGICAL_DESC, SortOrder.CHRONOLOGICAL_ASC -> batch.assets
             SortOrder.SHUFFLED -> {
+                // On garde un mélange local au sein du chunk pour plus de variété si le serveur n'est pas parfaitement aléatoire
                 if (shuffleSeed != null) {
                     batch.assets.shuffled(java.util.Random(shuffleSeed))
                 } else {

@@ -13,6 +13,7 @@ import com.markvoronin.immichswipe.data.repository.SessionRepository
 import com.markvoronin.immichswipe.data.repository.SwipeDecisionRepository
 import com.markvoronin.immichswipe.data.repository.UserRepository
 import com.markvoronin.immichswipe.data.local.model.DatabaseExport
+import com.markvoronin.immichswipe.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -411,6 +412,33 @@ class SettingsViewModel(
 
     fun getLogs(): String {
         return AppLogger.getLogs()
+    }
+
+    fun clearAppCache(context: android.content.Context) {
+        viewModelScope.launch {
+            try {
+                val cacheDir = context.cacheDir
+                val files = cacheDir.listFiles()
+                files?.forEach { file ->
+                    deleteRecursive(file)
+                }
+                val successMessage = context.getString(R.string.settings_clear_cache_success)
+                _uiState.value = _uiState.value.copy(databaseActionStatus = successMessage)
+            } catch (e: Exception) {
+                AppLogger.e("SettingsVM", "Failed to clear cache", e)
+                _uiState.value = _uiState.value.copy(databaseActionStatus = "Failed to clear cache: ${e.message}")
+            }
+        }
+    }
+
+    private fun deleteRecursive(fileOrDirectory: java.io.File) {
+        if (fileOrDirectory.isDirectory) {
+            val files = fileOrDirectory.listFiles()
+            files?.forEach { child ->
+                deleteRecursive(child)
+            }
+        }
+        fileOrDirectory.delete()
     }
 }
 

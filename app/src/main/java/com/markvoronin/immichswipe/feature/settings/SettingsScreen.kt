@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import com.markvoronin.immichswipe.R
 import com.markvoronin.immichswipe.core.AppTheme
+import com.markvoronin.immichswipe.core.CardDisplayMode
 import com.markvoronin.immichswipe.core.IconPosition
 import com.markvoronin.immichswipe.core.PlaybackBehavior
 import com.markvoronin.immichswipe.core.SortOrder
@@ -44,7 +45,7 @@ import com.markvoronin.immichswipe.core.SortOrder
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboard = androidx.compose.ui.platform.LocalClipboard.current
@@ -79,7 +80,7 @@ fun SettingsScreen(
         val allGranted = permissions.entries.all { it.value }
         if (!allGranted) {
             // Si refusé, on désactive l'option
-            viewModel.setSyncLocalDeletion(false)
+            viewModel.setSyncLocalDeletion(sync = false)
             android.widget.Toast.makeText(context, "Permission denied. Local sync disabled.", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
@@ -195,15 +196,15 @@ fun SettingsScreen(
                         ThemeButton(
                             text = stringResource(R.string.settings_display_mode_fill),
                             icon = Icons.Default.AspectRatio,
-                            selected = uiState.defaultCardDisplayMode == com.markvoronin.immichswipe.core.CardDisplayMode.FILL,
-                            onClick = { viewModel.setDefaultCardDisplayMode(com.markvoronin.immichswipe.core.CardDisplayMode.FILL) },
+                            selected = uiState.defaultCardDisplayMode == CardDisplayMode.FILL,
+                            onClick = { viewModel.setDefaultCardDisplayMode(CardDisplayMode.FILL) },
                             modifier = Modifier.weight(1f)
                         )
                         ThemeButton(
                             text = stringResource(R.string.settings_display_mode_fit),
                             icon = Icons.Default.FitScreen,
-                            selected = uiState.defaultCardDisplayMode == com.markvoronin.immichswipe.core.CardDisplayMode.FIT,
-                            onClick = { viewModel.setDefaultCardDisplayMode(com.markvoronin.immichswipe.core.CardDisplayMode.FIT) },
+                            selected = uiState.defaultCardDisplayMode == CardDisplayMode.FIT,
+                            onClick = { viewModel.setDefaultCardDisplayMode(CardDisplayMode.FIT) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -575,6 +576,13 @@ fun SettingsScreen(
                         icon = Icons.Default.History,
                         onClick = { viewModel.setShowLogs(true) }
                     )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+                    SettingsClickableItem(
+                        title = stringResource(R.string.settings_clear_cache_label),
+                        subtitle = stringResource(R.string.settings_clear_cache_desc),
+                        icon = Icons.Default.DeleteSweep,
+                        onClick = { viewModel.clearAppCache(context) }
+                    )
                 }
             }
 
@@ -671,7 +679,7 @@ fun SettingsScreen(
                     )
 
                     // Barre de défilement (Scrollbar)
-                    if (rawLogs.isNotEmpty() && scroll.maxValue > 0) {
+                    if (rawLogs.isNotEmpty() && (scroll.maxValue > 0)) {
                         val indicatorHeightFraction = 0.1f
                         val scrollFraction = scroll.value.toFloat() / scroll.maxValue
                         val availableHeight = maxHeight
@@ -695,14 +703,16 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { 
-                    val logs = viewModel.getLogs()
-                    scope.launch {
-                        val clipData = android.content.ClipData.newPlainText("Immich Swipe Logs", logs)
-                        clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(clipData))
+                TextButton(
+                    onClick = { 
+                        val logs = viewModel.getLogs()
+                        scope.launch {
+                            val clipData = android.content.ClipData.newPlainText("Immich Swipe Logs", logs)
+                            clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(clipData))
+                        }
+                        android.widget.Toast.makeText(context, logsCopiedMessage, android.widget.Toast.LENGTH_SHORT).show()
                     }
-                    android.widget.Toast.makeText(context, logsCopiedMessage, android.widget.Toast.LENGTH_SHORT).show()
-                }) {
+                ) {
                     Text(stringResource(R.string.settings_logs_copy))
                 }
             },
@@ -1055,7 +1065,7 @@ fun CornerButton(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     OutlinedCard(
         onClick = onClick,
@@ -1088,7 +1098,7 @@ fun ThemeButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     OutlinedCard(
         onClick = onClick,

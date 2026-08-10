@@ -69,7 +69,8 @@ data class SearchAssetsRequest(
     val visibility: String? = null, // archive, timeline, hidden, locked
     val type: String? = null, // IMAGE, VIDEO
     val withExif: Boolean = true,
-    val isFavorite: Boolean? = null
+    val isFavorite: Boolean? = null,
+    val order: String? = null // asc, desc, random
 )
 
 data class SearchResponse(
