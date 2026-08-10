@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -1298,43 +1297,18 @@ fun SwipeCard(
                 }
                 .pointerInput(isNext) {
                     if (isNext) return@pointerInput
-                    
-                    val velocityTracker = VelocityTracker()
-                    val swipeThresholdPx = 125.dp.toPx()
-                    val flickThresholdPx = 800.dp.toPx()
-
-                    awaitPointerEventScope {
-                        while (true) {
-                            val down = awaitFirstDown()
-                            velocityTracker.resetTracking()
-                            
-                            drag(down.id) { change ->
-                                val dragAmount = change.position - change.previousPosition
-                                velocityTracker.addPosition(change.uptimeMillis, change.position)
-                                
-                                scope.launch {
-                                    offsetX.snapTo(offsetX.value + dragAmount.x)
-                                    offsetY.snapTo((offsetY.value + dragAmount.y).coerceIn(-metadataHeightPx, 0f))
-                                }
-                                change.consume()
-                            }
-
-                            // onDragEnd
-                            val velocityX = velocityTracker.calculateVelocity().x
-                            val currentX = offsetX.value
-                            val currentY = offsetY.value
-
+                    detectDragGestures(
+                        onDragEnd = {
                             scope.launch {
-                                if (currentX > swipeThresholdPx || velocityX > flickThresholdPx) {
-                                    // Swipe Keep
-                                    offsetX.animateTo(2000f, tween(200))
+                                val currentX = offsetX.value
+                                val currentY = offsetY.value
+                                if (currentX > 250) {
+                                    offsetX.animateTo(1500f, tween(150))
                                     onSwipe(SwipeDecision.KEEP)
-                                } else if (currentX < -swipeThresholdPx || velocityX < -flickThresholdPx) {
-                                    // Swipe Delete
-                                    offsetX.animateTo(-2000f, tween(200))
+                                } else if (currentX < -250) {
+                                    offsetX.animateTo(-1500f, tween(150))
                                     onSwipe(SwipeDecision.DELETE)
                                 } else {
-                                    // Return to center
                                     launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
 
                                     val wasOpen = offsetY.targetValue < -metadataHeightPx / 2
@@ -1353,8 +1327,15 @@ fun SwipeCard(
                                     }
                                 }
                             }
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            scope.launch {
+                                offsetX.snapTo(offsetX.value + dragAmount.x)
+                                offsetY.snapTo((offsetY.value + dragAmount.y).coerceIn(-metadataHeightPx, 0f))
+                            }
                         }
-                    }
+                    )
                 },
             elevation = CardDefaults.cardElevation(defaultElevation = if (isNext) 0.dp else 8.dp),
             shape = RoundedCornerShape(16.dp)
@@ -1876,38 +1857,18 @@ fun FullscreenViewer(
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = (1f - (swipeY.value / 1000f)).coerceIn(0f, 1f)))
                 .pointerInput(Unit) {
-                    val velocityTracker = VelocityTracker()
-                    val swipeThresholdPx = 125.dp.toPx()
-                    val flickThresholdPx = 800.dp.toPx()
-
-                    awaitPointerEventScope {
-                        while (true) {
-                            val down = awaitFirstDown()
-                            velocityTracker.resetTracking()
-
-                            drag(down.id) { change ->
-                                val dragAmount = change.position - change.previousPosition
-                                velocityTracker.addPosition(change.uptimeMillis, change.position)
-
-                                scope.launch {
-                                    swipeY.snapTo((swipeY.value + dragAmount.y).coerceAtLeast(0f))
-                                    swipeX.snapTo(swipeX.value + dragAmount.x)
-                                }
-                                change.consume()
-                            }
-
-                            // onDragEnd logic
-                            val velocityX = velocityTracker.calculateVelocity().x
-                            val currentX = swipeX.value
-                            val currentY = swipeY.value
-
+                    detectDragGestures(
+                        onDragEnd = {
                             scope.launch {
+                                val currentX = swipeX.value
+                                val currentY = swipeY.value
+
                                 if (currentY > 120 && abs(currentX) < 100) {
                                     onClose()
-                                } else if (currentX > swipeThresholdPx || velocityX > flickThresholdPx) {
+                                } else if (currentX > 250) {
                                     swipeX.animateTo(2000f, tween(200))
                                     currentOnSwipe(SwipeDecision.KEEP)
-                                } else if (currentX < -swipeThresholdPx || velocityX < -flickThresholdPx) {
+                                } else if (currentX < -250) {
                                     swipeX.animateTo(-2000f, tween(200))
                                     currentOnSwipe(SwipeDecision.DELETE)
                                 } else {
@@ -1915,8 +1876,15 @@ fun FullscreenViewer(
                                     launch { swipeX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
                                 }
                             }
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            scope.launch {
+                                swipeY.snapTo((swipeY.value + dragAmount.y).coerceAtLeast(0f))
+                                swipeX.snapTo(swipeX.value + dragAmount.x)
+                            }
                         }
-                    }
+                    )
                 }
                 .offset { IntOffset(swipeX.value.roundToInt(), swipeY.value.roundToInt()) }
                 .graphicsLayer {
