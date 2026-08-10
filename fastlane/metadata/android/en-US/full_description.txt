@@ -18,7 +18,7 @@ Features:
 
 Immich Swipe is designed with privacy in mind. It contains no advertisements, no analytics, no tracking libraries and does not depend on proprietary Google Play Services.
 
-To use the application, you only need the address/domain of your Immich server and an API key with the appropriate permissions (see the <a href="https://github.com/Minos2020/immich-swipe-android/blob/main/README.md">README.md on Github</a>).
+To use the application, you only need the address/domain of your Immich server and an API key with the appropriate permissions (see the <a href="https://github.com/markvoronin354/immich-swipe-android/blob/main/README.md">README.md on Github</a>).
 
 
 Disclaimer: Immich Swipe is an independent community project and is not affiliated with or endorsed by the Immich project.

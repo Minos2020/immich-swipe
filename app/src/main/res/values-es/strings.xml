@@ -41,6 +41,7 @@
     <string name="home_photos_to_discover">%1$d fotos por descubrir</string>
     <string name="home_new_badge">NUEVO</string>
     <string name="home_unsynced_badge">SIN SINCRONIZAR</string>
+    <string name="home_virtual_all_assets">Todos los archivos</string>
     <string name="home_virtual_all_assets_desc">Colección de toda su biblioteca (según sus derechos de acceso)</string>
     <string name="home_virtual_orphans">Huérfanos</string>
     <string name="home_virtual_orphans_desc">Colección de medios que no están en ningún álbum</string>
@@ -120,6 +121,8 @@
     <string name="settings_pos_top_right">Arriba a la derecha</string>
     <string name="settings_pos_bottom_left">Abajo a la izquierda</string>
     <string name="settings_pos_bottom_right">Abajo a la derecha</string>
+
+    <string name="swipe_toggle_display">Cambiar modo de visualización</string>
 
     <!-- Pantalla de swipe -->
     <string name="swipe_keep">Conservar</string>
@@ -217,6 +220,7 @@
     <string name="settings_mute_pos_label">Posición del botón Mute</string>
     <string name="settings_download_pos_label">Posición del botón Descargar</string>
     <string name="settings_share_pos_label">Posición del botón Compartir</string>
+    <string name="settings_show_button">Mostrar botón</string>
     <string name="settings_display_mode_label">Visualización predeterminada de los medios</string>
     <string name="settings_show_swipe_buttons_label">Mostrar botones Keep/Delete</string>
     <string name="settings_show_swipe_buttons_desc">Mostrar grandes botones rojo y verde para clasificar con un solo toque</string>

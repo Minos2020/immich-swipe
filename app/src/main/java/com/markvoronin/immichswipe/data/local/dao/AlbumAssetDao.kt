@@ -1,0 +1,16 @@
+package com.markvoronin.immichswipe.data.local.dao
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import com.markvoronin.immichswipe.data.local.entity.AlbumAssetEntity
+
+@Dao
+interface AlbumAssetDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAlbumAssets(relations: List<AlbumAssetEntity>)
+
+    @Query("DELETE FROM album_assets WHERE albumId = :albumId AND userId = :userId")
+    suspend fun clearAlbumRelations(albumId: String, userId: String)
+}

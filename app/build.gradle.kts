@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.minos2020.immichswipe"
+    namespace = "com.markvoronin.immichswipe"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -13,11 +13,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.minos2020.immichswipe"
+        applicationId = "com.markvoronin.immichswipe"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "2.3.3"
+        versionCode = 11
+        versionName = "2.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -42,6 +42,7 @@
     <string name="home_photos_to_discover">%1$d photos à découvrir</string>
     <string name="home_new_badge">NOUVEAU</string>
     <string name="home_unsynced_badge">NON SYNCHRONISÉ</string>
+    <string name="home_virtual_all_assets">Toutes les photos</string>
     <string name="home_virtual_all_assets_desc">Collection de l\'ensemble de votre bibliothèque (dépendant de vos droits d\'accès)</string>
     <string name="home_virtual_orphans">Orphelins</string>
     <string name="home_virtual_orphans_desc">Collection des médias qui ne sont dans aucun album</string>
@@ -122,6 +123,8 @@
     <string name="settings_pos_bottom_left">Bas-Gauche</string>
     <string name="settings_pos_bottom_right">Bas-Droite</string>
     <string name="settings_show_button">Afficher le bouton</string>
+
+    <string name="swipe_toggle_display">Changer le mode d\'affichage</string>
 
     <!-- Écran Swipe -->
     <string name="swipe_keep">Garder</string>

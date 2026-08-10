@@ -18,7 +18,7 @@ Fonctionnalités clés :
 
 Immich Swipe est développé avec le respect de la vie privée comme objectif. Pas de tracking, pas de publicités, pas de services propriétaires.
 
-Pour utiliser l'application, vous n'avez besoin que du domaine/adresse de votre instance Immich et d'une clé API avec les permissions appropriées (voir le <a href="https://github.com/Minos2020/immich-swipe-android/blob/main/README.md">README.md sur Github</a>).
+Pour utiliser l'application, vous n'avez besoin que du domaine/adresse de votre instance Immich et d'une clé API avec les permissions appropriées (voir le <a href="https://github.com/markvoronin354/immich-swipe-android/blob/main/README.md">README.md sur Github</a>).
 
 Avertissement : Ce projet est indépendant et n'est affilié d'aucune façon avec le projet officiel Immich.
 
