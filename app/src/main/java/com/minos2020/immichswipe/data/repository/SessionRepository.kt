@@ -91,10 +91,26 @@ class SessionRepository(context: Context) {
         it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
     }
 
+    /**
+     * Expose la position de l'icône download.
+     */
+    val downloadButtonPosition: Flow<IconPosition> = dataStore.getDownloadIconPosition().map {
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_LEFT } } ?: IconPosition.BOTTOM_LEFT
+    }
+
+    /**
+     * Expose la position de l'icône share.
+     */
+    val shareButtonPosition: Flow<IconPosition> = dataStore.getShareIconPosition().map {
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
+    }
+
     val showFullscreenButton: Flow<Boolean> = dataStore.isShowFullscreenIcon()
     val showImmichButton: Flow<Boolean> = dataStore.isShowImmichIcon()
     val showCardDisplayButton: Flow<Boolean> = dataStore.isShowCardDisplayIcon()
     val showMuteButton: Flow<Boolean> = dataStore.isShowMuteIcon()
+    val showDownloadButton: Flow<Boolean> = dataStore.isShowDownloadIcon()
+    val showShareButton: Flow<Boolean> = dataStore.isShowShareIcon()
 
     /**
      * Expose la préférence du mode d'affichage par défaut.
@@ -178,10 +194,26 @@ class SessionRepository(context: Context) {
         dataStore.saveMuteIconPosition(pos.name)
     }
 
+    /**
+     * Sauvegarde la position de l'icône download.
+     */
+    suspend fun saveDownloadButtonPosition(pos: IconPosition) {
+        dataStore.saveDownloadIconPosition(pos.name)
+    }
+
+    /**
+     * Sauvegarde la position de l'icône share.
+     */
+    suspend fun saveShareButtonPosition(pos: IconPosition) {
+        dataStore.saveShareIconPosition(pos.name)
+    }
+
     suspend fun saveShowFullscreenButton(show: Boolean) { dataStore.saveShowFullscreenIcon(show) }
     suspend fun saveShowImmichButton(show: Boolean) { dataStore.saveShowImmichIcon(show) }
     suspend fun saveShowCardDisplayButton(show: Boolean) { dataStore.saveShowCardDisplayIcon(show) }
     suspend fun saveShowMuteButton(show: Boolean) { dataStore.saveShowMuteIcon(show) }
+    suspend fun saveShowDownloadButton(show: Boolean) { dataStore.saveShowDownloadIcon(show) }
+    suspend fun saveShowShareButton(show: Boolean) { dataStore.saveShowShareIcon(show) }
 
     /**
      * Sauvegarde le mode d'affichage par défaut.

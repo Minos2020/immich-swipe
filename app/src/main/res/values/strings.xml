@@ -101,6 +101,9 @@
     <string name="sort_category_size">Size</string>
     <string name="sort_category_type">Type</string>
     <string name="settings_section_interaction">Interaction</string>
+    <string name="settings_action_buttons_label">On-screen action buttons</string>
+    <string name="settings_action_buttons_desc">Customize visibility and position of overlay buttons</string>
+    <string name="settings_action_buttons_dialog_title">Action Buttons</string>
     <string name="settings_fullscreen_pos_label">Fullscreen button position</string>
     <string name="settings_immich_pos_label">Open in Immich button position</string>
     <string name="settings_video_behavior_label">Video behavior</string>
@@ -124,6 +127,8 @@
     <string name="settings_display_mode_fit">Fit</string>
     <string name="settings_display_mode_pos_label">Display mode button position</string>
     <string name="settings_mute_pos_label">Mute button position</string>
+    <string name="settings_download_pos_label">Download button position</string>
+    <string name="settings_share_pos_label">Share button position</string>
     <string name="settings_show_swipe_buttons_label">Show Keep/Delete buttons</string>
     <string name="settings_show_swipe_buttons_desc">Display large red and green buttons for one-tap sorting</string>
     <string name="settings_swap_summary_archive_label">Swap Archive for Summary</string>

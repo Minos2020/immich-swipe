@@ -23,10 +23,14 @@ class SessionDataStore(private val context: Context) {
         private val KEY_IMMICH_ICON_POS = stringPreferencesKey("immich_icon_pos")
         private val KEY_CARD_DISPLAY_ICON_POS = stringPreferencesKey("card_display_icon_pos")
         private val KEY_MUTE_ICON_POS = stringPreferencesKey("mute_icon_pos")
+        private val KEY_DOWNLOAD_ICON_POS = stringPreferencesKey("download_icon_pos")
+        private val KEY_SHARE_ICON_POS = stringPreferencesKey("share_icon_pos")
         private val KEY_SHOW_FULLSCREEN_ICON = androidx.datastore.preferences.core.booleanPreferencesKey("show_fullscreen_icon")
         private val KEY_SHOW_IMMICH_ICON = androidx.datastore.preferences.core.booleanPreferencesKey("show_immich_icon")
         private val KEY_SHOW_CARD_DISPLAY_ICON = androidx.datastore.preferences.core.booleanPreferencesKey("show_card_display_icon")
         private val KEY_SHOW_MUTE_ICON = androidx.datastore.preferences.core.booleanPreferencesKey("show_mute_icon")
+        private val KEY_SHOW_DOWNLOAD_ICON = androidx.datastore.preferences.core.booleanPreferencesKey("show_download_icon")
+        private val KEY_SHOW_SHARE_ICON = androidx.datastore.preferences.core.booleanPreferencesKey("show_share_icon")
         private val KEY_DEFAULT_LAYOUT_GRID = androidx.datastore.preferences.core.booleanPreferencesKey("default_layout_grid")
         private val KEY_SHOW_FAVORITE = androidx.datastore.preferences.core.booleanPreferencesKey("show_favorite")
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
@@ -106,17 +110,35 @@ class SessionDataStore(private val context: Context) {
         context.dataStore.edit { it[KEY_MUTE_ICON_POS] = pos }
     }
 
+    fun getDownloadIconPosition(): Flow<String?> = context.dataStore.data.map { it[KEY_DOWNLOAD_ICON_POS] }
+
+    suspend fun saveDownloadIconPosition(pos: String) {
+        context.dataStore.edit { it[KEY_DOWNLOAD_ICON_POS] = pos }
+    }
+
+    fun getShareIconPosition(): Flow<String?> = context.dataStore.data.map { it[KEY_SHARE_ICON_POS] }
+
+    suspend fun saveShareIconPosition(pos: String) {
+        context.dataStore.edit { it[KEY_SHARE_ICON_POS] = pos }
+    }
+
     fun isShowFullscreenIcon(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_FULLSCREEN_ICON] ?: true }
     suspend fun saveShowFullscreenIcon(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_FULLSCREEN_ICON] = show } }
 
     fun isShowImmichIcon(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_IMMICH_ICON] ?: true }
     suspend fun saveShowImmichIcon(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_IMMICH_ICON] = show } }
 
-    fun isShowCardDisplayIcon(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_CARD_DISPLAY_ICON] ?: true }
+    fun isShowCardDisplayIcon(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_CARD_DISPLAY_ICON] ?: false }
     suspend fun saveShowCardDisplayIcon(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_CARD_DISPLAY_ICON] = show } }
 
-    fun isShowMuteIcon(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_MUTE_ICON] ?: true }
+    fun isShowMuteIcon(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_MUTE_ICON] ?: false }
     suspend fun saveShowMuteIcon(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_MUTE_ICON] = show } }
+
+    fun isShowDownloadIcon(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_DOWNLOAD_ICON] ?: true }
+    suspend fun saveShowDownloadIcon(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_DOWNLOAD_ICON] = show } }
+
+    fun isShowShareIcon(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_SHARE_ICON] ?: true }
+    suspend fun saveShowShareIcon(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_SHARE_ICON] = show } }
 
     fun isDefaultLayoutGrid(): Flow<Boolean> = context.dataStore.data.map { it[KEY_DEFAULT_LAYOUT_GRID] ?: false }
 

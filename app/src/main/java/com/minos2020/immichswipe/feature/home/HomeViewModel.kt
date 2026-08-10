@@ -121,7 +121,7 @@ class HomeViewModel(
         viewModelScope.launch {
             sessionRepository.sessionConfig.collect { config ->
                 if (config == null) return@collect
-                
+
                 combine(
                     swipeDecisionRepository.getSyncHistory(config.userId),
                     swipeDecisionRepository.getAllDecisionsForUser(config.userId),

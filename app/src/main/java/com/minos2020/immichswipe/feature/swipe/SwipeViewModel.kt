@@ -4,8 +4,10 @@ import kotlin.time.Duration.Companion.milliseconds
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.combine
@@ -51,6 +53,10 @@ class SwipeViewModel(
         observeImmichButtonVisibility()
         observeCardDisplayButtonVisibility()
         observeMuteButtonVisibility()
+        observeDownloadButtonVisibility()
+        observeDownloadButtonPosition()
+        observeShareButtonVisibility()
+        observeShareButtonPosition()
         observeButtonVisibility()
         observeAutoNextOnFav()
         observeSortOrder()
@@ -127,6 +133,38 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.showMuteButton.collect { show ->
                 _uiState.update { it.copy(showMuteButton = show) }
+            }
+        }
+    }
+
+    private fun observeDownloadButtonVisibility() {
+        viewModelScope.launch {
+            sessionRepository.showDownloadButton.collect { show ->
+                _uiState.update { it.copy(showDownloadButton = show) }
+            }
+        }
+    }
+
+    private fun observeDownloadButtonPosition() {
+        viewModelScope.launch {
+            sessionRepository.downloadButtonPosition.collect { pos ->
+                _uiState.update { it.copy(downloadButtonPosition = pos) }
+            }
+        }
+    }
+
+    private fun observeShareButtonVisibility() {
+        viewModelScope.launch {
+            sessionRepository.showShareButton.collect { show ->
+                _uiState.update { it.copy(showShareButton = show) }
+            }
+        }
+    }
+
+    private fun observeShareButtonPosition() {
+        viewModelScope.launch {
+            sessionRepository.shareButtonPosition.collect { pos ->
+                _uiState.update { it.copy(shareButtonPosition = pos) }
             }
         }
     }
@@ -425,6 +463,24 @@ class SwipeViewModel(
 
     fun toggleMute() {
         _uiState.update { it.copy(isMuted = !it.isMuted) }
+    }
+
+    private val _downloadRequestSignal = MutableSharedFlow<Asset>(extraBufferCapacity = 1)
+    val downloadRequestSignal = _downloadRequestSignal.asSharedFlow()
+
+    fun downloadAsset(asset: Asset) {
+        viewModelScope.launch {
+            _downloadRequestSignal.emit(asset)
+        }
+    }
+
+    private val _shareRequestSignal = MutableSharedFlow<Asset>(extraBufferCapacity = 1)
+    val shareRequestSignal = _shareRequestSignal.asSharedFlow()
+
+    fun shareAsset(asset: Asset) {
+        viewModelScope.launch {
+            _shareRequestSignal.emit(asset)
+        }
     }
 
     fun undo() {

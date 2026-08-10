@@ -100,6 +100,9 @@
     <string name="sort_category_size">Tamaño</string>
     <string name="sort_category_type">Tipo</string>
     <string name="settings_section_interaction">Interacción</string>
+    <string name="settings_action_buttons_label">Botones de acción en pantalla</string>
+    <string name="settings_action_buttons_desc">Personalizar la visibilidad y posición de los botones superpuestos</string>
+    <string name="settings_action_buttons_dialog_title">Botones de Acción</string>
     <string name="settings_fullscreen_pos_label">Posición del botón de pantalla completa</string>
     <string name="settings_immich_pos_label">Posición del botón Abrir en Immich</string>
     <string name="settings_video_behavior_label">Comportamiento del vídeo</string>
@@ -212,6 +215,8 @@
     <string name="settings_display_mode_fit">Ajustar</string>
     <string name="settings_display_mode_pos_label">Posición del botón de modo de visualización</string>
     <string name="settings_mute_pos_label">Posición del botón Mute</string>
+    <string name="settings_download_pos_label">Posición del botón Descargar</string>
+    <string name="settings_share_pos_label">Posición del botón Compartir</string>
     <string name="settings_display_mode_label">Visualización predeterminada de los medios</string>
     <string name="settings_show_swipe_buttons_label">Mostrar botones Keep/Delete</string>
     <string name="settings_show_swipe_buttons_desc">Mostrar grandes botones rojo y verde para clasificar con un solo toque</string>

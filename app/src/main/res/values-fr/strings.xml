@@ -101,6 +101,9 @@
     <string name="sort_category_size">Taille</string>
     <string name="sort_category_type">Type</string>
     <string name="settings_section_interaction">Interaction</string>
+    <string name="settings_action_buttons_label">Boutons d\'action à l\'écran</string>
+    <string name="settings_action_buttons_desc">Personnaliser la visibilité et la position des boutons superposés</string>
+    <string name="settings_action_buttons_dialog_title">Boutons d\'Action</string>
     <string name="settings_fullscreen_pos_label">Position du bouton Plein Écran</string>
     <string name="settings_immich_pos_label">Position du bouton Ouvrir dans Immich</string>
     <string name="settings_video_behavior_label">Comportement vidéo</string>
@@ -214,6 +217,8 @@
     <string name="settings_display_mode_fit">Ajuster</string>
     <string name="settings_display_mode_pos_label">Position du bouton Mode d\'affichage</string>
     <string name="settings_mute_pos_label">Position du bouton Mute</string>
+    <string name="settings_download_pos_label">Position du bouton Téléchargement</string>
+    <string name="settings_share_pos_label">Position du bouton Partage</string>
     <string name="settings_display_mode_label">Affichage par défaut des médias</string>
     <string name="settings_show_swipe_buttons_label">Afficher les boutons Keep/Delete</string>
     <string name="settings_show_swipe_buttons_desc">Afficher les gros boutons rouge et vert pour trier d\'un simple clic</string>

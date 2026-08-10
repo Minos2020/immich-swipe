@@ -67,6 +67,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.scale
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -140,6 +141,7 @@ fun SwipeScreen(
 
     // Gestion partagée de l'ExoPlayer pour l'asset courant (Regular <-> Fullscreen)
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val playbackBehavior = uiState.playbackBehavior
     val currentAsset = uiState.currentAsset
     val sharedPlayer = remember(currentAsset?.id) {
@@ -200,6 +202,94 @@ fun SwipeScreen(
     LaunchedEffect(connectionStatus.level) {
         if (uiState.error != null && connectionStatus.level == com.minos2020.immichswipe.core.ConnectionLevel.ONLINE) {
             viewModel.retryLoading()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.downloadRequestSignal.collect { asset ->
+            val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/") ?: return@collect
+            val apiKey = SessionManager.getApiKey() ?: return@collect
+            
+            // Using /original for the raw file, which is often more reliable than /download (which can return a zip)
+            val downloadUrl = "$baseUrl/api/assets/${asset.id}/original"
+            
+            // Sanitize filename: remove path components and keep only the name
+            val rawName = asset.originalFileName ?: "immich_${asset.id}.${asset.fileExtension ?: "jpg"}"
+            val fileName = rawName.substringAfterLast('/').substringAfterLast('\\')
+            
+            try {
+                val request = android.app.DownloadManager.Request(downloadUrl.toUri())
+                    .setTitle(fileName)
+                    .setDescription("Downloading from Immich")
+                    .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, fileName)
+                    .addRequestHeader("x-api-key", apiKey)
+                    .setAllowedOverMetered(true)
+                    .setAllowedOverRoaming(true)
+                
+                val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                downloadManager.enqueue(request)
+                
+                android.widget.Toast.makeText(context, "Download started: $fileName", android.widget.Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                AppLogger.e("Download", "Error starting download", e)
+                android.widget.Toast.makeText(context, "Error starting download: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.shareRequestSignal.collect { asset ->
+            val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/") ?: return@collect
+            val apiKey = SessionManager.getApiKey() ?: return@collect
+            val shareUrl = "$baseUrl/api/assets/${asset.id}/original"
+            
+            android.widget.Toast.makeText(context, "Preparing share...", android.widget.Toast.LENGTH_SHORT).show()
+
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val client = okhttp3.OkHttpClient()
+                    val request = okhttp3.Request.Builder()
+                        .url(shareUrl)
+                        .addHeader("x-api-key", apiKey)
+                        .build()
+
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) throw Exception("Server returned ${response.code}")
+                        
+                        val body = response.body ?: throw Exception("Empty response body")
+                        val fileName = asset.originalFileName?.substringAfterLast('/')?.substringAfterLast('\\') 
+                            ?: "immich_${asset.id}.${asset.fileExtension ?: "jpg"}"
+                        
+                        val cacheDir = java.io.File(context.cacheDir, "shared_assets").apply { mkdirs() }
+                        val file = java.io.File(cacheDir, fileName)
+                        
+                        file.outputStream().use { output ->
+                            body.byteStream().use { input ->
+                                input.copyTo(output)
+                            }
+                        }
+
+                        val contentUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            file
+                        )
+
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = if (asset.type == "VIDEO") "video/*" else "image/*"
+                            putExtra(Intent.EXTRA_STREAM, contentUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Share media"))
+                    }
+                } catch (e: Exception) {
+                    AppLogger.e("Share", "Error sharing asset", e)
+                    launch(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Failed to share: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         }
     }
 
@@ -279,7 +369,13 @@ fun SwipeScreen(
                             providedPlayer = if (!isNextCard) sharedPlayer else null,
                             showSizeIndicator = uiState.sortOrder == SortOrder.SIZE_DESC || uiState.sortOrder == SortOrder.SIZE_ASC,
                             isMuted = uiState.isMuted,
-                            onToggleMute = { viewModel.toggleMute() }
+                            onToggleMute = { viewModel.toggleMute() },
+                            downloadButtonPosition = uiState.downloadButtonPosition,
+                            showDownloadButton = uiState.showDownloadButton,
+                            onDownload = { viewModel.downloadAsset(it) },
+                            shareButtonPosition = uiState.shareButtonPosition,
+                            showShareButton = uiState.showShareButton,
+                            onShare = { viewModel.shareAsset(it) }
                         )
                     }
                 }
@@ -600,7 +696,13 @@ fun SwipeScreen(
             showSizeIndicator = uiState.sortOrder == SortOrder.SIZE_DESC || uiState.sortOrder == SortOrder.SIZE_ASC,
             isMuted = uiState.isMuted,
             onToggleMute = { viewModel.toggleMute() },
-            showMuteButton = uiState.showMuteButton
+            showMuteButton = true, // Mute button is always shown in fullscreen for videos
+            downloadButtonPosition = uiState.downloadButtonPosition,
+            showDownloadButton = false, // Download button hidden in fullscreen mode as requested
+            onDownload = { viewModel.downloadAsset(it) },
+            shareButtonPosition = uiState.shareButtonPosition,
+            showShareButton = false, // Share button hidden in fullscreen mode for consistency
+            onShare = { viewModel.shareAsset(it) }
         )
     }
 
@@ -1056,11 +1158,17 @@ fun SwipeCard(
     showImmichButton: Boolean = true,
     showCardDisplayButton: Boolean = true,
     showMuteButton: Boolean = true,
+    downloadButtonPosition: IconPosition = IconPosition.TOP_LEFT,
+    showDownloadButton: Boolean = false,
+    shareButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
+    showShareButton: Boolean = false,
     cardDisplayMode: CardDisplayMode,
     onToggleDisplayMode: () -> Unit,
     isFullscreenOpen: Boolean,
     onDoubleTap: () -> Unit,
     onOpenFullscreen: () -> Unit,
+    onDownload: (Asset) -> Unit = {},
+    onShare: (Asset) -> Unit = {},
     providedPlayer: ExoPlayer? = null,
     showSizeIndicator: Boolean = false,
     isMuted: Boolean = false,
@@ -1081,6 +1189,14 @@ fun SwipeCard(
 
     var isVideoReady by remember(asset.id) { mutableStateOf(false) }
     var showLoadingIndicator by remember(asset.id) { mutableStateOf(false) }
+    var showMuteIndicator by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showMuteIndicator) {
+        if (showMuteIndicator) {
+            delay(1000)
+            showMuteIndicator = false
+        }
+    }
 
     LaunchedEffect(asset.id, isVideoReady) {
         if (!isVideoReady) {
@@ -1182,18 +1298,43 @@ fun SwipeCard(
                 }
                 .pointerInput(isNext) {
                     if (isNext) return@pointerInput
-                    detectDragGestures(
-                        onDragEnd = {
+                    
+                    val velocityTracker = VelocityTracker()
+                    val swipeThresholdPx = 125.dp.toPx()
+                    val flickThresholdPx = 800.dp.toPx()
+
+                    awaitPointerEventScope {
+                        while (true) {
+                            val down = awaitFirstDown()
+                            velocityTracker.resetTracking()
+                            
+                            drag(down.id) { change ->
+                                val dragAmount = change.position - change.previousPosition
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                
+                                scope.launch {
+                                    offsetX.snapTo(offsetX.value + dragAmount.x)
+                                    offsetY.snapTo((offsetY.value + dragAmount.y).coerceIn(-metadataHeightPx, 0f))
+                                }
+                                change.consume()
+                            }
+
+                            // onDragEnd
+                            val velocityX = velocityTracker.calculateVelocity().x
+                            val currentX = offsetX.value
+                            val currentY = offsetY.value
+
                             scope.launch {
-                                val currentX = offsetX.value
-                                val currentY = offsetY.value
-                                if (currentX > 250) {
-                                    offsetX.animateTo(1500f, tween(150))
+                                if (currentX > swipeThresholdPx || velocityX > flickThresholdPx) {
+                                    // Swipe Keep
+                                    offsetX.animateTo(2000f, tween(200))
                                     onSwipe(SwipeDecision.KEEP)
-                                } else if (currentX < -250) {
-                                    offsetX.animateTo(-1500f, tween(150))
+                                } else if (currentX < -swipeThresholdPx || velocityX < -flickThresholdPx) {
+                                    // Swipe Delete
+                                    offsetX.animateTo(-2000f, tween(200))
                                     onSwipe(SwipeDecision.DELETE)
                                 } else {
+                                    // Return to center
                                     launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
 
                                     val wasOpen = offsetY.targetValue < -metadataHeightPx / 2
@@ -1212,15 +1353,8 @@ fun SwipeCard(
                                     }
                                 }
                             }
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            scope.launch {
-                                offsetX.snapTo(offsetX.value + dragAmount.x)
-                                offsetY.snapTo((offsetY.value + dragAmount.y).coerceIn(-metadataHeightPx, 0f))
-                            }
                         }
-                    )
+                    }
                 },
             elevation = CardDefaults.cardElevation(defaultElevation = if (isNext) 0.dp else 8.dp),
             shape = RoundedCornerShape(16.dp)
@@ -1232,7 +1366,10 @@ fun SwipeCard(
                             modifier = Modifier.fillMaxSize(),
                             resetOnRelease = true,
                             onTap = {
-                                if (!ignoreNextTap) onToggleMute()
+                                if (!ignoreNextTap) {
+                                    onToggleMute()
+                                    showMuteIndicator = true
+                                }
                                 ignoreNextTap = false
                             },
                             onDoubleTap = onDoubleTap,
@@ -1392,7 +1529,24 @@ fun SwipeCard(
                                     SwipeActionIconButton(
                                         icon = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                                         contentDescription = "Mute",
-                                        onClick = onToggleMute
+                                        onClick = {
+                                            onToggleMute()
+                                            showMuteIndicator = true
+                                        }
+                                    )
+                                }
+                                if (showDownloadButton && downloadButtonPosition.toHorizontalAlignment() == side && (downloadButtonPosition == IconPosition.TOP_LEFT || downloadButtonPosition == IconPosition.TOP_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = Icons.Default.FileDownload,
+                                        contentDescription = "Download",
+                                        onClick = { onDownload(asset) }
+                                    )
+                                }
+                                if (showShareButton && shareButtonPosition.toHorizontalAlignment() == side && (shareButtonPosition == IconPosition.TOP_LEFT || shareButtonPosition == IconPosition.TOP_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = Icons.Default.Share,
+                                        contentDescription = "Share",
+                                        onClick = { onShare(asset) }
                                     )
                                 }
                             }
@@ -1429,7 +1583,24 @@ fun SwipeCard(
                                     SwipeActionIconButton(
                                         icon = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                                         contentDescription = "Mute",
-                                        onClick = onToggleMute
+                                        onClick = {
+                                            onToggleMute()
+                                            showMuteIndicator = true
+                                        }
+                                    )
+                                }
+                                if (showDownloadButton && downloadButtonPosition.toHorizontalAlignment() == side && (downloadButtonPosition == IconPosition.BOTTOM_LEFT || downloadButtonPosition == IconPosition.BOTTOM_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = Icons.Default.FileDownload,
+                                        contentDescription = "Download",
+                                        onClick = { onDownload(asset) }
+                                    )
+                                }
+                                if (showShareButton && shareButtonPosition.toHorizontalAlignment() == side && (shareButtonPosition == IconPosition.BOTTOM_LEFT || shareButtonPosition == IconPosition.BOTTOM_RIGHT)) {
+                                    SwipeActionIconButton(
+                                        icon = Icons.Default.Share,
+                                        contentDescription = "Share",
+                                        onClick = { onShare(asset) }
                                     )
                                 }
                             }
@@ -1446,6 +1617,28 @@ fun SwipeCard(
                         IndicatorBadge(stringResource(R.string.swipe_keep_upper), MaterialGreen, Alignment.TopStart, keepAlpha * 0.9f)
                     } else if (deleteAlpha > 0f) {
                         IndicatorBadge(stringResource(R.string.swipe_delete_upper), MaterialRed, Alignment.TopEnd, deleteAlpha * 0.9f)
+                    }
+                }
+
+                // Mute/Unmute popup indicator
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showMuteIndicator,
+                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(targetScale = 1.2f),
+                    modifier = Modifier.align(Alignment.Center)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
                     }
                 }
             }
@@ -1584,7 +1777,13 @@ fun FullscreenViewer(
     showSizeIndicator: Boolean = false,
     isMuted: Boolean = false,
     onToggleMute: () -> Unit = {},
-    showMuteButton: Boolean = true
+    showMuteButton: Boolean = true,
+    downloadButtonPosition: IconPosition = IconPosition.TOP_LEFT,
+    showDownloadButton: Boolean = false,
+    shareButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
+    showShareButton: Boolean = false,
+    onDownload: (Asset) -> Unit = {},
+    onShare: (Asset) -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -1677,18 +1876,38 @@ fun FullscreenViewer(
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = (1f - (swipeY.value / 1000f)).coerceIn(0f, 1f)))
                 .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragEnd = {
-                            scope.launch {
-                                val currentX = swipeX.value
-                                val currentY = swipeY.value
+                    val velocityTracker = VelocityTracker()
+                    val swipeThresholdPx = 125.dp.toPx()
+                    val flickThresholdPx = 800.dp.toPx()
 
+                    awaitPointerEventScope {
+                        while (true) {
+                            val down = awaitFirstDown()
+                            velocityTracker.resetTracking()
+
+                            drag(down.id) { change ->
+                                val dragAmount = change.position - change.previousPosition
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
+
+                                scope.launch {
+                                    swipeY.snapTo((swipeY.value + dragAmount.y).coerceAtLeast(0f))
+                                    swipeX.snapTo(swipeX.value + dragAmount.x)
+                                }
+                                change.consume()
+                            }
+
+                            // onDragEnd logic
+                            val velocityX = velocityTracker.calculateVelocity().x
+                            val currentX = swipeX.value
+                            val currentY = swipeY.value
+
+                            scope.launch {
                                 if (currentY > 120 && abs(currentX) < 100) {
                                     onClose()
-                                } else if (currentX > 250) {
+                                } else if (currentX > swipeThresholdPx || velocityX > flickThresholdPx) {
                                     swipeX.animateTo(2000f, tween(200))
                                     currentOnSwipe(SwipeDecision.KEEP)
-                                } else if (currentX < -250) {
+                                } else if (currentX < -swipeThresholdPx || velocityX < -flickThresholdPx) {
                                     swipeX.animateTo(-2000f, tween(200))
                                     currentOnSwipe(SwipeDecision.DELETE)
                                 } else {
@@ -1696,15 +1915,8 @@ fun FullscreenViewer(
                                     launch { swipeX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy)) }
                                 }
                             }
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            scope.launch {
-                                swipeY.snapTo((swipeY.value + dragAmount.y).coerceAtLeast(0f))
-                                swipeX.snapTo(swipeX.value + dragAmount.x)
-                            }
                         }
-                    )
+                    }
                 }
                 .offset { IntOffset(swipeX.value.roundToInt(), swipeY.value.roundToInt()) }
                 .graphicsLayer {
@@ -1860,6 +2072,66 @@ fun FullscreenViewer(
                     Icon(
                         imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = "Mute",
+                        tint = Color.White
+                    )
+                }
+            }
+
+            if (showDownloadButton) {
+                val dlAlign = when (downloadButtonPosition) {
+                    IconPosition.TOP_LEFT -> Alignment.TopStart
+                    IconPosition.TOP_RIGHT -> Alignment.TopEnd
+                    IconPosition.BOTTOM_LEFT -> Alignment.BottomStart
+                    IconPosition.BOTTOM_RIGHT -> Alignment.BottomEnd
+                }
+
+                val dlPadding = when (downloadButtonPosition) {
+                    IconPosition.TOP_LEFT -> Modifier.padding(top = 50.dp, start = 20.dp)
+                    IconPosition.TOP_RIGHT -> Modifier.padding(top = 110.dp, end = 20.dp)
+                    IconPosition.BOTTOM_LEFT -> Modifier.padding(bottom = (if (isLandscape) 80.dp else 160.dp) + controlsOffset, start = 24.dp)
+                    IconPosition.BOTTOM_RIGHT -> Modifier.padding(bottom = (if (isLandscape) 20.dp else 100.dp) + controlsOffset, end = 24.dp)
+                }
+
+                IconButton(
+                    onClick = { onDownload(asset) },
+                    modifier = Modifier
+                        .align(dlAlign)
+                        .then(dlPadding)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FileDownload,
+                        contentDescription = "Download",
+                        tint = Color.White
+                    )
+                }
+            }
+
+            if (showShareButton) {
+                val shareAlign = when (shareButtonPosition) {
+                    IconPosition.TOP_LEFT -> Alignment.TopStart
+                    IconPosition.TOP_RIGHT -> Alignment.TopEnd
+                    IconPosition.BOTTOM_LEFT -> Alignment.BottomStart
+                    IconPosition.BOTTOM_RIGHT -> Alignment.BottomEnd
+                }
+
+                val sharePadding = when (shareButtonPosition) {
+                    IconPosition.TOP_LEFT -> Modifier.padding(top = 50.dp, start = 20.dp)
+                    IconPosition.TOP_RIGHT -> Modifier.padding(top = 110.dp, end = 20.dp)
+                    IconPosition.BOTTOM_LEFT -> Modifier.padding(bottom = (if (isLandscape) 80.dp else 160.dp) + controlsOffset, start = 24.dp)
+                    IconPosition.BOTTOM_RIGHT -> Modifier.padding(bottom = (if (isLandscape) 20.dp else 100.dp) + controlsOffset, end = 24.dp)
+                }
+
+                IconButton(
+                    onClick = { onShare(asset) },
+                    modifier = Modifier
+                        .align(shareAlign)
+                        .then(sharePadding)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Share",
                         tint = Color.White
                     )
                 }

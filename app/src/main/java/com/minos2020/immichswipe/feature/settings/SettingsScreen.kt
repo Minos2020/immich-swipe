@@ -22,6 +22,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -230,95 +231,122 @@ fun SettingsScreen(
 
                     HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp), thickness = 0.5.dp)
 
-                    Text(
-                        text = stringResource(R.string.settings_sort_order_label),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_sort_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    
-                    // TIME CATEGORY
-                    Text(text = stringResource(R.string.sort_category_time), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    var isSortOrderExpanded by rememberSaveable { mutableStateOf(false) }
+
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isSortOrderExpanded = !isSortOrderExpanded }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        ThemeButton(
-                            text = stringResource(R.string.settings_sort_newest),
-                            icon = Icons.Default.ArrowDownward,
-                            selected = uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC,
-                            onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ThemeButton(
-                            text = stringResource(R.string.settings_sort_oldest),
-                            icon = Icons.Default.ArrowUpward,
-                            selected = uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC,
-                            onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ThemeButton(
-                            text = stringResource(R.string.settings_sort_shuffled),
-                            icon = Icons.Default.Shuffle,
-                            selected = uiState.sortOrder == SortOrder.SHUFFLED,
-                            onClick = { viewModel.setSortOrder(SortOrder.SHUFFLED) },
-                            modifier = Modifier.weight(1f)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_sort_order_label),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_sort_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        Icon(
+                            imageVector = if (isSortOrderExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
 
-                    Spacer(Modifier.height(8.dp))
-                    
-                    // SIZE CATEGORY
-                    Text(text = stringResource(R.string.sort_category_size), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    AnimatedVisibility(
+                        visible = isSortOrderExpanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
                     ) {
-                        ThemeButton(
-                            text = stringResource(R.string.settings_sort_biggest),
-                            icon = Icons.Default.ExpandMore,
-                            selected = uiState.sortOrder == SortOrder.SIZE_DESC,
-                            onClick = { viewModel.setSortOrder(SortOrder.SIZE_DESC) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ThemeButton(
-                            text = stringResource(R.string.settings_sort_smallest),
-                            icon = Icons.Default.ExpandLess,
-                            selected = uiState.sortOrder == SortOrder.SIZE_ASC,
-                            onClick = { viewModel.setSortOrder(SortOrder.SIZE_ASC) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(Modifier.weight(1f))
-                    }
+                        Column {
+                            Spacer(Modifier.height(12.dp))
+                            
+                            // TIME CATEGORY
+                            Text(text = stringResource(R.string.sort_category_time), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ThemeButton(
+                                    text = stringResource(R.string.settings_sort_newest),
+                                    icon = Icons.Default.ArrowDownward,
+                                    selected = uiState.sortOrder == SortOrder.CHRONOLOGICAL_DESC,
+                                    onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_DESC) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                ThemeButton(
+                                    text = stringResource(R.string.settings_sort_oldest),
+                                    icon = Icons.Default.ArrowUpward,
+                                    selected = uiState.sortOrder == SortOrder.CHRONOLOGICAL_ASC,
+                                    onClick = { viewModel.setSortOrder(SortOrder.CHRONOLOGICAL_ASC) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                ThemeButton(
+                                    text = stringResource(R.string.settings_sort_shuffled),
+                                    icon = Icons.Default.Shuffle,
+                                    selected = uiState.sortOrder == SortOrder.SHUFFLED,
+                                    onClick = { viewModel.setSortOrder(SortOrder.SHUFFLED) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
 
-                    Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(8.dp))
+                            
+                            // SIZE CATEGORY
+                            Text(text = stringResource(R.string.sort_category_size), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ThemeButton(
+                                    text = stringResource(R.string.settings_sort_biggest),
+                                    icon = Icons.Default.ExpandMore,
+                                    selected = uiState.sortOrder == SortOrder.SIZE_DESC,
+                                    onClick = { viewModel.setSortOrder(SortOrder.SIZE_DESC) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                ThemeButton(
+                                    text = stringResource(R.string.settings_sort_smallest),
+                                    icon = Icons.Default.ExpandLess,
+                                    selected = uiState.sortOrder == SortOrder.SIZE_ASC,
+                                    onClick = { viewModel.setSortOrder(SortOrder.SIZE_ASC) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(Modifier.weight(1f))
+                            }
 
-                    // TYPE CATEGORY
-                    Text(text = stringResource(R.string.sort_category_type), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ThemeButton(
-                            text = stringResource(R.string.settings_sort_videos),
-                            icon = Icons.Default.Videocam,
-                            selected = uiState.sortOrder == SortOrder.TYPE_VIDEO_FIRST,
-                            onClick = { viewModel.setSortOrder(SortOrder.TYPE_VIDEO_FIRST) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ThemeButton(
-                            text = stringResource(R.string.settings_sort_photos),
-                            icon = Icons.Default.Image,
-                            selected = uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST,
-                            onClick = { viewModel.setSortOrder(SortOrder.TYPE_PHOTO_FIRST) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.height(8.dp))
+
+                            // TYPE CATEGORY
+                            Text(text = stringResource(R.string.sort_category_type), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ThemeButton(
+                                    text = stringResource(R.string.settings_sort_videos),
+                                    icon = Icons.Default.Videocam,
+                                    selected = uiState.sortOrder == SortOrder.TYPE_VIDEO_FIRST,
+                                    onClick = { viewModel.setSortOrder(SortOrder.TYPE_VIDEO_FIRST) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                ThemeButton(
+                                    text = stringResource(R.string.settings_sort_photos),
+                                    icon = Icons.Default.Image,
+                                    selected = uiState.sortOrder == SortOrder.TYPE_PHOTO_FIRST,
+                                    onClick = { viewModel.setSortOrder(SortOrder.TYPE_PHOTO_FIRST) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }
@@ -462,46 +490,12 @@ fun SettingsScreen(
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
 
-                    // Position icône plein écran
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_fullscreen_pos_label),
-                        selectedPosition = uiState.fullscreenButtonPosition,
-                        onPositionSelected = { viewModel.setFullscreenButtonPosition(it) },
-                        showIcon = uiState.showFullscreenButton,
-                        onShowIconChange = { viewModel.setShowFullscreenButton(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Immich
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_immich_pos_label),
-                        selectedPosition = uiState.immichButtonPosition,
-                        onPositionSelected = { viewModel.setImmichButtonPosition(it) },
-                        showIcon = uiState.showImmichButton,
-                        onShowIconChange = { viewModel.setShowImmichButton(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Mode d'affichage (Nouveau)
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_display_mode_pos_label),
-                        selectedPosition = uiState.cardDisplayButtonPosition,
-                        onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) },
-                        showIcon = uiState.showCardDisplayButton,
-                        onShowIconChange = { viewModel.setShowCardDisplayButton(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Mute (Nouveau)
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_mute_pos_label),
-                        selectedPosition = uiState.muteButtonPosition,
-                        onPositionSelected = { viewModel.setMuteButtonPosition(it) },
-                        showIcon = uiState.showMuteButton,
-                        onShowIconChange = { viewModel.setShowMuteButton(it) }
+                    // Menu des boutons à l'écran
+                    SettingsClickableItem(
+                        title = stringResource(R.string.settings_action_buttons_label),
+                        subtitle = stringResource(R.string.settings_action_buttons_desc),
+                        icon = Icons.Default.AdsClick,
+                        onClick = { viewModel.setShowActionButtonsDialog(true) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -806,6 +800,103 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissDatabaseConfirmation() }) {
                     Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
+    // Dialogue des boutons d'action à l'écran
+    if (uiState.showActionButtonsDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowActionButtonsDialog(false) },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.settings_action_buttons_dialog_title))
+                    IconButton(onClick = { viewModel.setShowActionButtonsDialog(false) }) {
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
+                    }
+                }
+            },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Position icône plein écran
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_fullscreen_pos_label),
+                        selectedPosition = uiState.fullscreenButtonPosition,
+                        onPositionSelected = { viewModel.setFullscreenButtonPosition(it) },
+                        showIcon = uiState.showFullscreenButton,
+                        onShowIconChange = { viewModel.setShowFullscreenButton(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+
+                    // Position icône Immich
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_immich_pos_label),
+                        selectedPosition = uiState.immichButtonPosition,
+                        onPositionSelected = { viewModel.setImmichButtonPosition(it) },
+                        showIcon = uiState.showImmichButton,
+                        onShowIconChange = { viewModel.setShowImmichButton(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+
+                    // Position icône Mode d'affichage
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_display_mode_pos_label),
+                        selectedPosition = uiState.cardDisplayButtonPosition,
+                        onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) },
+                        showIcon = uiState.showCardDisplayButton,
+                        onShowIconChange = { viewModel.setShowCardDisplayButton(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+
+                    // Position icône Mute
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_mute_pos_label),
+                        selectedPosition = uiState.muteButtonPosition,
+                        onPositionSelected = { viewModel.setMuteButtonPosition(it) },
+                        showIcon = uiState.showMuteButton,
+                        onShowIconChange = { viewModel.setShowMuteButton(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+
+                    // Position icône Download
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_download_pos_label),
+                        selectedPosition = uiState.downloadButtonPosition,
+                        onPositionSelected = { viewModel.setDownloadButtonPosition(it) },
+                        showIcon = uiState.showDownloadButton,
+                        onShowIconChange = { viewModel.setShowDownloadButton(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+
+                    // Position icône Share
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_share_pos_label),
+                        selectedPosition = uiState.shareButtonPosition,
+                        onPositionSelected = { viewModel.setShareButtonPosition(it) },
+                        showIcon = uiState.showShareButton,
+                        onShowIconChange = { viewModel.setShowShareButton(it) }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.setShowActionButtonsDialog(false) }) {
+                    Text(stringResource(R.string.common_close))
                 }
             }
         )

@@ -85,6 +85,16 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.downloadButtonPosition.collect { pos ->
+                _uiState.value = _uiState.value.copy(downloadButtonPosition = pos)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.shareButtonPosition.collect { pos ->
+                _uiState.value = _uiState.value.copy(shareButtonPosition = pos)
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.showFullscreenButton.collect { show ->
                 _uiState.value = _uiState.value.copy(showFullscreenButton = show)
             }
@@ -102,6 +112,16 @@ class SettingsViewModel(
         viewModelScope.launch {
             sessionRepository.showMuteButton.collect { show ->
                 _uiState.value = _uiState.value.copy(showMuteButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showDownloadButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showDownloadButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showShareButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showShareButton = show)
             }
         }
         viewModelScope.launch {
@@ -198,6 +218,18 @@ class SettingsViewModel(
         }
     }
 
+    fun setDownloadButtonPosition(pos: IconPosition) {
+        viewModelScope.launch {
+            sessionRepository.saveDownloadButtonPosition(pos)
+        }
+    }
+
+    fun setShareButtonPosition(pos: IconPosition) {
+        viewModelScope.launch {
+            sessionRepository.saveShareButtonPosition(pos)
+        }
+    }
+
     fun setShowFullscreenButton(show: Boolean) {
         viewModelScope.launch { sessionRepository.saveShowFullscreenButton(show) }
     }
@@ -212,6 +244,14 @@ class SettingsViewModel(
 
     fun setShowMuteButton(show: Boolean) {
         viewModelScope.launch { sessionRepository.saveShowMuteButton(show) }
+    }
+
+    fun setShowDownloadButton(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowDownloadButton(show) }
+    }
+
+    fun setShowShareButton(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowShareButton(show) }
     }
 
     fun setDefaultLayoutGrid(isGrid: Boolean) {
@@ -358,6 +398,10 @@ class SettingsViewModel(
 
     fun setShowLogs(show: Boolean) {
         _uiState.value = _uiState.value.copy(showLogsDialog = show)
+    }
+
+    fun setShowActionButtonsDialog(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showActionButtonsDialog = show)
     }
 
     fun clearLogs() {
