@@ -31,3 +31,23 @@ enum class CardDisplayMode {
     FILL, // Remplit toute la carte (Crop)
     FIT   // Affiche l'image entière (Fit)
 }
+
+/**
+ * Critères de tri pour les médias dans la pile de tri.
+ */
+enum class SwipeSortOrder {
+    DATE_DESC, // Plus récents en premier
+    DATE_ASC,  // Plus anciens en premier
+    SIZE_DESC, // Plus lourds en premier
+    SIZE_ASC,  // Plus légers en premier
+    RANDOM     // Ordre aléatoire stable
+}
+
+/**
+ * Priorité de type pour le tri des médias.
+ */
+enum class SwipeSortPriority {
+    NONE,         // Pas de priorité de type
+    VIDEOS_FIRST, // Vidéos avant les photos
+    PHOTOS_FIRST  // Photos avant les vidéos
+}

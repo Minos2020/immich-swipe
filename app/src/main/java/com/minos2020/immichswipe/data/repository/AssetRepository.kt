@@ -14,8 +14,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 
 /**
  * Repository gérant les photos et vidéos (Assets).
@@ -30,7 +30,7 @@ class AssetRepository(
      * Récupère les photos d'un album de manière incrémentale (Flow).
      * Émet la liste cumulative à chaque page reçue du serveur.
      */
-    fun getAssetsByAlbum(albumId: String, includeArchived: Boolean = false, userId: String? = null): Flow<List<Asset>> = flow {
+    fun getAssetsByAlbum(albumId: String, includeArchived: Boolean = false, userId: String? = null): Flow<List<Asset>> = channelFlow {
         // Nettoyage systématique des anciens liens pour cet album avant de les recréer (pour cet utilisateur uniquement)
         if (userId != null) albumAssetDao?.clearAlbumRelations(albumId, userId)
 
@@ -62,10 +62,10 @@ class AssetRepository(
                     }
 
                     allAssets.addAll(detailedBatch)
-                    emit(allAssets.sortedByDescending { it.fileCreatedAt })
+                    send(allAssets.sortedByDescending { it.fileCreatedAt })
                 }
             }
-            return@flow
+            return@channelFlow
         }
 
         // Cas général : Albums Immich ou Collections virtuelles (Search API)
@@ -79,34 +79,40 @@ class AssetRepository(
         val visibilities = mutableListOf("timeline")
         if (includeArchived) visibilities.add("archive")
 
-        for (visibility in visibilities) {
-            val isCurrentBatchArchived = (visibility == "archive")
-            var nextToFetch: String? = "1"
-            while (nextToFetch != null) {
-                val response = api.searchAssets(
-                    baseRequest.copy(
-                        visibility = visibility,
-                        size = 1000,
-                        page = nextToFetch.toIntOrNull() ?: 1
-                    )
-                )
-                val newItems = response.assets.items
-                if (newItems.isNotEmpty()) {
-                    allAssets.addAll(newItems)
-                    // Mise à jour de l'indexation locale pour les compteurs du Home
-                    if (albumAssetDao != null && userId != null) {
-                        // On définit explicitement isArchived en fonction de la visibilité demandée
-                        // car le champ it.isArchived d'Immich peut être trompeur dans les résultats de recherche
-                        albumAssetDao.insertAlbumAssets(newItems.map { 
-                            AlbumAssetEntity(albumId, it.id, userId, isCurrentBatchArchived) 
-                        })
+        coroutineScope {
+            visibilities.map { visibility ->
+                async {
+                    val isCurrentBatchArchived = (visibility == "archive")
+                    var nextToFetch: String? = "1"
+                    while (nextToFetch != null) {
+                        val response = api.searchAssets(
+                            baseRequest.copy(
+                                visibility = visibility,
+                                size = 1000,
+                                page = nextToFetch.toIntOrNull() ?: 1
+                            )
+                        )
+                        val newItems = response.assets.items
+                        if (newItems.isNotEmpty()) {
+                            synchronized(allAssets) {
+                                allAssets.addAll(newItems)
+                            }
+                            // Mise à jour de l'indexation locale pour les compteurs du Home
+                            if (albumAssetDao != null && userId != null) {
+                                albumAssetDao.insertAlbumAssets(newItems.map { 
+                                    AlbumAssetEntity(albumId, it.id, userId, isCurrentBatchArchived) 
+                                })
+                            }
+                            // On émet la liste triée chronologiquement au fur et à mesure
+                            // On utilise une copie pour éviter les ConcurrentModificationException
+                            val snapshot = synchronized(allAssets) { allAssets.toList() }
+                            send(snapshot.sortedByDescending { it.fileCreatedAt })
+                        }
+                        nextToFetch = response.assets.nextPage
+                        if (allAssets.size > 500000) break
                     }
-                    // On émet la liste triée chronologiquement au fur et à mesure
-                    emit(allAssets.sortedByDescending { it.fileCreatedAt })
                 }
-                nextToFetch = response.assets.nextPage
-                if (allAssets.size > 500000) break
-            }
+            }.awaitAll()
         }
     }
 

@@ -64,8 +64,13 @@ import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.feature.settings.SettingsScreen
 import com.minos2020.immichswipe.feature.settings.SettingsViewModel
 import com.minos2020.immichswipe.feature.settings.SettingsViewModelFactory
+import com.minos2020.immichswipe.feature.swipe.SwipeDecision
 import com.minos2020.immichswipe.feature.swipe.SwipeScreen
+import com.minos2020.immichswipe.feature.swipe.SwipeViewModel
+import com.minos2020.immichswipe.feature.swipe.SwipeViewModelFactory
 import com.minos2020.immichswipe.ui.theme.VirtualGold
+import com.minos2020.immichswipe.core.SwipeSortOrder
+import com.minos2020.immichswipe.core.SwipeSortPriority
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +84,20 @@ fun HomeScreen(
     val uiState: HomeUiState by viewModel.uiState.collectAsState()
     val isSettings = uiState.currentTab == HomeTab.SETTINGS
     val isHome = uiState.currentTab == HomeTab.HOME
+    val isSwipe = uiState.currentTab == HomeTab.SWIPE
+
+    // On instancie le SwipeViewModel ici pour pouvoir l'utiliser dans la TopAppBar
+    val swipeViewModel: SwipeViewModel? = if (uiState.selectedAlbum != null) {
+        viewModel(
+            key = uiState.selectedAlbum!!.id,
+            factory = SwipeViewModelFactory(
+                assetRepository,
+                viewModel.getSessionRepository(),
+                swipeDecisionRepository,
+                uiState.selectedAlbum!!
+            )
+        )
+    } else null
 
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
@@ -156,6 +175,104 @@ fun HomeScreen(
                                         imageVector = if (uiState.isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
                                         contentDescription = stringResource(R.string.settings_layout_label)
                                     )
+                                }
+                            }
+
+                            if (isSwipe && swipeViewModel != null) {
+                                val swipeUiState by swipeViewModel.uiState.collectAsState()
+                                var showSortMenu by remember { mutableStateOf(false) }
+
+                                Box {
+                                    IconButton(onClick = { showSortMenu = true }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Sort,
+                                            contentDescription = stringResource(R.string.swipe_sort_button),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = showSortMenu,
+                                        onDismissRequest = { showSortMenu = false },
+                                        modifier = Modifier
+                                            .width(220.dp)
+                                            .background(MaterialTheme.colorScheme.surface),
+                                        shape = RoundedCornerShape(24.dp)
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.swipe_sort_order_title).uppercase(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                                        )
+
+                                        SortMenuItem(
+                                            label = stringResource(R.string.swipe_sort_date_desc),
+                                            icon = Icons.Default.ArrowDownward,
+                                            selected = swipeUiState.sortOrder == SwipeSortOrder.DATE_DESC,
+                                            onClick = { swipeViewModel.setSortOrder(SwipeSortOrder.DATE_DESC); showSortMenu = false }
+                                        )
+                                        SortMenuItem(
+                                            label = stringResource(R.string.swipe_sort_date_asc),
+                                            icon = Icons.Default.ArrowUpward,
+                                            selected = swipeUiState.sortOrder == SwipeSortOrder.DATE_ASC,
+                                            onClick = { swipeViewModel.setSortOrder(SwipeSortOrder.DATE_ASC); showSortMenu = false }
+                                        )
+                                        SortMenuItem(
+                                            label = stringResource(R.string.swipe_sort_size_desc),
+                                            icon = Icons.Default.ExpandMore,
+                                            selected = swipeUiState.sortOrder == SwipeSortOrder.SIZE_DESC,
+                                            onClick = { swipeViewModel.setSortOrder(SwipeSortOrder.SIZE_DESC); showSortMenu = false }
+                                        )
+                                        SortMenuItem(
+                                            label = stringResource(R.string.swipe_sort_size_asc),
+                                            icon = Icons.Default.ExpandLess,
+                                            selected = swipeUiState.sortOrder == SwipeSortOrder.SIZE_ASC,
+                                            onClick = { swipeViewModel.setSortOrder(SwipeSortOrder.SIZE_ASC); showSortMenu = false }
+                                        )
+                                        SortMenuItem(
+                                            label = stringResource(R.string.swipe_sort_random),
+                                            icon = Icons.Default.Shuffle,
+                                            selected = swipeUiState.sortOrder == SwipeSortOrder.RANDOM,
+                                            onClick = { swipeViewModel.setSortOrder(SwipeSortOrder.RANDOM); showSortMenu = false }
+                                        )
+
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            thickness = 0.5.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant
+                                        )
+
+                                        Text(
+                                            text = stringResource(R.string.swipe_sort_priority_title).uppercase(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                                        )
+
+                                        SortMenuItem(
+                                            label = stringResource(R.string.swipe_sort_priority_none),
+                                            icon = Icons.Default.Sort,
+                                            selected = swipeUiState.sortPriority == SwipeSortPriority.NONE,
+                                            onClick = { swipeViewModel.setSortPriority(SwipeSortPriority.NONE); showSortMenu = false }
+                                        )
+                                        SortMenuItem(
+                                            label = stringResource(R.string.swipe_sort_priority_videos),
+                                            icon = Icons.Default.Videocam,
+                                            selected = swipeUiState.sortPriority == SwipeSortPriority.VIDEOS_FIRST,
+                                            onClick = { swipeViewModel.setSortPriority(SwipeSortPriority.VIDEOS_FIRST); showSortMenu = false }
+                                        )
+                                        SortMenuItem(
+                                            label = stringResource(R.string.swipe_sort_priority_photos),
+                                            icon = Icons.Default.Image,
+                                            selected = swipeUiState.sortPriority == SwipeSortPriority.PHOTOS_FIRST,
+                                            onClick = { swipeViewModel.setSortPriority(SwipeSortPriority.PHOTOS_FIRST); showSortMenu = false }
+                                        )
+                                        
+                                        Spacer(Modifier.height(8.dp))
+                                    }
                                 }
                             }
 
@@ -326,12 +443,9 @@ fun HomeScreen(
                         }
                     }
                     HomeTab.SWIPE -> {
-                        if (uiState.selectedAlbum != null) {
+                        if (uiState.selectedAlbum != null && swipeViewModel != null) {
                             SwipeScreen(
-                                album = uiState.selectedAlbum!!,
-                                assetRepository = assetRepository,
-                                swipeDecisionRepository = swipeDecisionRepository,
-                                sessionRepository = viewModel.getSessionRepository()
+                                viewModel = swipeViewModel
                             )
                         } else {
                             SwipePlaceholder(selectedAlbum = null)
@@ -1419,6 +1533,48 @@ fun SwipePlaceholder(selectedAlbum: Album?) {
             }
         }
     }
+}
+
+@Composable
+private fun SortMenuItem(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f),
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+    )
 }
 
 @Composable

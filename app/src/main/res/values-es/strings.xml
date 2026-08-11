@@ -137,6 +137,17 @@
     <string name="swipe_syncing">Sincronizando…</string>
     <string name="swipe_congratulations">¡Enhorabuena! Álbum ordenado.</string>
     <string name="swipe_check_before_delete">Revisar antes de eliminar</string>
+    <string name="swipe_sort_button">Ordenar y filtrar</string>
+    <string name="swipe_sort_order_title">Ordenar por</string>
+    <string name="swipe_sort_date_desc">Fecha (Nuevos primero)</string>
+    <string name="swipe_sort_date_asc">Fecha (Antiguos primero)</string>
+    <string name="swipe_sort_size_desc">Tamaño (Más grandes primero)</string>
+    <string name="swipe_sort_size_asc">Tamaño (Más pequeños primero)</string>
+    <string name="swipe_sort_random">Orden aleatorio</string>
+    <string name="swipe_sort_priority_title">Prioridad</string>
+    <string name="swipe_sort_priority_none">Sin prioridad de tipo</string>
+    <string name="swipe_sort_priority_videos">Vídeos primero</string>
+    <string name="swipe_sort_priority_photos">Fotos primero</string>
 
     <!-- Duraciones -->
     <string name="duration_never">Nunca</string>

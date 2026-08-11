@@ -7,6 +7,8 @@ import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.SessionConfig
 import com.minos2020.immichswipe.core.CardDisplayMode
+import com.minos2020.immichswipe.core.SwipeSortOrder
+import com.minos2020.immichswipe.core.SwipeSortPriority
 import com.minos2020.immichswipe.data.datastore.SessionDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -114,6 +116,20 @@ class SessionRepository(context: Context) {
     }
 
     /**
+     * Expose l'ordre de tri actuel pour le swipe.
+     */
+    val swipeSortOrder: Flow<SwipeSortOrder> = dataStore.getSwipeSortOrder().map {
+        it?.let { try { SwipeSortOrder.valueOf(it) } catch(e: Exception) { SwipeSortOrder.DATE_DESC } } ?: SwipeSortOrder.DATE_DESC
+    }
+
+    /**
+     * Expose la priorité de tri actuelle pour le swipe.
+     */
+    val swipeSortPriority: Flow<SwipeSortPriority> = dataStore.getSwipeSortPriority().map {
+        it?.let { try { SwipeSortPriority.valueOf(it) } catch(e: Exception) { SwipeSortPriority.NONE } } ?: SwipeSortPriority.NONE
+    }
+
+    /**
      * Sauvegarde une nouvelle session. 
      * Grâce au Flow ci-dessus, tous les observateurs seront notifiés automatiquement.
      */
@@ -192,6 +208,20 @@ class SessionRepository(context: Context) {
 
     suspend fun saveDefaultCardDisplayMode(mode: CardDisplayMode) {
         dataStore.saveDefaultCardDisplayMode(mode.name)
+    }
+
+    /**
+     * Sauvegarde l'ordre de tri pour le swipe.
+     */
+    suspend fun saveSwipeSortOrder(order: SwipeSortOrder) {
+        dataStore.saveSwipeSortOrder(order.name)
+    }
+
+    /**
+     * Sauvegarde la priorité de tri pour le swipe.
+     */
+    suspend fun saveSwipeSortPriority(priority: SwipeSortPriority) {
+        dataStore.saveSwipeSortPriority(priority.name)
     }
 
     /**

@@ -4,6 +4,8 @@ import com.minos2020.immichswipe.domain.model.Asset
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.CardDisplayMode
+import com.minos2020.immichswipe.core.SwipeSortOrder
+import com.minos2020.immichswipe.core.SwipeSortPriority
 
 /**
  * Les différentes décisions possibles pour un asset.
@@ -42,6 +44,8 @@ data class SwipeUiState(
     val includeArchived: Boolean = false,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
     val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
+    val sortOrder: SwipeSortOrder = SwipeSortOrder.DATE_DESC,
+    val sortPriority: SwipeSortPriority = SwipeSortPriority.NONE,
 
     // Statistiques pré-calculées pour le Review Screen (Performance)
     val summaryDeletedAssets: List<Asset> = emptyList(),

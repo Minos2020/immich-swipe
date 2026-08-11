@@ -72,10 +72,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.minos2020.immichswipe.R
-import com.minos2020.immichswipe.core.CardDisplayMode
-import com.minos2020.immichswipe.core.IconPosition
-import com.minos2020.immichswipe.core.PlaybackBehavior
-import com.minos2020.immichswipe.core.SessionManager
+import com.minos2020.immichswipe.core.*
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
@@ -99,23 +96,9 @@ fun Context.findActivity(): Activity? = when (this) {
 
 @Composable
 fun SwipeScreen(
-    album: Album,
-    assetRepository: AssetRepository,
-    swipeDecisionRepository: SwipeDecisionRepository,
-    sessionRepository: SessionRepository,
+    viewModel: SwipeViewModel,
     modifier: Modifier = Modifier
 ) {
-    val viewModel: SwipeViewModel = viewModel(
-        key = album.id,
-        factory = SwipeViewModelFactory(assetRepository, sessionRepository, swipeDecisionRepository, album)
-    )
-    
-    // Rafraîchir les données chaque fois que l'écran devient visible
-    // Afin de refléter d'éventuels changements survenus sur l'album
-    LaunchedEffect(album.id) {
-        viewModel.retryLoading()
-    }
-
     val uiState by viewModel.uiState.collectAsState()
     
     // On observe la santé globale de la connexion
@@ -463,7 +446,7 @@ fun SwipeHeader(
                 targetValue = if (infoIsInside)
                     (progressWidth - infoWidthPx - paddingPx).coerceAtLeast(paddingPx)
                 else
-                    totalWidth - infoWidthPx - paddingPx,
+                    (totalWidth - infoWidthPx - paddingPx).coerceAtLeast(paddingPx),
                 animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
                 label = "InfoTranslation"
             )
@@ -544,6 +527,35 @@ fun SwipeHeader(
             StatBadge(label = stringResource(R.string.swipe_remaining), count = uiState.remainingCount, color = MaterialTheme.colorScheme.outline)
         }
     }
+}
+
+@Composable
+private fun SortMenuItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        onClick = onClick
+    )
 }
 
 @Composable

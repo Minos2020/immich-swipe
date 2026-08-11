@@ -31,6 +31,8 @@ class SessionDataStore(private val context: Context) {
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
         private val KEY_INCLUDE_ARCHIVED = androidx.datastore.preferences.core.booleanPreferencesKey("include_archived")
         private val KEY_DEFAULT_CARD_DISPLAY_MODE = stringPreferencesKey("default_card_display_mode")
+        private val KEY_SWIPE_SORT_ORDER = stringPreferencesKey("swipe_sort_order")
+        private val KEY_SWIPE_SORT_PRIORITY = stringPreferencesKey("swipe_sort_priority")
     }
 
     suspend fun saveSession(baseUrl: String, apiKey: String, userId: String) {
@@ -128,6 +130,12 @@ class SessionDataStore(private val context: Context) {
 
     fun getDefaultCardDisplayMode(): Flow<String?> = context.dataStore.data.map { it[KEY_DEFAULT_CARD_DISPLAY_MODE] }
     suspend fun saveDefaultCardDisplayMode(mode: String) { context.dataStore.edit { it[KEY_DEFAULT_CARD_DISPLAY_MODE] = mode } }
+
+    fun getSwipeSortOrder(): Flow<String?> = context.dataStore.data.map { it[KEY_SWIPE_SORT_ORDER] }
+    suspend fun saveSwipeSortOrder(order: String) { context.dataStore.edit { it[KEY_SWIPE_SORT_ORDER] = order } }
+
+    fun getSwipeSortPriority(): Flow<String?> = context.dataStore.data.map { it[KEY_SWIPE_SORT_PRIORITY] }
+    suspend fun saveSwipeSortPriority(priority: String) { context.dataStore.edit { it[KEY_SWIPE_SORT_PRIORITY] = priority } }
 
     suspend fun clearSession() {
         context.dataStore.edit { it.clear() }

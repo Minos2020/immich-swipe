@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.CardDisplayMode
+import com.minos2020.immichswipe.core.SwipeSortOrder
+import com.minos2020.immichswipe.core.SwipeSortPriority
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.domain.model.Album
@@ -27,6 +29,11 @@ class SwipeViewModel(
     private val _uiState = MutableStateFlow(SwipeUiState(albumName = album.albumName))
     val uiState: StateFlow<SwipeUiState> = _uiState.asStateFlow()
 
+    // Liste "Maître" contenant tous les assets chargés, dans leur ordre d'arrivée.
+    private var masterWorkPile: List<Asset> = emptyList()
+    private var randomSeed: Long = System.currentTimeMillis()
+    private var hasStartedSwiping: Boolean = false
+
     init {
         loadAssetsAndDecisions()
         observePlaybackBehavior()
@@ -40,6 +47,22 @@ class SwipeViewModel(
         observeAutoNextOnFav()
         observeIncludeArchived()
         observeDefaultCardDisplayMode()
+        observeSortSettings()
+    }
+
+    private fun observeSortSettings() {
+        viewModelScope.launch {
+            sessionRepository.swipeSortOrder.collect { order ->
+                _uiState.value = _uiState.value.copy(sortOrder = order)
+                if (masterWorkPile.isNotEmpty()) refreshSortedWorkPile()
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.swipeSortPriority.collect { priority ->
+                _uiState.value = _uiState.value.copy(sortPriority = priority)
+                if (masterWorkPile.isNotEmpty()) refreshSortedWorkPile()
+            }
+        }
     }
 
     private fun observeDefaultCardDisplayMode() {
@@ -171,6 +194,7 @@ class SwipeViewModel(
                 lastLoadedUserId = config.userId
 
                 _uiState.value = _uiState.value.copy(isLoading = true)
+                hasStartedSwiping = false
                 val includeArchived = sessionRepository.includeArchived.first()
 
                 // On charge les décisions une seule fois au début pour le filtrage
@@ -208,6 +232,9 @@ class SwipeViewModel(
                     val workPile = allAssetsFound.filter { !syncedIds.contains(it.id) }
                     val workPileIds = workPile.map { it.id }.toSet()
 
+                    // On met à jour la liste maître (non triée)
+                    masterWorkPile = workPile
+
                     // FUSION INTELLIGENTE : On garde les décisions de la session actuelle 
                     // et on ajoute celles du pool initial pour les nouveaux assets découverts
                     val mergedDecisions = currentState.decisions.toMutableMap()
@@ -227,34 +254,20 @@ class SwipeViewModel(
                     // Nettoyage : on ne garde que les décisions des assets présents dans la pile
                     mergedDecisions.keys.retainAll(workPileIds)
 
-                    // Recherche du premier index non traité (si on ne l'a pas encore trouvé)
-                    var newIndex = currentState.currentIndex
-                    var newIsLoading = currentState.isLoading
-                    
-                    if (newIsLoading || currentState.assets.isEmpty()) {
-                        val firstFound = workPile.indexOfFirst { !mergedDecisions.containsKey(it.id) }
-                        if (firstFound != -1) {
-                            newIndex = firstFound
-                            newIsLoading = false 
-                        } else if (workPile.isNotEmpty()) {
-                            // Si tout est déjà traité dans ce qui a été chargé, on se met à la fin
-                            newIndex = workPile.size
-                        }
-                    }
-
-                    _uiState.value = currentState.copy(
-                        assets = workPile,
-                        decisions = mergedDecisions,
-                        assetSizes = mergedSizes,
-                        currentIndex = newIndex,
-                        isLoading = newIsLoading
+                    // On applique le tri et la priorité en injectant les nouvelles données
+                    // recalculera l'index intelligemment (soit au début, soit sur la photo actuelle)
+                    refreshSortedWorkPile(
+                        forceFirstUnprocessed = currentState.assets.isEmpty(),
+                        overrideDecisions = mergedDecisions,
+                        overrideSizes = mergedSizes
                     )
-
+                    
                     updateSummaryStats()
 
                     // Anticipation : charge les détails de l'asset actuel si besoin
-                    if (!newIsLoading && newIndex < workPile.size) {
-                        loadAssetDetail(workPile[newIndex].id, newIndex)
+                    val finalState = _uiState.value
+                    if (!finalState.isLoading && finalState.currentIndex < finalState.assets.size) {
+                        loadAssetDetail(finalState.assets[finalState.currentIndex].id, finalState.currentIndex)
                     }
                 }
                 
@@ -312,12 +325,129 @@ class SwipeViewModel(
         )
     }
 
+    private fun refreshSortedWorkPile(
+        forceFirstUnprocessed: Boolean = false,
+        overrideDecisions: Map<String, SwipeDecision>? = null,
+        overrideSizes: Map<String, Long>? = null
+    ) {
+        val currentState = _uiState.value
+        val decisions = overrideDecisions ?: currentState.decisions
+        val assetSizes = overrideSizes ?: currentState.assetSizes
+        val currentAssetId = currentState.currentAsset?.id
+        val order = currentState.sortOrder
+        val priority = currentState.sortPriority
+
+        // 1. Tri par priorité de type
+        var sorted = when (priority) {
+            SwipeSortPriority.NONE -> masterWorkPile
+            SwipeSortPriority.VIDEOS_FIRST -> masterWorkPile.sortedByDescending { it.type == "VIDEO" }
+            SwipeSortPriority.PHOTOS_FIRST -> masterWorkPile.sortedByDescending { it.type == "IMAGE" }
+        }
+
+        // 2. Tri par critère (en respectant les groupes de priorité s'ils existent)
+        val comparator = when (order) {
+            SwipeSortOrder.DATE_DESC -> compareByDescending<Asset> { it.fileCreatedAt }
+            SwipeSortOrder.DATE_ASC -> compareBy<Asset> { it.fileCreatedAt }
+            SwipeSortOrder.SIZE_DESC -> compareByDescending<Asset> { assetSizes[it.id] ?: it.exifInfo?.fileSizeInBytes ?: 0L }
+            SwipeSortOrder.SIZE_ASC -> compareBy<Asset> { assetSizes[it.id] ?: it.exifInfo?.fileSizeInBytes ?: 0L }
+            SwipeSortOrder.RANDOM -> null
+        }
+
+        sorted = if (order == SwipeSortOrder.RANDOM) {
+            // Pour le random, on groupe quand même par priorité si demandée
+            if (priority == SwipeSortPriority.NONE) {
+                sorted.shuffled(java.util.Random(randomSeed))
+            } else {
+                val groups = sorted.groupBy { 
+                    when (priority) {
+                        SwipeSortPriority.VIDEOS_FIRST -> it.type == "VIDEO"
+                        SwipeSortPriority.PHOTOS_FIRST -> it.type == "IMAGE"
+                        else -> true
+                    }
+                }
+                // On mélange chaque groupe indépendamment
+                val firstGroup = (groups[true] ?: emptyList()).shuffled(java.util.Random(randomSeed))
+                val secondGroup = (groups[false] ?: emptyList()).shuffled(java.util.Random(randomSeed))
+                firstGroup + secondGroup
+            }
+        } else if (comparator != null) {
+            if (priority == SwipeSortPriority.NONE) {
+                sorted.sortedWith(comparator)
+            } else {
+                // Tri stable au sein des groupes de priorité
+                val groups = sorted.groupBy { 
+                    when (priority) {
+                        SwipeSortPriority.VIDEOS_FIRST -> it.type == "VIDEO"
+                        SwipeSortPriority.PHOTOS_FIRST -> it.type == "IMAGE"
+                        else -> true
+                    }
+                }
+                val firstGroup = (groups[true] ?: emptyList()).sortedWith(comparator)
+                val secondGroup = (groups[false] ?: emptyList()).sortedWith(comparator)
+                firstGroup + secondGroup
+            }
+        } else {
+            sorted
+        }
+
+        // 3. Calcul de l'index de destination
+        var newIndex = -1
+        var newIsLoading = currentState.isLoading
+
+        // SCÉNARIO A : Tant que l'utilisateur n'a pas fait de VÉRITABLE swipe decision, 
+        // on se "colle" à la toute première photo non traitée du nouvel ordre.
+        if (!hasStartedSwiping || forceFirstUnprocessed || (currentState.currentIndex == 0 && currentState.assets.isEmpty())) {
+            val firstUnprocessed = sorted.indexOfFirst { !decisions.containsKey(it.id) }
+            if (firstUnprocessed != -1) {
+                newIndex = firstUnprocessed
+                newIsLoading = false // On a trouvé de quoi commencer !
+            } else if (sorted.isNotEmpty()) {
+                newIndex = sorted.size // Tout est trié
+                newIsLoading = false
+            }
+        } 
+        
+        // SCÉNARIO B : L'utilisateur a commencé sa session de tri, on veut garder la photo actuelle
+        if (newIndex == -1 && currentAssetId != null) {
+            val index = sorted.indexOfFirst { it.id == currentAssetId }
+            if (index != -1) newIndex = index
+        }
+
+        // SCÉNARIO C : Sécurité / Fallback
+        if (newIndex == -1) {
+            newIndex = currentState.currentIndex.coerceAtMost(sorted.size)
+        }
+
+        _uiState.value = currentState.copy(
+            assets = sorted,
+            currentIndex = newIndex,
+            decisions = decisions,
+            assetSizes = assetSizes,
+            isLoading = newIsLoading
+        )
+    }
+
+    fun setSortOrder(order: SwipeSortOrder) {
+        if (order == SwipeSortOrder.RANDOM) {
+            randomSeed = System.currentTimeMillis()
+        }
+        viewModelScope.launch { sessionRepository.saveSwipeSortOrder(order) }
+    }
+
+    fun setSortPriority(priority: SwipeSortPriority) {
+        viewModelScope.launch { sessionRepository.saveSwipeSortPriority(priority) }
+    }
+
     private fun loadAssetDetail(assetId: String, index: Int) {
         viewModelScope.launch {
             try {
                 val detail = assetRepository.getAssetDetail(assetId)
+                
+                // On met à jour la liste maître pour que le tri reste à jour avec les bonnes tailles
+                masterWorkPile = masterWorkPile.map { if (it.id == assetId) detail else it }
+
                 val currentAssets = _uiState.value.assets.toMutableList()
-                if (index < currentAssets.size) {
+                if (index < currentAssets.size && currentAssets[index].id == assetId) {
                     currentAssets[index] = detail
                     val newSizes = _uiState.value.assetSizes.toMutableMap()
                     detail.exifInfo?.fileSizeInBytes?.let { newSizes[assetId] = it }
@@ -334,6 +464,7 @@ class SwipeViewModel(
     }
 
     fun onSwipe(decision: SwipeDecision) {
+        hasStartedSwiping = true
         val currentState = _uiState.value
         val currentAsset = currentState.currentAsset ?: return
         val currentSize = currentState.assetSizes[currentAsset.id] ?: currentAsset.exifInfo?.fileSizeInBytes
@@ -408,6 +539,7 @@ class SwipeViewModel(
     }
 
     fun toggleFavorite() {
+        hasStartedSwiping = true
         val currentState = _uiState.value
         val currentAsset = currentState.currentAsset ?: return
         
@@ -443,6 +575,7 @@ class SwipeViewModel(
     }
 
     fun undo() {
+        hasStartedSwiping = true
         val currentState = _uiState.value
         val lastAssetIdFromHistory = currentState.history.lastOrNull()
 
@@ -504,6 +637,7 @@ class SwipeViewModel(
      * Permet de sauter directement à un asset précis (via la timeline).
      */
     fun onMoveToAsset(index: Int) {
+        //hasStartedSwiping = true // NE COMPTE PLUS COMME DÉBUT DE SESSION
         if (index in 0 until _uiState.value.assets.size) {
             _uiState.value = _uiState.value.copy(currentIndex = index)
             loadAssetDetail(_uiState.value.assets[index].id, index)
