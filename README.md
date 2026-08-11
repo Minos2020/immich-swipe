@@ -5,14 +5,13 @@
 ![Kotlin](https://img.shields.io/badge/language-Kotlin-purple)
 ![Android](https://img.shields.io/badge/platform-Android-green)
 
-[Version française ici](README.fr.md)
 
-Immich Swipe is an open-source Android application designed to make sorting your photos and videos hosted on your [Immich](https://immich.app/) server easy and fun.
 
-Inspired by the [Sponge](https://play.google.com/store/apps/details?id=com.prismtree.sponge&pcampaignid=web_share) app (similar concept for local files), it allows you to quickly sort your media using simple swipe gestures, featuring a smooth and modern interface.
+Immich Swipe is an open-source Android application designed to make sorting your photos and videos hosted on your [Immich](https://immich.app/) server easy and fun
 
-> **Note**: This project started as a personal need and was developed with the help of AI. Although I am not a developer by trade, I place great importance on stability and user experience.
->
+This is not my project. you can find the original project at (https://github.com/Minos2020/immich-swipe-android.git). I created this fork to act as a rough draft for new ideas and features that I would love to see added in the future.
+
+
 > **Disclaimer**: This is an independent project and is not affiliated in any way with the official Immich project.
 
 ## 📸 Overview
