@@ -45,6 +45,7 @@ This is not my project. you can find the original project at (https://github.com
      - `asset.read`
      - `asset.view`
      - `asset.delete`
+     - `asset.download`
      - `asset.statistics`
      - `asset.update` (Optional --> if you want to archive assets, add them to favourites or to locked folder)
      - `userProfileImage.read` (Optional --> to show user profile image)
