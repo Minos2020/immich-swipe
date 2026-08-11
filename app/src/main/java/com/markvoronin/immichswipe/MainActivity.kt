@@ -20,9 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.markvoronin.immichswipe.core.AppTheme
 import com.markvoronin.immichswipe.core.AppLogger
+import com.markvoronin.immichswipe.core.cache.CacheManager
 import com.markvoronin.immichswipe.feature.home.HomeScreen
 import com.markvoronin.immichswipe.core.SessionManager
 import com.markvoronin.immichswipe.ui.theme.ImmichSwipeTheme
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.markvoronin.immichswipe.data.repository.SessionRepository
 import com.markvoronin.immichswipe.data.repository.AuthRepository
@@ -35,6 +37,7 @@ import com.markvoronin.immichswipe.feature.auth.AuthScreen
 import com.markvoronin.immichswipe.feature.auth.AuthViewModelFactory
 import com.markvoronin.immichswipe.feature.common.LoadingScreen
 import com.markvoronin.immichswipe.feature.home.HomeViewModelFactory
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -42,11 +45,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         AppLogger.init(applicationContext)
         AppLogger.i("MainActivity", "Application démarrée")
+        
+        // Maintenance du cache en arrière-plan
+        lifecycleScope.launch {
+            CacheManager.performMaintenance(applicationContext)
+        }
+
         enableEdgeToEdge()
         
         // On verrouille l'application en mode Portrait par défaut.
         // On ne le fait qu'une seule fois au démarrage pour permettre 
         // les changements dynamiques ensuite.
+        @android.annotation.SuppressLint("SourceLockedOrientationActivity")
         if (savedInstanceState == null) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
@@ -85,7 +95,7 @@ class MainActivity : ComponentActivity() {
                             fadeIn(animationSpec = tween(500)) togetherWith fadeOut(animationSpec = tween(500))
                         },
                         label = "ScreenTransition",
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     ) { targetState ->
                         when {
                             targetState.isLoading -> {

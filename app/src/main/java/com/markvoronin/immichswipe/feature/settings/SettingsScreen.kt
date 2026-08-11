@@ -581,7 +581,7 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_clear_cache_label),
                         subtitle = stringResource(R.string.settings_clear_cache_desc),
                         icon = Icons.Default.DeleteSweep,
-                        onClick = { viewModel.clearAppCache(context) }
+                        onClick = { viewModel.setShowClearCacheConfirmation(true) }
                     )
                 }
             }
@@ -907,6 +907,28 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { viewModel.setShowActionButtonsDialog(false) }) {
                     Text(stringResource(R.string.common_close))
+                }
+            }
+        )
+    }
+
+    // Dialogue de confirmation pour vider le cache
+    if (uiState.showClearCacheConfirmation) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowClearCacheConfirmation(false) },
+            title = { Text(stringResource(R.string.settings_clear_cache_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_clear_cache_confirm_msg)) },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.clearAppCache(context) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.common_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowClearCacheConfirmation(false) }) {
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )

@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
     <string name="app_name">Immich Swipe</string>
 
     <!-- Login Screen -->
@@ -21,7 +21,6 @@
     <!-- Navigation -->
     <string name="nav_home">Home</string>
     <string name="nav_swipe">Swipe</string>
-    <string name="nav_settings">Settings</string>
     <string name="nav_back">Back</string>
 
     <!-- Home Screen -->
@@ -34,12 +33,11 @@
     <string name="home_status_completed">Completed</string>
     <string name="home_status_virtual">Special collections</string>
     <string name="home_album_completed">Completed</string>
-    <string name="home_unsynced_changes">Contains %1$d unsynced changes</string>
-    <string name="home_sorted_count">%1$d / %2$d sorted</string>
+    <string name="home_unsynced_changes" tools:ignore="PluralsCandidate">Contains %1$d unsynced changes</string>
+    <string name="home_sorted_count" tools:ignore="PluralsCandidate">%1$d / %2$d sorted</string>
     <string name="home_select_album">Select an album to start!</string>
     <string name="home_session_title">Sorting session: %1$s</string>
-    <string name="home_photos_to_discover">%1$d photos to discover</string>
-    <string name="home_new_badge">NEW</string>
+    <string name="home_photos_to_discover" tools:ignore="PluralsCandidate">%1$d photos to discover</string>
     <string name="home_unsynced_badge">NOT SYNCED</string>
     <string name="home_virtual_all_assets">All Assets</string>
     <string name="home_virtual_all_assets_desc">Collection of all assets in your library (depending on your access rights)</string>
@@ -58,20 +56,6 @@
     <string name="diag_issues">Issues detected</string>
     <string name="diag_offline">Server unreachable</string>
     <string name="diag_unknown">Unknown status</string>
-    <string name="diag_connected_msg">Connected to Immich</string>
-    <string name="diag_error_auth">Authentication issue</string>
-    <string name="diag_error_auth_hint">Check if your API key is still valid in Immich settings.</string>
-    <string name="diag_error_unavailable">Immich API unavailable (%1$d)</string>
-    <string name="diag_error_unavailable_hint">Your reverse-proxy is responding, but the Immich container seems stopped or restarting.</string>
-    <string name="diag_error_unexpected">Unexpected response (%1$d)</string>
-    <string name="diag_error_dns">Server not found (DNS)</string>
-    <string name="diag_error_dns_hint">The URL is incorrect or your domain has not propagated yet.</string>
-    <string name="diag_error_timeout">Request timeout</string>
-    <string name="diag_error_timeout_hint">The server is taking too long to respond. Check your connection or server load.</string>
-    <string name="diag_error_no_internet">No internet connection</string>
-    <string name="diag_error_no_internet_hint">Check that your phone has network coverage or that your server is turned on.</string>
-    <string name="diag_error_connection">Connection error</string>
-    <string name="diag_logged_out">Logged out</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -112,8 +96,6 @@
     <string name="settings_video_ignore">Play over other sounds</string>
     <string name="settings_tri_actions_label">Displayed sorting actions</string>
     <string name="settings_tri_favorite">Favorite button</string>
-    <string name="settings_tri_archive">Archive button</string>
-    <string name="settings_tri_lock">Locked Folder button</string>
     <string name="settings_auto_next_label">Auto-advance</string>
     <string name="settings_auto_next_desc">Move to the next photo and automatically mark as KEEP after marking as favorite</string>
     <string name="settings_section_account">Account</string>
@@ -121,7 +103,6 @@
     <string name="settings_pos_top_right">Top-Right</string>
     <string name="settings_pos_bottom_left">Bottom-Left</string>
     <string name="settings_pos_bottom_right">Bottom-Right</string>
-    <string name="settings_show_button">Show button</string>
     <string name="settings_display_mode_label">Default media display</string>
     <string name="settings_display_mode_fill">Fill</string>
     <string name="settings_display_mode_fit">Fit</string>
@@ -151,7 +132,7 @@
     <string name="swipe_summary_title">Sorting summary</string>
     <string name="swipe_sync_success">Synced!</string>
     <string name="swipe_sync_success_desc">Your changes are on Immich</string>
-    <string name="swipe_liberate_button">Free %1$s (%2$d items)</string>
+    <string name="swipe_liberate_button" tools:ignore="PluralsCandidate">Free %1$s (%2$d items)</string>
     <string name="swipe_no_deletions">No photos to delete.</string>
     <string name="swipe_metadata_title">Image details</string>
     <string name="swipe_metadata_file">File</string>
@@ -165,14 +146,6 @@
     <string name="swipe_congratulations">Congratulations! Album sorted.</string>
     <string name="swipe_check_before_delete">Check before deletion</string>
 
-    <!-- Durations -->
-    <string name="duration_never">Never</string>
-    <string name="duration_day">%1$d d</string>
-    <string name="duration_week">%1$d w</string>
-    <string name="duration_month">%1$d m</string>
-    <string name="duration_year_one">1 y</string>
-    <string name="duration_years">%1$d y</string>
-
     <!-- Size units -->
     <string name="size_unit_gb">%1$.2f GB</string>
     <string name="size_unit_mb">%1$.2f MB</string>
@@ -180,9 +153,7 @@
 
     <!-- Common -->
     <string name="common_confirm">Confirm</string>
-    <string name="common_confirm_sync">Confirm (%1$d items)</string>
     <string name="common_cancel">Cancel</string>
-    <string name="common_apply">Apply</string>
     <string name="common_retry">Retry</string>
     <string name="common_close">Close</string>
     <string name="common_loading">Loading…</string>
@@ -232,4 +203,6 @@
     <string name="settings_clear_cache_label">Clear app cache</string>
     <string name="settings_clear_cache_desc">Delete temporary files, thumbnails and cached images</string>
     <string name="settings_clear_cache_success">Cache cleared successfully</string>
+    <string name="settings_clear_cache_confirm_title">Clear App Cache?</string>
+    <string name="settings_clear_cache_confirm_msg">This will delete all temporary files and cached images. They will be re-downloaded from the server as needed. Do you want to proceed?</string>
 </resources>

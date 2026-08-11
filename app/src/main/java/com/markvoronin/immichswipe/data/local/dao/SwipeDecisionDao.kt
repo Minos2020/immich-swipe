@@ -90,6 +90,18 @@ interface SwipeDecisionDao {
     @Query("SELECT COUNT(DISTINCT assetId) FROM swipe_decisions WHERE userId = :userId")
     fun getGlobalUniqueTreatedCount(userId: String): Flow<Int>
 
+    @Query("SELECT COUNT(DISTINCT assetId) FROM swipe_decisions WHERE userId = :userId AND isSynced = 0")
+    fun getGlobalUnsyncedCount(userId: String): Flow<Int>
+
+    @Query("""
+        SELECT 
+            COUNT(CASE WHEN decision = 'KEEP' AND isSynced = 0 THEN 1 END) as keptCount,
+            COUNT(CASE WHEN decision = 'ARCHIVE' AND isSynced = 0 THEN 1 END) as archivedCount
+        FROM swipe_decisions 
+        WHERE userId = :userId
+    """)
+    fun getUnsyncedDecisionCounts(userId: String): Flow<UnsyncedDecisionCounts>
+
     /**
      * Récupère le nombre d'assets orphelins triés globalement.
      * Pour cela, on a besoin de savoir si l'asset est un orphelin (c'est complexe en SQL pur
@@ -154,4 +166,12 @@ data class AlbumDecisionCount(
     val albumId: String,
     val totalCount: Int,
     val unsyncedCount: Int
+)
+
+/**
+ * Objet pour transporter les comptes de décisions non synchronisées.
+ */
+data class UnsyncedDecisionCounts(
+    val keptCount: Int,
+    val archivedCount: Int
 )

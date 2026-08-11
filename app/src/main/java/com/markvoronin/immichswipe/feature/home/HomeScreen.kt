@@ -308,7 +308,8 @@ fun HomeScreen(
                                     swipeDecisionRepository = swipeDecisionRepository,
                                     sessionRepository = viewModel.getSessionRepository(),
                                     sessionKey = sessionKey,
-                                    resetSignal = viewModel.resetRequestSignal
+                                    resetSignal = viewModel.resetRequestSignal,
+                                    userQuotaBytes = uiState.user?.quotaUsageInBytes
                                 )
                             } else {
                                 SwipePlaceholder(selectedAlbum = null)
@@ -995,7 +996,7 @@ fun ProfilePopup(
                         null
                     }
                 }
-                val versionName = packageInfo?.versionName ?: "2.4.1"
+                val versionName = packageInfo?.versionName ?: "2.4.2"
                 
                 Text(
                     text = "v$versionName",

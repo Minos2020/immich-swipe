@@ -20,6 +20,7 @@ enum class DatabaseAction {
 data class SettingsUiState(
     val isLoading: Boolean = false,
     val userName: String = "",
+    val userQuotaBytes: Long? = null,
     val playbackBehavior: PlaybackBehavior = PlaybackBehavior.PAUSE_OTHERS,
     val themeMode: AppTheme = AppTheme.SYSTEM,
     val dynamicColor: Boolean = true,
@@ -47,6 +48,7 @@ data class SettingsUiState(
     val syncLocalDeletion: Boolean = false,
     val trashLocalDeletion: Boolean = true,
     val showActionButtonsDialog: Boolean = false,
+    val showClearCacheConfirmation: Boolean = false,
     
     // Database actions
     val pendingDatabaseAction: DatabaseAction? = null,

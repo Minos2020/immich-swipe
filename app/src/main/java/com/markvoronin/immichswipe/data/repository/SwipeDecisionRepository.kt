@@ -1,6 +1,7 @@
 package com.markvoronin.immichswipe.data.repository
 
 import com.markvoronin.immichswipe.data.local.dao.AlbumDecisionCount
+import com.markvoronin.immichswipe.data.local.dao.UnsyncedDecisionCounts
 import com.markvoronin.immichswipe.data.local.dao.SwipeDecisionDao
 import com.markvoronin.immichswipe.data.local.entity.SwipeDecisionEntity
 import com.markvoronin.immichswipe.data.local.entity.SyncHistoryEntity
@@ -22,6 +23,14 @@ class SwipeDecisionRepository(
 
     fun getGlobalUniqueTreatedCount(userId: String): Flow<Int> {
         return swipeDecisionDao.getGlobalUniqueTreatedCount(userId)
+    }
+
+    fun getGlobalUnsyncedCount(userId: String): Flow<Int> {
+        return swipeDecisionDao.getGlobalUnsyncedCount(userId)
+    }
+
+    fun getUnsyncedDecisionCounts(userId: String): Flow<UnsyncedDecisionCounts> {
+        return swipeDecisionDao.getUnsyncedDecisionCounts(userId)
     }
 
     fun getAllDecisionsForUser(userId: String): Flow<List<SwipeDecisionEntity>> {

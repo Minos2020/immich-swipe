@@ -9,6 +9,7 @@ import com.markvoronin.immichswipe.core.IconPosition
 import com.markvoronin.immichswipe.core.PlaybackBehavior
 import com.markvoronin.immichswipe.core.SessionManager
 import com.markvoronin.immichswipe.core.SortOrder
+import com.markvoronin.immichswipe.core.cache.CacheManager
 import com.markvoronin.immichswipe.data.repository.SessionRepository
 import com.markvoronin.immichswipe.data.repository.SwipeDecisionRepository
 import com.markvoronin.immichswipe.data.repository.UserRepository
@@ -43,7 +44,10 @@ class SettingsViewModel(
         viewModelScope.launch {
             try {
                 val user = userRepository.getCurrentUser()
-                _uiState.value = _uiState.value.copy(userName = user.name ?: "")
+                _uiState.value = _uiState.value.copy(
+                    userName = user.name ?: "",
+                    userQuotaBytes = user.quotaUsageInBytes
+                )
             } catch (e: Exception) {
                 AppLogger.e("SettingsVM", "Erreur chargement user", e)
             }
@@ -406,6 +410,10 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(showActionButtonsDialog = show)
     }
 
+    fun setShowClearCacheConfirmation(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showClearCacheConfirmation = show)
+    }
+
     fun clearLogs() {
         AppLogger.clearLogs()
     }
@@ -417,28 +425,20 @@ class SettingsViewModel(
     fun clearAppCache(context: android.content.Context) {
         viewModelScope.launch {
             try {
-                val cacheDir = context.cacheDir
-                val files = cacheDir.listFiles()
-                files?.forEach { file ->
-                    deleteRecursive(file)
-                }
+                CacheManager.clearAllCache(context)
                 val successMessage = context.getString(R.string.settings_clear_cache_success)
-                _uiState.value = _uiState.value.copy(databaseActionStatus = successMessage)
+                _uiState.value = _uiState.value.copy(
+                    databaseActionStatus = successMessage,
+                    showClearCacheConfirmation = false
+                )
             } catch (e: Exception) {
                 AppLogger.e("SettingsVM", "Failed to clear cache", e)
-                _uiState.value = _uiState.value.copy(databaseActionStatus = "Failed to clear cache: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    databaseActionStatus = "Failed to clear cache: ${e.message}",
+                    showClearCacheConfirmation = false
+                )
             }
         }
-    }
-
-    private fun deleteRecursive(fileOrDirectory: java.io.File) {
-        if (fileOrDirectory.isDirectory) {
-            val files = fileOrDirectory.listFiles()
-            files?.forEach { child ->
-                deleteRecursive(child)
-            }
-        }
-        fileOrDirectory.delete()
     }
 }
 

@@ -36,9 +36,14 @@ class SwipeViewModel(
     private val sessionRepository: SessionRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository,
     private val album: Album,
+    private val userQuotaBytes: Long? = null
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SwipeUiState(albumName = album.albumName))
+    private val _uiState = MutableStateFlow(SwipeUiState(
+        albumName = album.albumName,
+        albumId = album.id,
+        userQuotaBytes = userQuotaBytes
+    ))
     val uiState: StateFlow<SwipeUiState> = _uiState.asStateFlow()
 
     init {

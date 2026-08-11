@@ -11,12 +11,13 @@ class SwipeViewModelFactory(
     private val assetRepository: AssetRepository,
     private val sessionRepository: SessionRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository,
-    private val album: Album
+    private val album: Album,
+    private val userQuotaBytes: Long? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SwipeViewModel::class.java)) {
-            return SwipeViewModel(assetRepository, sessionRepository, swipeDecisionRepository, album) as T
+            return SwipeViewModel(assetRepository, sessionRepository, swipeDecisionRepository, album, userQuotaBytes) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

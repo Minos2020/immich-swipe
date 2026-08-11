@@ -21,7 +21,6 @@
     <!-- Navegación -->
     <string name="nav_home">Inicio</string>
     <string name="nav_swipe">Swipe</string>
-    <string name="nav_settings">Ajustes</string>
     <string name="nav_back">Atrás</string>
 
     <!-- Pantalla de inicio -->
@@ -39,7 +38,6 @@
     <string name="home_select_album">¡Selecciona un álbum para empezar!</string>
     <string name="home_session_title">Sesión de ordenación: %1$s</string>
     <string name="home_photos_to_discover">%1$d fotos por descubrir</string>
-    <string name="home_new_badge">NUEVO</string>
     <string name="home_unsynced_badge">SIN SINCRONIZAR</string>
     <string name="home_virtual_all_assets">Todos los archivos</string>
     <string name="home_virtual_all_assets_desc">Colección de toda su biblioteca (según sus derechos de acceso)</string>
@@ -58,20 +56,6 @@
     <string name="diag_issues">Problemas detectados</string>
     <string name="diag_offline">Servidor inaccesible</string>
     <string name="diag_unknown">Estado desconocido</string>
-    <string name="diag_connected_msg">Conectado a Immich</string>
-    <string name="diag_error_auth">Problema de autenticación</string>
-    <string name="diag_error_auth_hint">Comprueba si tu clave API sigue siendo válida en los ajustes de Immich.</string>
-    <string name="diag_error_unavailable">API de Immich no disponible (%1$d)</string>
-    <string name="diag_error_unavailable_hint">Tu proxy inverso responde, pero el contenedor de Immich parece detenido o reiniciándose.</string>
-    <string name="diag_error_unexpected">Respuesta inesperada (%1$d)</string>
-    <string name="diag_error_dns">Servidor no encontrado (DNS)</string>
-    <string name="diag_error_dns_hint">La URL es incorrecta o tu dominio aún no se ha propagado.</string>
-    <string name="diag_error_timeout">Tiempo de espera agotado</string>
-    <string name="diag_error_timeout_hint">El servidor tarda demasiado en responder. Comprueba tu conexión o la carga del servidor.</string>
-    <string name="diag_error_no_internet">Sin conexión a internet</string>
-    <string name="diag_error_no_internet_hint">Comprueba que tu teléfono tenga cobertura de red o que tu servidor esté encendido.</string>
-    <string name="diag_error_connection">Error de conexión</string>
-    <string name="diag_logged_out">Sesión cerrada</string>
 
     <!-- Ajustes -->
     <string name="settings_title">Ajustes</string>
@@ -112,8 +96,6 @@
     <string name="settings_video_ignore">Reproducir sobre otros sonidos</string>
     <string name="settings_tri_actions_label">Acciones de ordenación mostradas</string>
     <string name="settings_tri_favorite">Botón Favorito</string>
-    <string name="settings_tri_archive">Botón Archivar</string>
-    <string name="settings_tri_lock">Botón Carpeta Bloqueada</string>
     <string name="settings_auto_next_label">Avanzar automáticamente</string>
     <string name="settings_auto_next_desc">Pasar a la siguiente foto y marcar automáticamente como CONSERVAR después de marcar como favorito</string>
     <string name="settings_section_account">Cuenta</string>
@@ -121,7 +103,21 @@
     <string name="settings_pos_top_right">Arriba a la derecha</string>
     <string name="settings_pos_bottom_left">Abajo a la izquierda</string>
     <string name="settings_pos_bottom_right">Abajo a la derecha</string>
-
+    <string name="settings_display_mode_label">Visualización predeterminada de los medios</string>
+    <string name="settings_display_mode_fill">Rellenar</string>
+    <string name="settings_display_mode_fit">Ajustar</string>
+    <string name="settings_display_mode_pos_label">Posición del botón de modo de visualización</string>
+    <string name="settings_mute_pos_label">Posición del botón Mute</string>
+    <string name="settings_download_pos_label">Posición del botón Descargar</string>
+    <string name="settings_share_pos_label">Posición del botón Compartir</string>
+    <string name="settings_show_swipe_buttons_label">Mostrar botones Keep/Delete</string>
+    <string name="settings_show_swipe_buttons_desc">Mostrar grandes botones rojo y verde para clasificar con un solo toque</string>
+    <string name="settings_swap_summary_archive_label">Cambiar Archivar por Resumen</string>
+    <string name="settings_swap_summary_archive_desc">Reemplaza el botón Archivar por un botón Resumen en la barra de clasificación</string>
+    <string name="settings_sync_local_deletion_label">Sincronizar eliminación local</string>
+    <string name="settings_sync_local_deletion_desc">Cuando eliminas una foto de Immich, también intenta eliminar el archivo local de tu dispositivo para evitar que se vuelva a subir.</string>
+    <string name="settings_trash_local_deletion_label">Mover a la papelera en lugar de eliminar</string>
+    <string name="settings_trash_local_deletion_desc">Si su sistema lo admite, los archivos se moverán a la papelera durante 30 días en lugar de borrarse permanentemente.</string>
     <string name="swipe_toggle_display">Cambiar modo de visualización</string>
 
     <!-- Pantalla de swipe -->
@@ -150,14 +146,6 @@
     <string name="swipe_congratulations">¡Enhorabuena! Álbum ordenado.</string>
     <string name="swipe_check_before_delete">Revisar antes de eliminar</string>
 
-    <!-- Duraciones -->
-    <string name="duration_never">Nunca</string>
-    <string name="duration_day">%1$d d</string>
-    <string name="duration_week">%1$d sem</string>
-    <string name="duration_month">%1$d mes</string>
-    <string name="duration_year_one">1 año</string>
-    <string name="duration_years">%1$d años</string>
-
     <!-- Unidades de tamaño -->
     <string name="size_unit_gb">%1$.2f GB</string>
     <string name="size_unit_mb">%1$.2f MB</string>
@@ -165,9 +153,7 @@
 
     <!-- Común -->
     <string name="common_confirm">Confirmar</string>
-    <string name="common_confirm_sync">Confirmar (%1$d elementos)</string>
     <string name="common_cancel">Cancelar</string>
-    <string name="common_apply">Aplicar</string>
     <string name="common_retry">Reintentar</string>
     <string name="common_close">Cerrar</string>
     <string name="common_loading">Cargando…</string>
@@ -214,20 +200,9 @@
     <string name="settings_logs_clear">Borrar registros</string>
     <string name="settings_logs_empty">No hay registros disponibles por el momento.</string>
     <string name="settings_logs_copied_toast">Registros copiados al portapapeles</string>
-    <string name="settings_display_mode_fill">Rellenar</string>
-    <string name="settings_display_mode_fit">Ajustar</string>
-    <string name="settings_display_mode_pos_label">Posición del botón de modo de visualización</string>
-    <string name="settings_mute_pos_label">Posición del botón Mute</string>
-    <string name="settings_download_pos_label">Posición del botón Descargar</string>
-    <string name="settings_share_pos_label">Posición del botón Compartir</string>
-    <string name="settings_show_button">Mostrar botón</string>
-    <string name="settings_display_mode_label">Visualización predeterminada de los medios</string>
-    <string name="settings_show_swipe_buttons_label">Mostrar botones Keep/Delete</string>
-    <string name="settings_show_swipe_buttons_desc">Mostrar grandes botones rojo y verde para clasificar con un solo toque</string>
-    <string name="settings_swap_summary_archive_label">Cambiar Archivar por Resumen</string>
-    <string name="settings_swap_summary_archive_desc">Reemplaza el botón Archivar por un botón Resumen en la barra de clasificación</string>
-    <string name="settings_sync_local_deletion_label">Sincronizar eliminación local</string>
-    <string name="settings_sync_local_deletion_desc">Cuando eliminas una foto de Immich, también intenta eliminar el archivo local de tu dispositivo para evitar que se vuelva a subir.</string>
-    <string name="settings_trash_local_deletion_label">Mover a la papelera en lugar de eliminar</string>
-    <string name="settings_trash_local_deletion_desc">Si su sistema lo admite, los archivos se moverán a la papelera durante 30 días en lugar de borrarse permanentemente.</string>
+    <string name="settings_clear_cache_label">Borrar caché de la aplicación</string>
+    <string name="settings_clear_cache_desc">Eliminar archivos temporales, miniaturas e imágenes en caché</string>
+    <string name="settings_clear_cache_success">Caché borrada con éxito</string>
+    <string name="settings_clear_cache_confirm_title">¿Borrar caché?</string>
+    <string name="settings_clear_cache_confirm_msg">Esto eliminará todos los archivos temporales e imágenes en caché. Se volverán a descargar del servidor según sea necesario. ¿Desea continuar?</string>
 </resources>

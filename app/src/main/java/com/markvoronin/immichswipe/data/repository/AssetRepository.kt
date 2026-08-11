@@ -50,15 +50,19 @@ class AssetRepository(
             albumAssetDao?.clearAlbumRelations(albumId, userId)
         }
 
-        // On a besoin de l'EXIF seulement pour le tri par taille
-        val needsExif = sortOrder == SortOrder.SIZE_DESC || sortOrder == SortOrder.SIZE_ASC
+        // On a besoin de l'EXIF pour le tri par taille et pour les estimations de poids dans le résumé
+        // On l'active désormais systématiquement (sauf si on a des milliers de pages) pour garantir l'exactitude
+        // La performance est très similaire sur l'API Search d'Immich.
+        val needsExif = true
 
         // Mapping de l'ordre de tri pour l'API Immich (v3)
+        // Note: On n'utilise pas "random" sur le serveur car avec la pagination (pages de 1000),
+        // cela provoquerait des doublons et des manques entre les pages.
+        // On récupère donc une liste stable (desc) et on mélange localement par chunk.
         val apiOrder = when (sortOrder) {
             SortOrder.CHRONOLOGICAL_DESC -> "desc"
             SortOrder.CHRONOLOGICAL_ASC -> "asc"
-            SortOrder.SHUFFLED -> "random"
-            else -> "desc" // Les autres types de tri sont gérés localement ci-après
+            else -> "desc"
         }
 
         // Si on inclut les archives, on ne spécifie pas de visibilité (null) pour récupérer 
@@ -85,41 +89,55 @@ class AssetRepository(
             )
         }
 
-        fetchAssetsFlow(baseRequest, albumId, userId, needsExif).collect { emit(it) }
-    }.map { batch ->
-        // Tri local par chunk (meilleur effort pour le streaming)
-        // Note: Pour les modes chronologiques, on se fie désormais à l'ordre retourné par le serveur (global)
-        // pour éviter tout conflit avec une clé de tri locale différente.
-        val sortedAssets = when (sortOrder) {
-            SortOrder.CHRONOLOGICAL_DESC, SortOrder.CHRONOLOGICAL_ASC -> batch.assets
-            SortOrder.SHUFFLED -> {
-                // On garde un mélange local au sein du chunk pour plus de variété si le serveur n'est pas parfaitement aléatoire
-                if (shuffleSeed != null) {
-                    batch.assets.shuffled(java.util.Random(shuffleSeed))
-                } else {
-                    batch.assets.shuffled()
+        // Pour les tris non-chronologiques (Aléatoire, Taille, Type), 
+        // on doit charger l'intégralité des assets pour avoir un tri global correct.
+        val isGlobalSortNeeded = sortOrder != SortOrder.CHRONOLOGICAL_DESC && sortOrder != SortOrder.CHRONOLOGICAL_ASC
+
+        if (isGlobalSortNeeded) {
+            val allAssets = fetchAllAssets(baseRequest, albumId, userId, needsExif)
+            
+            // Tri Global
+            val globallySorted = when (sortOrder) {
+                SortOrder.SHUFFLED -> {
+                    val random = if (shuffleSeed != null) java.util.Random(shuffleSeed) else java.util.Random()
+                    allAssets.shuffled(random)
                 }
+                SortOrder.SIZE_DESC -> allAssets.sortedByDescending { it.exifInfo?.fileSizeInBytes ?: 0L }
+                SortOrder.SIZE_ASC -> allAssets.sortedBy { it.exifInfo?.fileSizeInBytes ?: 0L }
+                SortOrder.TYPE_VIDEO_FIRST -> allAssets.sortedWith(compareByDescending<Asset> { it.type == "VIDEO" }.thenByDescending { it.fileCreatedAt })
+                SortOrder.TYPE_PHOTO_FIRST -> allAssets.sortedWith(compareByDescending<Asset> { it.type == "IMAGE" }.thenByDescending { it.fileCreatedAt })
+                SortOrder.TYPE_VIDEO_FIRST_SHUFFLED -> {
+                    val random = if (shuffleSeed != null) java.util.Random(shuffleSeed) else java.util.Random()
+                    val videos = allAssets.filter { it.type == "VIDEO" }.shuffled(random)
+                    val photos = allAssets.filter { it.type != "VIDEO" }.shuffled(random)
+                    videos + photos
+                }
+                SortOrder.TYPE_PHOTO_FIRST_SHUFFLED -> {
+                    val random = if (shuffleSeed != null) java.util.Random(shuffleSeed) else java.util.Random()
+                    val photos = allAssets.filter { it.type == "IMAGE" }.shuffled(random)
+                    val others = allAssets.filter { it.type != "IMAGE" }.shuffled(random)
+                    photos + others
+                }
+                else -> allAssets // Ne devrait pas arriver
             }
-            SortOrder.SIZE_DESC -> batch.assets.sortedByDescending { it.exifInfo?.fileSizeInBytes ?: 0L }
-            SortOrder.SIZE_ASC -> batch.assets.sortedBy { it.exifInfo?.fileSizeInBytes ?: 0L }
-            SortOrder.TYPE_VIDEO_FIRST -> batch.assets.sortedWith(compareByDescending<Asset> { it.type == "VIDEO" }.thenByDescending { it.fileCreatedAt })
-            SortOrder.TYPE_PHOTO_FIRST -> batch.assets.sortedWith(compareByDescending<Asset> { it.type == "IMAGE" }.thenByDescending { it.fileCreatedAt })
-            SortOrder.TYPE_VIDEO_FIRST_SHUFFLED -> {
-                val seed = shuffleSeed ?: System.currentTimeMillis()
-                val random = java.util.Random(seed)
-                val videos = batch.assets.filter { it.type == "VIDEO" }.shuffled(random)
-                val photos = batch.assets.filter { it.type != "VIDEO" }.shuffled(random)
-                videos + photos
+
+            // Émission par paquets pour la réactivité de l'UI
+            globallySorted.chunked(100).forEach { chunk ->
+                emit(AssetBatch(chunk, globallySorted.size))
             }
-            SortOrder.TYPE_PHOTO_FIRST_SHUFFLED -> {
-                val seed = shuffleSeed ?: System.currentTimeMillis()
-                val random = java.util.Random(seed)
-                val photos = batch.assets.filter { it.type == "IMAGE" }.shuffled(random)
-                val others = batch.assets.filter { it.type != "IMAGE" }.shuffled(random)
-                photos + others
-            }
+        } else {
+            // Pour le chronologique, on garde le flux progressif (déjà trié par le serveur)
+            fetchAssetsFlow(baseRequest, albumId, userId, needsExif).collect { emit(it) }
         }
-        batch.copy(assets = sortedAssets)
+    }.map { batch ->
+        // Note: Le tri local est conservé ici comme filet de sécurité pour le mode progressif (chronologique)
+        // Pour les autres modes, ils arrivent déjà triés globalement dans le batch.
+        if (sortOrder == SortOrder.CHRONOLOGICAL_DESC || sortOrder == SortOrder.CHRONOLOGICAL_ASC) {
+            batch
+        } else {
+            // On laisse passer tel quel car le tri a déjà été fait globalement ci-dessus
+            batch
+        }
     }
 
     suspend fun getTotalAssetCount(includeArchived: Boolean = false): Int {
@@ -210,6 +228,49 @@ class AssetRepository(
     fun createLocalTrashRequest(uris: List<android.net.Uri>, trash: Boolean): android.app.PendingIntent? {
         if (uris.isEmpty() || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) return null
         return android.provider.MediaStore.createTrashRequest(context.contentResolver, uris, trash)
+    }
+
+    /**
+     * Récupère l'intégralité des assets d'un coup (nécessaire pour le tri global).
+     */
+    private suspend fun fetchAllAssets(
+        baseRequest: SearchAssetsRequest,
+        albumIdForMapping: String? = null,
+        userId: String? = null,
+        withExif: Boolean = false
+    ): List<Asset> {
+        val allAssets = mutableListOf<Asset>()
+        
+        // 1. Récupération du total
+        val statsRequest = baseRequest.copy(withExif = withExif)
+        val total = try {
+            api.getSearchStatistics(statsRequest).total
+        } catch (e: Exception) {
+            AppLogger.e("AssetRepo", "Erreur stats: ${e.message}")
+            0
+        }
+
+        if (total <= 0) return emptyList()
+
+        // 2. Chargement de toutes les pages
+        val size = 1000
+        val totalPages = (total + (size - 1)) / size
+        val fetchRequest = baseRequest.copy(size = size, withExif = withExif)
+
+        for (page in 1..totalPages) {
+            try {
+                val resp = api.searchAssets(fetchRequest.copy(page = page))
+                val items = resp.assets.items
+                if (albumIdForMapping != null && userId != null && items.isNotEmpty()) {
+                    albumAssetDao?.insertAlbumAssets(items.map { AlbumAssetEntity(albumIdForMapping, it.id, userId) })
+                }
+                allAssets.addAll(items)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("AssetRepo", "Erreur page $page: ${e.message}")
+            }
+        }
+        return allAssets
     }
 
     /**

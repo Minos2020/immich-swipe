@@ -122,10 +122,11 @@ fun SwipeScreen(
     sessionKey: String,
     resetSignal: kotlinx.coroutines.flow.SharedFlow<Unit>,
     modifier: Modifier = Modifier,
+    userQuotaBytes: Long? = null
 ) {
     val viewModel: SwipeViewModel = viewModel(
         key = "$sessionKey-${album.id}",
-        factory = SwipeViewModelFactory(assetRepository, sessionRepository, swipeDecisionRepository, album)
+        factory = SwipeViewModelFactory(assetRepository, sessionRepository, swipeDecisionRepository, album, userQuotaBytes)
     )
     
     LaunchedEffect(resetSignal) {
@@ -1830,8 +1831,10 @@ fun FullscreenViewer(
     }
 
     DisposableEffect(asset.id) {
+        @android.annotation.SuppressLint("SourceLockedOrientationActivity")
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
         onDispose {
+            @android.annotation.SuppressLint("SourceLockedOrientationActivity")
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             internalExoPlayer?.release()
         }

@@ -56,7 +56,9 @@ data class SwipeUiState(
     val showResetConfirmation: Boolean = false,
     val syncLocalDeletion: Boolean = false,
     val trashLocalDeletion: Boolean = true,
-    val localDeletePendingIntent: android.app.PendingIntent? = null
+    val localDeletePendingIntent: android.app.PendingIntent? = null,
+    val userQuotaBytes: Long? = null,
+    val albumId: String = ""
 ) {
     val currentAsset: Asset? get() = assets.getOrNull(currentIndex)
     
@@ -126,6 +128,13 @@ data class SwipeUiState(
      * Taille restante : Somme des tailles connues + estimation (moyenne) pour les inconnues.
      */
     val remainingSize: Long get() {
+        if (albumId == com.markvoronin.immichswipe.domain.model.Album.VIRTUAL_ALL_ID && userQuotaBytes != null && userQuotaBytes > 0 && !includeArchived) {
+            // Pour "Tous les médias", on utilise le quota serveur si disponible (plus précis)
+            // On soustrait les décisions déjà prises dans la session actuelle
+            val processedSize = decisions.keys.sumOf { getEffectiveSize(it) }
+            return (userQuotaBytes - processedSize).coerceAtLeast(0L)
+        }
+
         val unprocessed = assets.filter { !decisions.containsKey(it.id) }
         val avg = averageKnownSize
         return unprocessed.sumOf { asset ->
@@ -137,7 +146,12 @@ data class SwipeUiState(
     /**
      * Indique si la taille "Restant" contient des estimations.
      */
-    val isRemainingEstimated: Boolean get() = assets.any { !decisions.containsKey(it.id) && (assetSizes[it.id] ?: 0L) == 0L }
+    val isRemainingEstimated: Boolean get() {
+        if (albumId == com.markvoronin.immichswipe.domain.model.Album.VIRTUAL_ALL_ID && userQuotaBytes != null && userQuotaBytes > 0 && !includeArchived) {
+            return false // On se base sur une valeur réelle du serveur
+        }
+        return assets.any { !decisions.containsKey(it.id) && (assetSizes[it.id] ?: 0L) == 0L }
+    }
 
     // Progression (0.0f à 1.0f)
     val progress: Float get() = if (remoteTotalCount > 0) processedCount.toFloat() / remoteTotalCount else 0f

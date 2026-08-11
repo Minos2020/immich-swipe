@@ -16,8 +16,8 @@ android {
         applicationId = "com.markvoronin.immichswipe"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.4.1"
+        versionCode = 13
+        versionName = "2.4.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -69,19 +69,19 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     // Manually added
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("io.coil-kt:coil-video:2.7.0") // Pour les miniatures vidéo
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.video) // Pour les miniatures vidéo
 
     // Media3 pour la lecture vidéo
-    implementation("androidx.media3:media3-exoplayer:1.5.1")
-    implementation("androidx.media3:media3-ui:1.5.1")
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
 
     // Room
     implementation(libs.room.runtime)

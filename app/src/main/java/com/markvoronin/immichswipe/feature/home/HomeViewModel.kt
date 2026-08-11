@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import com.markvoronin.immichswipe.core.SessionManager
 import com.markvoronin.immichswipe.core.AppLogger
 import com.markvoronin.immichswipe.data.repository.SessionRepository
@@ -92,20 +94,17 @@ class HomeViewModel(
             sessionRepository.sessionConfig.collect { config ->
                 config?.let { cfg ->
                     combine(
-                        swipeDecisionRepository.getAllDecisionsForUser(cfg.userId),
+                        swipeDecisionRepository.getGlobalUniqueTreatedCount(cfg.userId),
+                        swipeDecisionRepository.getGlobalUnsyncedCount(cfg.userId),
                         swipeDecisionRepository.getAllAlbumDecisionCounts(cfg.userId)
-                    ) { allDecisions, albumStats ->
-                        val uniqueDecisions = allDecisions.distinctBy { it.assetId }
+                    ) { globalTreatedCount, globalUnsyncedCount, albumStats ->
                         val treatedMap = albumStats.associateBy { it.albumId }.mapValues { it.value.totalCount }.toMutableMap()
                         val unsyncedMap = albumStats.associateBy { it.albumId }.mapValues { it.value.unsyncedCount }.toMutableMap()
                         
                         // Injection du compte global pour "Tous les médias"
-                        treatedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.size
-                        unsyncedMap[Album.VIRTUAL_ALL_ID] = uniqueDecisions.count { !it.isSynced }
+                        treatedMap[Album.VIRTUAL_ALL_ID] = globalTreatedCount
+                        unsyncedMap[Album.VIRTUAL_ALL_ID] = globalUnsyncedCount
                         
-                        // Note: Pour les orphelins, on se base sur les décisions prises spécifiquement sur des orphelins
-                        // ou on pourra affiner le calcul plus tard.
-
                         _uiState.update { 
                             it.copy(
                                 albumTreatedCounts = treatedMap,
@@ -124,10 +123,10 @@ class HomeViewModel(
 
                 combine(
                     swipeDecisionRepository.getSyncHistory(config.userId),
-                    swipeDecisionRepository.getAllDecisionsForUser(config.userId),
+                    swipeDecisionRepository.getUnsyncedDecisionCounts(config.userId),
                     _uiState.map { it.albums },
                     _uiState.map { it.albumTreatedCounts }
-                ) { history, allDecisions, albums, treatedCounts ->
+                ) { history, unsyncedCounts, albums, treatedCounts ->
                     val now = System.currentTimeMillis()
                     val oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000L)
                     
@@ -140,8 +139,8 @@ class HomeViewModel(
                     val totalLocked = history.sumOf { it.lockedCount }
                     
                     // Pour KEEP et ARCHIVE, on fait : (Somme de l'historique) + (Nouveaux swipes pas encore synchronisés)
-                    val totalKept = history.sumOf { it.keptCount } + allDecisions.count { (it.decision == "KEEP") && !it.isSynced }
-                    val totalArchived = history.sumOf { it.archivedCount } + allDecisions.count { (it.decision == "ARCHIVE") && !it.isSynced }
+                    val totalKept = history.sumOf { it.keptCount } + unsyncedCounts.keptCount
+                    val totalArchived = history.sumOf { it.archivedCount } + unsyncedCounts.archivedCount
                     
                     // Stats hebdomadaires (basées sur l'activité réelle enregistrée)
                     val weeklyDeleted = weeklyHistory.sumOf { it.deletedCount }
@@ -189,17 +188,39 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 AppLogger.d("Home", "Chargement des données utilisateur et albums")
+                
+                // 1. Récupération du profil utilisateur (très rapide)
                 val user = userRepository.getCurrentUser()
+                _uiState.update { it.copy(user = user) }
 
-                val albums = albumRepository.refreshAlbums(_uiState.value.includeArchived)
-                AppLogger.i("Home", "Utilisateur chargé: ${user.name}, ${albums.size} albums trouvés")
-                _uiState.update { 
-                    it.copy(
-                        user = user, 
-                        albums = albums, 
-                        isLoading = false, 
-                        error = null
-                    )
+                // 2. Récupération des données en mode progressif pour la réactivité
+                val includeArchived = _uiState.value.includeArchived
+                
+                coroutineScope {
+                    // Stats globales en parallèle
+                    val allCountDeferred = async { assetRepository.getTotalAssetCount(includeArchived) }
+                    val orphansCountDeferred = async { assetRepository.getOrphansCount(includeArchived) }
+
+                    // Albums : on récupère la liste brute immédiatement
+                    val rawAlbums = albumRepository.getAlbumsRaw()
+                    
+                    AppLogger.i("Home", "Liste brute des albums récupérée: ${rawAlbums.size}")
+                    
+                    _uiState.update { 
+                        it.copy(
+                            albums = rawAlbums,
+                            allAssetsCount = allCountDeferred.await(),
+                            orphansCount = orphansCountDeferred.await(),
+                            isLoading = false, // On peut déjà afficher la liste !
+                            error = null
+                        )
+                    }
+
+                    // 3. Raffinement des compteurs d'albums si nécessaire (background)
+                    if (!includeArchived) {
+                        val refinedAlbums = albumRepository.refineAlbumCounts(rawAlbums)
+                        _uiState.update { it.copy(albums = refinedAlbums) }
+                    }
                 }
             } catch (e: Exception) {
                 AppLogger.e("Home", "Erreur lors du chargement initial", e)
@@ -220,37 +241,40 @@ class HomeViewModel(
                 // On mémorise l'heure de début
                 val startTime = System.currentTimeMillis()
                 
-                // On lance la requête
-                val albums = albumRepository.refreshAlbums(_uiState.value.includeArchived)
+                val includeArchived = _uiState.value.includeArchived
                 
-                // On récupère le nombre total de médias pour la collection virtuelle
-                val allCount = assetRepository.getTotalAssetCount(_uiState.value.includeArchived)
+                coroutineScope {
+                    val allCountDeferred = async { assetRepository.getTotalAssetCount(includeArchived) }
+                    val orphansCountDeferred = async { assetRepository.getOrphansCount(includeArchived) }
 
-                // On récupère le nombre d'orphelins directement via l'API
-                val orphansCount = assetRepository.getOrphansCount(_uiState.value.includeArchived)
+                    // Liste brute immédiate
+                    val rawAlbums = albumRepository.getAlbumsRaw()
+                    
+                    _uiState.update { 
+                        it.copy(
+                            albums = rawAlbums,
+                            allAssetsCount = allCountDeferred.await(),
+                            orphansCount = orphansCountDeferred.await()
+                        )
+                    }
 
-                // On calcule combien de temps a duré la requête
-                val duration = System.currentTimeMillis() - startTime
-                // On attend le complément pour atteindre au moins 800ms
-                if (duration < 800) {
-                    delay((800 - duration).milliseconds)
-                }
+                    // Raffinement si nécessaire
+                    if (!includeArchived) {
+                        val refinedAlbums = albumRepository.refineAlbumCounts(rawAlbums)
+                        _uiState.update { it.copy(albums = refinedAlbums) }
+                    }
 
-                _uiState.update { 
-                    it.copy(
-                        albums = albums,
-                        allAssetsCount = allCount,
-                        orphansCount = orphansCount,
-                        isRefreshing = false, 
-                        error = null
-                    ) 
+                    // On calcule combien de temps a duré la requête pour l'animation
+                    val duration = System.currentTimeMillis() - startTime
+                    if (duration < 800) {
+                        delay((800 - duration).milliseconds)
+                    }
+
+                    _uiState.update { it.copy(isRefreshing = false, error = null) }
                 }
-            } catch (_: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        isRefreshing = false
-                    ) 
-                }
+            } catch (e: Exception) {
+                AppLogger.e("Home", "Erreur refreshAlbums", e)
+                _uiState.update { it.copy(isRefreshing = false) }
             }
         }
     }
