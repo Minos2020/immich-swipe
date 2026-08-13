@@ -174,7 +174,7 @@ fun SwipeScreen(
 
                 visibleIndices.forEach { index ->
                     val asset = assets[index]
-                    val isNextCard = index > currentIndex
+                    val isNextCard = index != currentIndex
                     key(asset.id) {
                         SwipeCard(
                             asset = asset,
