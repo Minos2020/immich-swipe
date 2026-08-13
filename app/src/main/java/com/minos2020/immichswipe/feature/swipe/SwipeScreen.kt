@@ -60,6 +60,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
+import android.os.Build
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -995,10 +998,26 @@ fun SwipeCard(
                         )
                     }
                 } else {
+                    val isGif = asset.originalMimeType == "image/gif" || 
+                                asset.originalFileName?.lowercase()?.endsWith(".gif") == true ||
+                                asset.fileExtension?.lowercase() == "gif"
+                                
                     val photoRequest = remember(asset.id, baseUrl, apiKey) {
                         ImageRequest.Builder(context)
-                            .data("$baseUrl/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview")
+                            .data(
+                                if (isGif) "$baseUrl/api/assets/${asset.id}/original"
+                                else "$baseUrl/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview"
+                            )
                             .addHeader("x-api-key", apiKey)
+                            .apply {
+                                if (isGif) {
+                                    if (Build.VERSION.SDK_INT >= 28) {
+                                        decoderFactory(ImageDecoderDecoder.Factory())
+                                    } else {
+                                        decoderFactory(GifDecoder.Factory())
+                                    }
+                                }
+                            }
                             .crossfade(true)
                             .precision(coil.size.Precision.INEXACT)
                             .build()
@@ -1236,11 +1255,27 @@ fun FullscreenViewer(
                 if (asset.type == "VIDEO" && player != null) {
                     SharedVideoPlayer(player = player, isFullscreen = true)
                 } else {
+                    val isGif = asset.originalMimeType == "image/gif" || 
+                                asset.originalFileName?.lowercase()?.endsWith(".gif") == true ||
+                                asset.fileExtension?.lowercase() == "gif"
+                                
                     val baseUrlClean = SessionManager.getBaseUrl()?.removeSuffix("/")
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data("$baseUrlClean/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview")
+                            .data(
+                                if (isGif) "$baseUrlClean/api/assets/${asset.id}/original"
+                                else "$baseUrlClean/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview"
+                            )
                             .addHeader("x-api-key", SessionManager.getApiKey() ?: "")
+                            .apply {
+                                if (isGif) {
+                                    if (Build.VERSION.SDK_INT >= 28) {
+                                        decoderFactory(ImageDecoderDecoder.Factory())
+                                    } else {
+                                        decoderFactory(GifDecoder.Factory())
+                                    }
+                                }
+                            }
                             .build(),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),

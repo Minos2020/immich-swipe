@@ -17,6 +17,7 @@ data class Asset(
     val isTrashed: Boolean = false,
     val albumIds: List<String> = emptyList(),
     val originalFileName: String? = null,
+    val originalMimeType: String? = null,
     @SerializedName("extension")
     val fileExtension: String? = null,
     val exifInfo: ExifInfo? = null
