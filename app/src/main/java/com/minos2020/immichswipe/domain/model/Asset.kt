@@ -15,7 +15,7 @@ data class Asset(
     val isArchived: Boolean = false,
     val isLocked: Boolean = false,
     val isTrashed: Boolean = false,
-    val albumIds: List<String> = emptyList(),
+    val albumIds: List<String>? = emptyList(),
     val originalFileName: String? = null,
     val originalMimeType: String? = null,
     @SerializedName("extension")
@@ -26,6 +26,7 @@ data class Asset(
 data class ExifInfo(
     @SerializedName("fileSizeInByte")
     val fileSizeInBytes: Long? = null,
+    val description: String? = null,
     val projectionType: String? = null,
     val orientation: String? = null,
     val dateTimeOriginal: String? = null,

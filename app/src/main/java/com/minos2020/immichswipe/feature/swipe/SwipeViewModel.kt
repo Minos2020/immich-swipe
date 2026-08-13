@@ -574,6 +574,48 @@ class SwipeViewModel(
         _uiState.value = _uiState.value.copy(isMuted = !_uiState.value.isMuted)
     }
 
+    /**
+     * Met à jour la description d'un asset sur le serveur et localement.
+     */
+    fun updateAssetDescription(assetId: String, newDescription: String) {
+        val currentState = _uiState.value
+        val assets = currentState.assets.toMutableList()
+        val index = assets.indexOfFirst { it.id == assetId }
+        if (index == -1) return
+
+        val oldAsset = assets[index]
+        val oldDescription = oldAsset.exifInfo?.description ?: ""
+        if (oldDescription == newDescription) return
+
+        // 1. Mise à jour locale immédiate (Optimisme UI)
+        val newExif = (oldAsset.exifInfo ?: com.minos2020.immichswipe.domain.model.ExifInfo()).copy(description = newDescription)
+        val newAsset = oldAsset.copy(exifInfo = newExif)
+        assets[index] = newAsset
+        
+        // On met aussi à jour la liste maître pour que le tri reste cohérent
+        masterWorkPile = masterWorkPile.map { if (it.id == assetId) newAsset else it }
+        
+        _uiState.value = currentState.copy(assets = assets)
+
+        // 2. Appel API en arrière-plan avec vérification
+        viewModelScope.launch {
+            try {
+                assetRepository.updateAssets(listOf(assetId), description = newDescription)
+                AppLogger.d("Swipe", "Description mise à jour pour l'asset $assetId")
+            } catch (e: Exception) {
+                AppLogger.e("Swipe", "Échec de mise à jour de la description", e)
+                // Restauration de l'ancienne valeur en cas d'erreur pour garantir la cohérence
+                val revertedState = _uiState.value
+                val revertedAssets = revertedState.assets.toMutableList()
+                val rIndex = revertedAssets.indexOfFirst { it.id == assetId }
+                if (rIndex != -1) {
+                    revertedAssets[rIndex] = oldAsset
+                    _uiState.value = revertedState.copy(assets = revertedAssets)
+                }
+            }
+        }
+    }
+
     fun undo() {
         hasStartedSwiping = true
         val currentState = _uiState.value

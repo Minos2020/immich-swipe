@@ -215,6 +215,7 @@ class AssetRepository(
     suspend fun updateAssets(
         assetIds: List<String>,
         isFavorite: Boolean? = null,
+        description: String? = null,
         visibility: String? = null
     ) {
         if (assetIds.isNotEmpty()) {
@@ -222,6 +223,7 @@ class AssetRepository(
                 UpdateAssetsRequest(
                     ids = assetIds,
                     isFavorite = isFavorite,
+                    description = description,
                     visibility = visibility
                 )
             )

@@ -12,6 +12,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,10 +38,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
@@ -48,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -194,7 +201,8 @@ fun SwipeScreen(
                             isMuted = uiState.isMuted,
                             cardDisplayMode = uiState.cardDisplayMode,
                             onToggleDisplayMode = { viewModel.toggleDisplayMode() },
-                            onToggleMute = { viewModel.toggleMute() }
+                            onToggleMute = { viewModel.toggleMute() },
+                            onUpdateDescription = { id, desc -> viewModel.updateAssetDescription(id, desc) }
                         )
                     }
                 }
@@ -785,7 +793,8 @@ fun SwipeCard(
     isMuted: Boolean,
     cardDisplayMode: CardDisplayMode,
     onToggleDisplayMode: () -> Unit,
-    onToggleMute: () -> Unit
+    onToggleMute: () -> Unit,
+    onUpdateDescription: (String, String) -> Unit
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -812,7 +821,7 @@ fun SwipeCard(
     }
 
     // Hauteur du panneau de métadonnées
-    val metadataHeight = 300.dp
+    val metadataHeight = 350.dp
     val metadataHeightPx = with(density) { metadataHeight.toPx() }
 
     // On crée un Player unique pour cette carte si c'est une vidéo
@@ -1053,7 +1062,30 @@ fun SwipeCard(
                             .height(metadataHeight)
                             .graphicsLayer { translationY = metadataHeight.toPx() + offsetY.value }
                     ) {
-                        MetadataPanel(asset = asset, onClose = { scope.launch { offsetY.animateTo(0f) } })
+                        MetadataPanel(
+                            asset = asset, 
+                            onDescriptionSave = { onUpdateDescription(asset.id, it) },
+                            onScrollDown = { delta -> 
+                                scope.launch {
+                                    offsetY.snapTo((offsetY.value + delta).coerceIn(-metadataHeightPx, 0f))
+//                                    AppLogger.d("temp", "Scroll down")
+                                }
+                            },
+                            onScrollRelease = {
+                                scope.launch {
+//                                    AppLogger.d("temp", "Scroll release")
+                                    val currentY = offsetY.value
+                                    if (currentY > -metadataHeightPx * 0.95f) {
+                                        offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+//                                        AppLogger.d("temp", "Scroll release with condition true")
+                                    }
+                                }
+                            },
+                            onClose = {scope.launch {
+                                offsetY.animateTo(0f)
+//                                AppLogger.d("temp", "Close")
+                            } }
+                        )
                     }
                 }
 
@@ -1343,31 +1375,133 @@ fun IndicatorBadge(text: String, color: Color, align: Alignment, alpha: Float) {
 }
 
 @Composable
-fun MetadataPanel(asset: Asset, onClose: () -> Unit) {
+fun MetadataPanel(
+    asset: Asset, 
+    onDescriptionSave: (String) -> Unit,
+    onScrollDown: (Float) -> Unit,
+    onScrollRelease: () -> Unit,
+    onClose: () -> Unit
+) {
+    var editingDescription by remember(asset.id) { mutableStateOf(false) }
+    var descriptionText by remember(asset.id) { mutableStateOf(asset.exifInfo?.description ?: "") }
+    val scrollState = rememberScrollState()
+
+    // Connexion pour le scroll imbriqué : permet de fermer le panneau en tirant vers le bas
+    // quand on est déjà au sommet du défilement.
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Si on tire vers le bas (available.y > 0) et qu'on est au sommet (scrollState.value == 0)
+                if (available.y > 0 && scrollState.value == 0) {
+                    onScrollDown(available.y)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                onScrollRelease()
+                return super.onPostFling(consumed, available)
+            }
+        }
+    }
+
     Card(
-        modifier = Modifier.fillMaxSize(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.60f)),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)),
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+            // Poignée de fermeture
             Box(modifier = Modifier.size(40.dp, 4.dp).clip(CircleShape).background(MaterialTheme.colorScheme.outlineVariant).align(Alignment.CenterHorizontally))
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
+            
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = stringResource(R.string.swipe_metadata_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, stringResource(R.string.common_close), modifier = Modifier.size(20.dp)) }
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
-            MetadataRow(Icons.Default.Description, stringResource(R.string.swipe_metadata_file), asset.originalFileName ?: stringResource(R.string.diag_unknown))
-            MetadataRow(Icons.Default.CalendarToday, stringResource(R.string.swipe_metadata_date), asset.fileCreatedAt.substringBefore("T"))
-            val formatLabel = if (asset.fileExtension != null) "${asset.type} (.${asset.fileExtension.lowercase()})" else asset.type
-            MetadataRow(Icons.Default.Info, stringResource(R.string.swipe_metadata_format), formatLabel)
-            asset.exifInfo?.let { exif ->
-                val sizeLabel = exif.fileSizeInBytes?.let { formatSize(it) } ?: "N/A"
-                MetadataRow(Icons.Default.SdStorage, stringResource(R.string.swipe_metadata_size), sizeLabel)
-                MetadataRow(Icons.Default.AspectRatio, stringResource(R.string.swipe_metadata_resolution), "${exif.imageWidth ?: "?"} x ${exif.imageHeight ?: "?"}")
-            } ?: run {
-                MetadataRow(Icons.Default.SdStorage, stringResource(R.string.swipe_metadata_size), stringResource(R.string.swipe_loading))
-                MetadataRow(Icons.Default.AspectRatio, stringResource(R.string.swipe_metadata_resolution), stringResource(R.string.swipe_loading))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+            
+            // Contenu scrollable
+            Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
+                // --- SECTION DESCRIPTION EDITABLE ---
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.Top // Icône en haut pour les descriptions longues
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EditNote, 
+                        contentDescription = null, 
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f), 
+                        modifier = Modifier.size(22.dp).padding(top = 2.dp) // Alignée sur la 1ère ligne
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    
+                    if (editingDescription) {
+                        OutlinedTextField(
+                            value = descriptionText,
+                            onValueChange = { descriptionText = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text(stringResource(R.string.swipe_metadata_description_placeholder), fontSize = 14.sp) },
+                            textStyle = MaterialTheme.typography.bodyMedium,
+                            trailingIcon = {
+                                // Bouton de validation stylisé
+                                IconButton(
+                                    onClick = { 
+                                        onDescriptionSave(descriptionText)
+                                        editingDescription = false 
+                                    },
+                                    modifier = Modifier
+                                        .padding(4.dp)
+                                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f), CircleShape)
+                                        .size(32.dp)
+                                ) {
+                                    Icon(Icons.Default.Check, null, tint = MaterialGreen, modifier = Modifier.size(20.dp))
+                                }
+                            },
+                            maxLines = 10, // Permet de longs textes
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { editingDescription = true }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.swipe_metadata_description), 
+                                style = MaterialTheme.typography.labelSmall, 
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = descriptionText.ifBlank { stringResource(R.string.swipe_metadata_description_placeholder) },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (descriptionText.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (descriptionText.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+
+                MetadataRow(Icons.Default.Description, stringResource(R.string.swipe_metadata_file), asset.originalFileName ?: stringResource(R.string.diag_unknown))
+                MetadataRow(Icons.Default.CalendarToday, stringResource(R.string.swipe_metadata_date), asset.fileCreatedAt.substringBefore("T"))
+                val formatLabel = if (asset.fileExtension != null) "${asset.type} (.${asset.fileExtension.lowercase()})" else asset.type
+                MetadataRow(Icons.Default.Info, stringResource(R.string.swipe_metadata_format), formatLabel)
+                asset.exifInfo?.let { exif ->
+                    val sizeLabel = exif.fileSizeInBytes?.let { formatSize(it) } ?: "N/A"
+                    MetadataRow(Icons.Default.SdStorage, stringResource(R.string.swipe_metadata_size), sizeLabel)
+                    MetadataRow(Icons.Default.AspectRatio, stringResource(R.string.swipe_metadata_resolution), "${exif.imageWidth ?: "?"} x ${exif.imageHeight ?: "?"}")
+                } ?: run {
+                    MetadataRow(Icons.Default.SdStorage, stringResource(R.string.swipe_metadata_size), stringResource(R.string.swipe_loading))
+                    MetadataRow(Icons.Default.AspectRatio, stringResource(R.string.swipe_metadata_resolution), stringResource(R.string.swipe_loading))
+                }
             }
         }
     }
@@ -1377,7 +1511,7 @@ fun MetadataPanel(asset: Asset, onClose: () -> Unit) {
 fun MetadataRow(icon: ImageVector, label: String, value: String) {
     Row(modifier = Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(16.dp))
         Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, modifier = Modifier.width(80.dp))
         Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }

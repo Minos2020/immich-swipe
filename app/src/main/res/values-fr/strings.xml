@@ -142,6 +142,8 @@
     <string name="swipe_metadata_format">Format</string>
     <string name="swipe_metadata_size">Taille</string>
     <string name="swipe_metadata_resolution">Résolution</string>
+    <string name="swipe_metadata_description">Description</string>
+    <string name="swipe_metadata_description_placeholder">Ajouter une description…</string>
     <string name="swipe_loading">Chargement…</string>
     <string name="swipe_syncing">Synchronisation…</string>
     <string name="swipe_congratulations">Félicitations ! Album trié.</string>
