@@ -211,12 +211,14 @@ fun HomeScreen(
                                             label = stringResource(R.string.swipe_sort_date_desc),
                                             icon = Icons.Default.ArrowDownward,
                                             selected = swipeUiState.sortOrder == SwipeSortOrder.DATE_DESC,
+                                            caption = stringResource(R.string.swipe_sort_faster_loading),
                                             onClick = { swipeViewModel.setSortOrder(SwipeSortOrder.DATE_DESC); showSortMenu = false }
                                         )
                                         SortMenuItem(
                                             label = stringResource(R.string.swipe_sort_date_asc),
                                             icon = Icons.Default.ArrowUpward,
                                             selected = swipeUiState.sortOrder == SwipeSortOrder.DATE_ASC,
+                                            caption = stringResource(R.string.swipe_sort_faster_loading),
                                             onClick = { swipeViewModel.setSortOrder(SwipeSortOrder.DATE_ASC); showSortMenu = false }
                                         )
                                         SortMenuItem(
@@ -1540,6 +1542,7 @@ private fun SortMenuItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     selected: Boolean,
+    caption: String? = null,
     onClick: () -> Unit
 ) {
     DropdownMenuItem(
@@ -1555,13 +1558,21 @@ private fun SortMenuItem(
                     tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.width(12.dp))
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    modifier = Modifier.weight(1f),
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                    if (caption != null) {
+                        Text(
+                            text = caption,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                }
                 if (selected) {
                     Icon(
                         imageVector = Icons.Default.Check,
@@ -1573,7 +1584,7 @@ private fun SortMenuItem(
             }
         },
         onClick = onClick,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
     )
 }
 

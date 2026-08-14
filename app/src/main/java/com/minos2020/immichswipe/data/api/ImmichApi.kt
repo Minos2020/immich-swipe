@@ -76,8 +76,13 @@ data class SearchAssetsRequest(
     val visibility: String? = null, // archive, timeline, hidden, locked
     val type: String? = null, // IMAGE, VIDEO
     val withExif: Boolean = true,
-    val isFavorite: Boolean? = null
+    val isFavorite: Boolean? = null,
+    val order: AssetOrder? = null
 )
+
+enum class AssetOrder {
+    asc, desc
+}
 
 data class SearchResponse(
     val assets: SearchAssetResult

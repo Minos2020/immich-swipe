@@ -159,6 +159,7 @@
     <string name="swipe_sort_priority_none">Aucune priorité de type</string>
     <string name="swipe_sort_priority_videos">Vidéos en premier</string>
     <string name="swipe_sort_priority_photos">Photos en premier</string>
+    <string name="swipe_sort_faster_loading">Chargement plus rapide</string>
 
     <!-- Durées -->
     <string name="duration_never">Jamais</string>

@@ -1,6 +1,8 @@
 package com.minos2020.immichswipe.data.repository
 
 import com.minos2020.immichswipe.core.SessionManager
+import com.minos2020.immichswipe.core.SwipeSortOrder
+import com.minos2020.immichswipe.data.api.AssetOrder
 import com.minos2020.immichswipe.data.api.DeleteAssetsRequest
 import com.minos2020.immichswipe.data.api.ImmichApi
 import com.minos2020.immichswipe.data.api.SearchAssetsRequest
@@ -30,7 +32,12 @@ class AssetRepository(
      * Récupère les photos d'un album de manière incrémentale (Flow).
      * Émet la liste cumulative à chaque page reçue du serveur.
      */
-    fun getAssetsByAlbum(albumId: String, includeArchived: Boolean = false, userId: String? = null): Flow<List<Asset>> = channelFlow {
+    fun getAssetsByAlbum(
+        albumId: String, 
+        includeArchived: Boolean = false, 
+        userId: String? = null,
+        sortOrder: SwipeSortOrder = SwipeSortOrder.DATE_DESC
+    ): Flow<List<Asset>> = channelFlow {
         // Nettoyage systématique des anciens liens pour cet album avant de les recréer (pour cet utilisateur uniquement)
         if (userId != null) albumAssetDao?.clearAlbumRelations(albumId, userId)
 
@@ -69,10 +76,11 @@ class AssetRepository(
         }
 
         // Cas général : Albums Immich ou Collections virtuelles (Search API)
+        val serverOrder = if (sortOrder == SwipeSortOrder.DATE_ASC) AssetOrder.asc else AssetOrder.desc
         val baseRequest = when (albumId) {
-            Album.VIRTUAL_ALL_ID -> SearchAssetsRequest()
-            Album.VIRTUAL_ORPHANS_ID -> SearchAssetsRequest(isNotInAlbum = true)
-            else -> SearchAssetsRequest(albumIds = listOf(albumId))
+            Album.VIRTUAL_ALL_ID -> SearchAssetsRequest(order = serverOrder)
+            Album.VIRTUAL_ORPHANS_ID -> SearchAssetsRequest(isNotInAlbum = true, order = serverOrder)
+            else -> SearchAssetsRequest(albumIds = listOf(albumId), order = serverOrder)
         }
 
         // On définit les types de visibilité à charger

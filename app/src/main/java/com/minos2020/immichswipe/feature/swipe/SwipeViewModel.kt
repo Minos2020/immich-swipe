@@ -196,6 +196,7 @@ class SwipeViewModel(
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 hasStartedSwiping = false
                 val includeArchived = sessionRepository.includeArchived.first()
+                val sortOrder = sessionRepository.swipeSortOrder.first()
 
                 // On charge les décisions une seule fois au début pour le filtrage
                 val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
@@ -223,7 +224,10 @@ class SwipeViewModel(
 
                 // 4. On lance le chargement incrémental des assets
                 AppLogger.d("Swipe", "Chargement de l'album ${album.albumName} (ID: ${album.id})")
-                assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId).collect { allAssetsFound ->
+                
+                val isChronologicalSort = sortOrder == SwipeSortOrder.DATE_DESC || sortOrder == SwipeSortOrder.DATE_ASC
+
+                assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId, sortOrder).collect { allAssetsFound ->
                     val currentState = _uiState.value
                     
                     // Filtrage de la pile de travail (Exclut les synchronisés sauf pour l'album SKIP)
@@ -241,11 +245,9 @@ class SwipeViewModel(
                     val mergedSizes = currentState.assetSizes.toMutableMap()
 
                     workPileIds.forEach { id ->
-                        // On n'ajoute la décision de la DB que si on n'a pas encore touché à la photo cette session
                         if (!mergedDecisions.containsKey(id)) {
                             allLocalDecisions[id]?.let { mergedDecisions[id] = it }
                         }
-                        // Idem pour les tailles de fichiers
                         if (!mergedSizes.containsKey(id)) {
                             sizeMap[id]?.let { mergedSizes[id] = it }
                         }
@@ -254,12 +256,16 @@ class SwipeViewModel(
                     // Nettoyage : on ne garde que les décisions des assets présents dans la pile
                     mergedDecisions.keys.retainAll(workPileIds)
 
-                    // On applique le tri et la priorité en injectant les nouvelles données
-                    // recalculera l'index intelligemment (soit au début, soit sur la photo actuelle)
+                    // GESTION DU CHARGEMENT :
+                    // Si tri chronologique : on peut afficher dès qu'on a des assets.
+                    // Sinon : on attend la fin du flux (isLoading restera à true ici).
+                    val shouldKeepLoading = !isChronologicalSort && !hasStartedSwiping
+
                     refreshSortedWorkPile(
                         forceFirstUnprocessed = currentState.assets.isEmpty(),
                         overrideDecisions = mergedDecisions,
-                        overrideSizes = mergedSizes
+                        overrideSizes = mergedSizes,
+                        overrideIsLoading = shouldKeepLoading
                     )
                     
                     updateSummaryStats()
@@ -271,9 +277,13 @@ class SwipeViewModel(
                     }
                 }
                 
-                // SÉCURITÉ : Une fois que le flux est terminé (tout est chargé), 
-                // on force l'arrêt du loader quoi qu'il arrive.
+                // FIN DU CHARGEMENT : une fois le collect terminé, on libère tout.
                 _uiState.value = _uiState.value.copy(isLoading = false)
+                
+                // Si on était en attente (tri complexe), on recalcule l'index final maintenant qu'on a tout.
+                if (!isChronologicalSort) {
+                    refreshSortedWorkPile()
+                }
 
             } catch (e: Exception) {
                 AppLogger.e("Swipe", "Erreur lors du chargement de l'album", e)
@@ -328,7 +338,8 @@ class SwipeViewModel(
     private fun refreshSortedWorkPile(
         forceFirstUnprocessed: Boolean = false,
         overrideDecisions: Map<String, SwipeDecision>? = null,
-        overrideSizes: Map<String, Long>? = null
+        overrideSizes: Map<String, Long>? = null,
+        overrideIsLoading: Boolean? = null
     ) {
         val currentState = _uiState.value
         val decisions = overrideDecisions ?: currentState.decisions
@@ -392,7 +403,7 @@ class SwipeViewModel(
 
         // 3. Calcul de l'index de destination
         var newIndex = -1
-        var newIsLoading = currentState.isLoading
+        var newIsLoading = overrideIsLoading ?: currentState.isLoading
 
         // SCÉNARIO A : Tant que l'utilisateur n'a pas fait de VÉRITABLE swipe decision, 
         // on se "colle" à la toute première photo non traitée du nouvel ordre.
@@ -400,10 +411,10 @@ class SwipeViewModel(
             val firstUnprocessed = sorted.indexOfFirst { !decisions.containsKey(it.id) }
             if (firstUnprocessed != -1) {
                 newIndex = firstUnprocessed
-                newIsLoading = false // On a trouvé de quoi commencer !
+                newIsLoading = overrideIsLoading ?: false // On a trouvé de quoi commencer !
             } else if (sorted.isNotEmpty()) {
                 newIndex = sorted.size // Tout est trié
-                newIsLoading = false
+                newIsLoading = overrideIsLoading ?: false
             }
         } 
         
