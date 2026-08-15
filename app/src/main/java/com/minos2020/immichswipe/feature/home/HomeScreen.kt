@@ -2,7 +2,7 @@ package com.minos2020.immichswipe.feature.home
 
 import android.content.Intent
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -101,6 +101,31 @@ fun HomeScreen(
 
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
+
+    // Animation d'orbite fluide pour la découverte/indexation
+    val badgeAngle = remember { Animatable(0f) }
+
+    LaunchedEffect(uiState.isDiscovering) {
+        if (uiState.isDiscovering) {
+            // Rotation continue avec effet d'accélération/ralentissement
+            while (true) {
+                badgeAngle.animateTo(
+                    targetValue = badgeAngle.value + 360f,
+                    animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing)
+                )
+            }
+        } else {
+            // Retour fluide à la position de repos (multiple de 360°)
+            val target = kotlin.math.ceil(badgeAngle.value / 360f) * 360f
+            badgeAngle.animateTo(
+                targetValue = target,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+        }
+    }
 
     // Charger l'utilisateur et les albums au premier affichage
     LaunchedEffect(Unit) {
@@ -282,15 +307,20 @@ fun HomeScreen(
                             val userId = uiState.user?.id
                             val avatarColor = getAvatarColor(uiState.user?.avatarColor)
                             
-                            val profileModifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(36.dp)
-                                .border(1.dp, avatarColor, CircleShape)
-                                .padding(2.dp)
-                                .clip(CircleShape)
-                                .clickable { viewModel.toggleProfilePopup(true) }
+                            Box(
+                                contentAlignment = Alignment.BottomEnd,
+                                modifier = Modifier
+                                    .padding(end = 16.dp)
+                                    .size(36.dp)
+                                    .clickable { viewModel.toggleProfilePopup(true) }
+                            ) {
+                                // Avatar
+                                val profileImageModifier = Modifier
+                                    .fillMaxSize()
+                                    .border(1.dp, avatarColor, CircleShape)
+                                    .padding(2.dp)
+                                    .clip(CircleShape)
 
-                            Box(contentAlignment = Alignment.BottomEnd) {
                                 if ((userId != null) && (baseUrl != null)) {
                                     val cleanBaseUrl = baseUrl.removeSuffix("/")
                                     AsyncImage(
@@ -302,27 +332,37 @@ fun HomeScreen(
                                         contentDescription = stringResource(R.string.settings_section_account),
                                         placeholder = rememberVectorPainter(Icons.Default.AccountCircle),
                                         error = rememberVectorPainter(Icons.Default.AccountCircle),
-                                        modifier = profileModifier,
+                                        modifier = profileImageModifier,
                                         contentScale = ContentScale.Crop
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Default.AccountCircle,
                                         contentDescription = stringResource(R.string.settings_section_account),
-                                        modifier = profileModifier,
+                                        modifier = profileImageModifier,
                                         tint = MaterialTheme.colorScheme.outline
                                     )
                                 }
 
-                                // Indicateur de connexion (Badge tricolore)
-                                Surface(
+                                // Indicateur de connexion (Badge tricolore) avec animation d'orbite fluide
+                                Box(
                                     modifier = Modifier
-                                        .padding(end = 16.dp, bottom = 2.dp)
-                                        .size(10.dp)
-                                        .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape),
-                                    color = uiState.connectionStatus.level.color,
-                                    shape = CircleShape
-                                ) {}
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            rotationZ = badgeAngle.value
+                                        }
+                                ) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .offset(x = 4.dp, y = 4.dp)
+                                            .padding(end = 5.dp, bottom = 4.dp)
+                                            .size(10.dp)
+                                            .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                                        color = uiState.connectionStatus.level.color,
+                                        shape = CircleShape
+                                    ) {}
+                                }
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(

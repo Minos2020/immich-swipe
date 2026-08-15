@@ -43,7 +43,8 @@ data class HomeUiState(
     val virtualDescriptions: Map<String, String> = emptyMap(), // Descriptions localisées
     val showStatsPopup: Boolean = false, // Visibilité de la popup stats
     val stats: StatsUiData = StatsUiData(), // Données des stats
-    val collapsedCategories: Set<AlbumStatus> = emptySet() // Catégories réduites
+    val collapsedCategories: Set<AlbumStatus> = emptySet(), // Catégories réduites
+    val isDiscovering: Boolean = false // État de la tâche de découverte en arrière-plan
 ) {
     /**
      * Retourne la liste des albums filtrée par le texte de recherche.

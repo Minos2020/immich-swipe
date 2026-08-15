@@ -365,6 +365,7 @@ class HomeViewModel(
         discoveryJob?.cancel()
         discoveryJob = viewModelScope.launch {
             try {
+                _uiState.update { it.copy(isDiscovering = true) }
                 // On attend un peu que l'UI initiale soit affichée
                 delay(2000)
                 
@@ -440,6 +441,8 @@ class HomeViewModel(
                 } else {
                     AppLogger.e("Home", "Erreur lors de la découverte", e)
                 }
+            } finally {
+                _uiState.update { it.copy(isDiscovering = false) }
             }
         }
     }
