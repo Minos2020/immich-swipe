@@ -117,6 +117,11 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.showKeepDeleteButtons.collect { show ->
+                _uiState.update { it.copy(showKeepDeleteButtons = show) }
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.autoNextOnFav.collect { autoNextOnFav ->
                 _uiState.update { it.copy(autoNextOnFav = autoNextOnFav) }
             }
@@ -191,6 +196,10 @@ class SettingsViewModel(
 
     fun setShowLock(show: Boolean) {
         viewModelScope.launch { sessionRepository.saveShowLock(show) }
+    }
+
+    fun setShowKeepDelete(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowKeepDelete(show) }
     }
 
     fun setAutoNextOnFav(autoNextOnFav: Boolean) {

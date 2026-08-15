@@ -317,6 +317,12 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setShowLock(it) },
                             icon = Icons.Default.Lock
                         )
+                        SettingsToggleItemSmall(
+                            title = stringResource(R.string.settings_tri_keep_delete),
+                            checked = uiState.showKeepDeleteButtons,
+                            onCheckedChange = { viewModel.setShowKeepDelete(it) },
+                            icon = Icons.Default.Swipe // Icône évoquant le mouvement et les boutons
+                        )
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)

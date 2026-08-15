@@ -40,6 +40,7 @@ data class SwipeUiState(
     val showFavoriteButton: Boolean = true,
     val showArchiveButton: Boolean = true,
     val showLockButton: Boolean = true,
+    val showKeepDeleteButtons: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori

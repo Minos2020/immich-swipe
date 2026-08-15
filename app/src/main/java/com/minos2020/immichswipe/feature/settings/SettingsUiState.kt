@@ -33,6 +33,7 @@ data class SettingsUiState(
     val showFavoriteButton: Boolean = true,
     val showArchiveButton: Boolean = true,
     val showLockButton: Boolean = true,
+    val showKeepDeleteButtons: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val showLogsDialog: Boolean = false,

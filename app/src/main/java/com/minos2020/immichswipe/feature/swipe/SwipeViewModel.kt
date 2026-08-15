@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.last
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
@@ -103,6 +104,11 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.showLockButton.collect { show ->
                 _uiState.value = _uiState.value.copy(showLockButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showKeepDeleteButtons.collect { show ->
+                _uiState.value = _uiState.value.copy(showKeepDeleteButtons = show)
             }
         }
     }

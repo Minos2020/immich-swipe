@@ -28,6 +28,7 @@ class SessionDataStore(private val context: Context) {
         private val KEY_SHOW_FAVORITE = androidx.datastore.preferences.core.booleanPreferencesKey("show_favorite")
         private val KEY_SHOW_ARCHIVE = androidx.datastore.preferences.core.booleanPreferencesKey("show_archive")
         private val KEY_SHOW_LOCK = androidx.datastore.preferences.core.booleanPreferencesKey("show_lock")
+        private val KEY_SHOW_KEEP_DELETE = androidx.datastore.preferences.core.booleanPreferencesKey("show_keep_delete")
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
         private val KEY_INCLUDE_ARCHIVED = androidx.datastore.preferences.core.booleanPreferencesKey("include_archived")
         private val KEY_DEFAULT_CARD_DISPLAY_MODE = stringPreferencesKey("default_card_display_mode")
@@ -121,6 +122,9 @@ class SessionDataStore(private val context: Context) {
 
     fun isShowLock(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_LOCK] ?: true }
     suspend fun saveShowLock(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_LOCK] = show } }
+
+    fun isShowKeepDelete(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_KEEP_DELETE] ?: true }
+    suspend fun saveShowKeepDelete(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_KEEP_DELETE] = show } }
 
     fun isAutoNextOnFav(): Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_NEXT_ON_FAV] ?: true }
     suspend fun saveAutoNextOnFav(autoNext: Boolean) { context.dataStore.edit { it[KEY_AUTO_NEXT_ON_FAV] = autoNext } }

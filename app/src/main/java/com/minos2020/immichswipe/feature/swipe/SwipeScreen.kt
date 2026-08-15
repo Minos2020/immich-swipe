@@ -230,14 +230,16 @@ fun SwipeScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // BOUTON SUPPRIMER (DELETE)
-            FloatingActionButton(
-                onClick = { viewModel.onSwipe(SwipeDecision.DELETE) },
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                shape = CircleShape,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.swipe_delete))
+            if (uiState.showKeepDeleteButtons) {
+                FloatingActionButton(
+                    onClick = { viewModel.onSwipe(SwipeDecision.DELETE) },
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    shape = CircleShape,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.swipe_delete))
+                }
             }
 
             // UNDO
@@ -293,14 +295,16 @@ fun SwipeScreen(
             }
 
             // BOUTON GARDER (KEEP)
-            FloatingActionButton(
-                onClick = { viewModel.onSwipe(SwipeDecision.KEEP) },
-                containerColor = MaterialGreen,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(Icons.Default.Check, contentDescription = stringResource(R.string.swipe_keep))
+            if (uiState.showKeepDeleteButtons) {
+                FloatingActionButton(
+                    onClick = { viewModel.onSwipe(SwipeDecision.KEEP) },
+                    containerColor = MaterialGreen,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = stringResource(R.string.swipe_keep))
+                }
             }
         }
     }

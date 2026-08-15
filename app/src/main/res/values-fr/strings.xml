@@ -107,7 +107,7 @@
     <string name="settings_tri_archive">Bouton Archiver</string>
     <string name="settings_tri_lock">Bouton Dossier Verrouillé</string>
     <string name="settings_auto_next_label">KEEP automatique</string>
-    <string name="settings_auto_next_desc">Passer à la photo suivante et marquer automatiquement comme KEEP après avoir marqué en favori</string>
+    <string name="settings_auto_next_desc">Marquer un asset comme favori le marque également KEEP et passe au suivant.</string>
     <string name="settings_section_account">Compte</string>
     <string name="settings_pos_top_left">Haut-Gauche</string>
     <string name="settings_pos_top_right">Haut-Droite</string>

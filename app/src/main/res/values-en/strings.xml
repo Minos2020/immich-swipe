@@ -105,7 +105,7 @@
     <string name="settings_tri_archive">Archive button</string>
     <string name="settings_tri_lock">Locked Folder button</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
-    <string name="settings_auto_next_desc">Move to the next photo and automatically mark as KEEP after marking as favorite</string>
+    <string name="settings_auto_next_desc">Marking an asset as favorite also marks it as KEEP, and move to the next.</string>
     <string name="settings_section_account">Account</string>
     <string name="settings_pos_top_left">Top-Left</string>
     <string name="settings_pos_top_right">Top-Right</string>
