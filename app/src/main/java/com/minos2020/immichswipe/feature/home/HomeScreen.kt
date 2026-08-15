@@ -51,6 +51,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -71,6 +75,8 @@ import com.minos2020.immichswipe.feature.swipe.SwipeViewModelFactory
 import com.minos2020.immichswipe.ui.theme.VirtualGold
 import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.core.SwipeSortPriority
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1038,6 +1044,138 @@ fun PopupActionItem(
 }
 
 @Composable
+fun SwipeableAlbumRow(
+    album: Album,
+    treatedCount: Int,
+    unsyncedCount: Int,
+    swipedAlbumId: String?,
+    onSwiped: (String?) -> Unit,
+    onAlbumClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+    
+    // SÉCURITÉ EXCLUSIVE : Si un autre album est swipé, on se referme
+    LaunchedEffect(swipedAlbumId) {
+        if (swipedAlbumId != album.id && offsetX.value != 0f) {
+            offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy))
+        }
+    }
+
+    // Configuration dynamique des actions
+    val slotWidth = 72.dp
+    val actionCount = 2 
+    val totalActionWidth = slotWidth * actionCount
+    val totalActionWidthPx = with(LocalDensity.current) { totalActionWidth.toPx() }
+    
+    // On ajoute un "débordement" vers la gauche pour couvrir les arrondis de l'album
+    val backgroundWidth = totalActionWidth + 40.dp 
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min) 
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        // --- COUCHE FOND (Actions rapides stylisées) ---
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .width(backgroundWidth) // Plus large que la zone de snap
+                .fillMaxHeight() 
+        ) {
+            // Action 2 : VALIDATE ALL (Le slot qui s'étend sous l'album)
+            Box(
+                modifier = Modifier
+                    .weight(1f) // Prend tout le surplus vers la gauche
+                    .fillMaxHeight()
+                    .background(Color(0xFF2E7D32).copy(alpha = 0.15f))
+                    .clickable { 
+                        scope.launch { offsetX.animateTo(0f) }
+                    },
+                contentAlignment = Alignment.CenterEnd // Aligne le slot utile vers la droite (colle au bouton Reset)
+            ) {
+                // On centre l'icône uniquement dans sa zone utile de 72dp
+                Box(
+                    modifier = Modifier.width(slotWidth).fillMaxHeight(), 
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = Color(0xFF2E7D32),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            // Action 1 : RESET (Slot standard à droite)
+            Box(
+                modifier = Modifier
+                    .width(slotWidth)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.15f))
+                    .clickable { 
+                        scope.launch { offsetX.animateTo(0f) }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.RestartAlt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        // --- COUCHE DESSUS (Contenu de l'album) ---
+        // On applique l'offset et les gestes directement sur l'AlbumItem
+        AlbumItem(
+            album = album,
+            treatedCount = treatedCount,
+            unsyncedCount = unsyncedCount,
+            onClick = {
+                if (offsetX.value != 0f) {
+                    scope.launch { offsetX.animateTo(0f) }
+                } else {
+                    onAlbumClick()
+                }
+            },
+            modifier = Modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            scope.launch {
+                                // Aimantage intelligent basé sur la largeur totale des actions
+                                if (offsetX.value < -totalActionWidthPx * 0.4f) {
+                                    offsetX.animateTo(-totalActionWidthPx, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                                    onSwiped(album.id)
+                                } else {
+                                    offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
+                                    if (swipedAlbumId == album.id) onSwiped(null)
+                                }
+                            }
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            // Dès qu'on commence à tirer significativement, on prévient les autres
+                            if (offsetX.value == 0f && dragAmount < 0) onSwiped(album.id)
+
+                            // On limite la glisse pour ne pas sortir de l'écran (max 1.2x la zone d'action)
+                            val newOffset = (offsetX.value + dragAmount).coerceIn(-totalActionWidthPx * 1.2f, 0f)
+                            scope.launch { offsetX.snapTo(newOffset) }
+                        }
+                    )
+                }
+        )
+    }
+}
+
+@Composable
 fun AlbumList(
     groupedAlbums: Map<AlbumStatus, List<Album>>,
     treatedCounts: Map<String, Int>,
@@ -1049,6 +1187,8 @@ fun AlbumList(
     onAlbumClick: (Album) -> Unit,
     onToggleCategory: (AlbumStatus) -> Unit
 ) {
+    var swipedAlbumId by remember { mutableStateOf<String?>(null) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -1108,11 +1248,13 @@ fun AlbumList(
 
                         if (!isCollapsed) {
                             items(albumsInStatus, key = { it.id }) { album ->
-                                AlbumItem(
+                                SwipeableAlbumRow(
                                     album = album,
                                     treatedCount = treatedCounts[album.id] ?: 0,
                                     unsyncedCount = unsyncedChanges[album.id] ?: 0,
-                                    onClick = { onAlbumClick(album) },
+                                    swipedAlbumId = swipedAlbumId,
+                                    onSwiped = { swipedAlbumId = it },
+                                    onAlbumClick = { onAlbumClick(album) },
                                     modifier = Modifier.animateItem()
                                 )
                             }
