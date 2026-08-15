@@ -381,16 +381,23 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.outline
                         )
                         Spacer(Modifier.height(12.dp))
-                        Column(Modifier.selectableGroup()) {
-                            PlaybackOption(
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ThemeButton(
                                 text = stringResource(R.string.settings_video_pause),
+                                icon = Icons.Default.PauseCircleFilled,
                                 selected = uiState.playbackBehavior == PlaybackBehavior.PAUSE_OTHERS,
-                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.PAUSE_OTHERS) }
+                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.PAUSE_OTHERS) },
+                                modifier = Modifier.weight(1f)
                             )
-                            PlaybackOption(
+                            ThemeButton(
                                 text = stringResource(R.string.settings_video_ignore),
+                                icon = Icons.Default.ControlPointDuplicate,
                                 selected = uiState.playbackBehavior == PlaybackBehavior.IGNORE,
-                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.IGNORE) }
+                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.IGNORE) },
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
