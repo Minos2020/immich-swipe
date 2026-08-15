@@ -111,8 +111,8 @@ fun HomeScreen(
             // Rotation continue avec effet d'accélération/ralentissement
             while (true) {
                 badgeAngle.animateTo(
-                    targetValue = badgeAngle.value + 360f,
-                    animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing)
+                    targetValue = badgeAngle.value + 800,
+                    animationSpec = tween(durationMillis = 2000, easing = FastOutSlowInEasing)
                 )
             }
         } else {
