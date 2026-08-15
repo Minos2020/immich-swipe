@@ -58,9 +58,9 @@ class HomeViewModel(
         }
 
         viewModelScope.launch {
-            sessionRepository.includeArchived.collect { include ->
+            sessionRepository.includeArchived.distinctUntilChanged().collect { include ->
                 _uiState.update { it.copy(includeArchived = include) }
-                // On rafraîchit les albums si cette option change car les comptes vont changer
+                // On rafraîchit les albums uniquement si cette option a REELLEMENT changé
                 refreshAlbums()
             }
         }
