@@ -323,6 +323,31 @@ fun SwipeScreen(
     if (uiState.showSuccessAnimation) {
         SuccessAnimationOverlay()
     }
+
+    // Popup de confirmation pour le RESET de la session
+    if (uiState.showResetConfirmation) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowResetConfirmation(false) },
+            title = { Text(stringResource(R.string.swipe_reset_confirm_title)) },
+            text = { 
+                Text(stringResource(R.string.swipe_reset_confirm_msg, uiState.processedCount)) 
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.resetSessionDecisions() },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.common_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowResetConfirmation(false) }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
 }
 
 

@@ -160,6 +160,9 @@
     <string name="swipe_sort_priority_videos">Vidéos en premier</string>
     <string name="swipe_sort_priority_photos">Photos en premier</string>
     <string name="swipe_sort_faster_loading">Chargement plus rapide</string>
+    <string name="swipe_reset_button">Réinitialiser la session</string>
+    <string name="swipe_reset_confirm_title">Réinitialiser les choix ?</string>
+    <string name="swipe_reset_confirm_msg">Voulez-vous vraiment supprimer les %1$d choix de tri non synchronisés de cette session ? Cette action est irréversible.</string>
 
     <!-- Durées -->
     <string name="duration_never">Jamais</string>

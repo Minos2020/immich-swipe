@@ -208,6 +208,27 @@ fun HomeScreen(
                                 val swipeUiState by swipeViewModel.uiState.collectAsState()
                                 var showSortMenu by remember { mutableStateOf(false) }
 
+                                // Bouton Reset Session avec animation de rotation/échelle
+                                AnimatedVisibility(
+                                    visible = swipeUiState.decisions.isNotEmpty(),
+                                    enter = fadeIn() + scaleIn(initialScale = 0.5f) + expandHorizontally(),
+                                    exit = fadeOut() + scaleOut(targetScale = 0.5f) + shrinkHorizontally()
+                                ) {
+                                    val rotation by transition.animateFloat(label = "resetRotate") { state ->
+                                        if (state == EnterExitState.Visible) 0f else -180f
+                                    }
+                                    IconButton(
+                                        onClick = { swipeViewModel.setShowResetConfirmation(true) },
+                                        modifier = Modifier.graphicsLayer { rotationZ = rotation }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.RestartAlt,
+                                            contentDescription = stringResource(R.string.swipe_reset_button),
+                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+
                                 Box {
                                     IconButton(onClick = { showSortMenu = true }) {
                                         Icon(

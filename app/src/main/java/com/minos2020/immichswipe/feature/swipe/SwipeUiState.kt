@@ -36,6 +36,7 @@ data class SwipeUiState(
     val cardDisplayButtonPosition: IconPosition = IconPosition.TOP_RIGHT,
     val muteButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
     val isMuted: Boolean = false,
+    val showResetConfirmation: Boolean = false, // Popup de confirmation de reset
     val skipLifespanDays: Long = 0L,
     val showFavoriteButton: Boolean = true,
     val showArchiveButton: Boolean = true,

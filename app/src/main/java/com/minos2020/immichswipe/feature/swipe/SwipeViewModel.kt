@@ -619,6 +619,52 @@ class SwipeViewModel(
         _uiState.value = _uiState.value.copy(isMuted = !_uiState.value.isMuted)
     }
 
+    fun setShowResetConfirmation(show: Boolean) {
+        _uiState.update { it.copy(showResetConfirmation = show) }
+    }
+
+    /**
+     * Réinitialise toutes les décisions non synchronisées de la session actuelle.
+     */
+    fun resetSessionDecisions() {
+        val currentState = _uiState.value
+        val unsyncedIds = currentState.decisions.keys.toList()
+        
+        if (unsyncedIds.isEmpty()) {
+            setShowResetConfirmation(false)
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val config = sessionRepository.sessionConfig.first() ?: return@launch
+                // 1. Suppression base Room pour cet utilisateur
+                swipeDecisionRepository.removeDecisions(unsyncedIds, config.userId)
+                
+                // 2. Mise à jour UI
+                _uiState.update { state ->
+                    state.copy(
+                        decisions = emptyMap(),
+                        history = emptyList(),
+                        showResetConfirmation = false
+                    )
+                }
+                
+                // On réinitialise l'état de session si on a tout vidé
+                hasStartedSwiping = false
+                
+                // 3. Rafraîchissement du tri pour revenir à la première photo
+                refreshSortedWorkPile(forceFirstUnprocessed = true)
+                updateSummaryStats()
+                
+                AppLogger.i("Swipe", "Session réinitialisée : ${unsyncedIds.size} décisions supprimées")
+            } catch (e: Exception) {
+                AppLogger.e("Swipe", "Erreur lors du reset de la session", e)
+                setShowResetConfirmation(false)
+            }
+        }
+    }
+
     /**
      * Met à jour la description d'un asset sur le serveur et localement.
      */

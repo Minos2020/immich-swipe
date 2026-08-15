@@ -160,6 +160,9 @@
     <string name="swipe_sort_priority_videos">Videos first</string>
     <string name="swipe_sort_priority_photos">Photos first</string>
     <string name="swipe_sort_faster_loading">Faster loading</string>
+    <string name="swipe_reset_button">Reset session</string>
+    <string name="swipe_reset_confirm_title">Reset decisions?</string>
+    <string name="swipe_reset_confirm_msg">Are you sure you want to delete all %1$d unsynced swipe decisions for this session? This action cannot be undone.</string>
 
     <!-- Durations -->
     <string name="duration_never">Never</string>
