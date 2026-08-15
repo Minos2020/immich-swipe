@@ -1669,8 +1669,8 @@ fun SummaryDialog(
             }
         },
         confirmButton = {
-            // On veut confirmer la synchro si on a des décisions OU des favoris togglés
-            val hasChanges = uiState.processedCount > 0 || uiState.localFavorites.isNotEmpty()
+            // On veut confirmer la synchro si on a des décisions à appliquer
+            val hasChanges = uiState.processedCount > 0
             
             Button(
                 onClick = onApply,

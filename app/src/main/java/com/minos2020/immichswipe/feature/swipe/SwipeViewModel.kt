@@ -559,14 +559,42 @@ class SwipeViewModel(
         hasStartedSwiping = true
         val currentState = _uiState.value
         val currentAsset = currentState.currentAsset ?: return
+        val newStatus = !currentState.isFavorite(currentAsset.id)
         
+        // 1. Mise à jour locale immédiate (Optimisme UI)
         val newFavorites = currentState.localFavorites.toMutableMap()
-        val currentStatus = currentState.isFavorite(currentAsset.id)
-        newFavorites[currentAsset.id] = !currentStatus
-        
+        newFavorites[currentAsset.id] = newStatus
         _uiState.value = currentState.copy(localFavorites = newFavorites)
-        if (currentState.autoNextOnFav) {
-            onSwipe(SwipeDecision.KEEP) // Avance à la suivante
+        
+        if (currentState.autoNextOnFav && newStatus) {
+            onSwipe(SwipeDecision.KEEP) // Avance à la suivante si demandé
+        }
+
+        // 2. Synchronisation immédiate avec le serveur
+        viewModelScope.launch {
+            try {
+                assetRepository.updateAssets(listOf(currentAsset.id), isFavorite = newStatus)
+                
+                // Succès : On met à jour l'objet Asset dans nos listes pour que ce soit permanent
+                val updatedAsset = currentAsset.copy(isFavorite = newStatus)
+                masterWorkPile = masterWorkPile.map { if (it.id == currentAsset.id) updatedAsset else it }
+                
+                _uiState.update { state ->
+                    val updatedAssets = state.assets.map { if (it.id == currentAsset.id) updatedAsset else it }
+                    val finalLocalFavorites = state.localFavorites.toMutableMap()
+                    // On peut retirer l'entrée locale car l'objet Asset a maintenant la bonne valeur
+                    finalLocalFavorites.remove(currentAsset.id)
+                    state.copy(assets = updatedAssets, localFavorites = finalLocalFavorites)
+                }
+            } catch (e: Exception) {
+                AppLogger.e("Swipe", "Échec de mise à jour du favori", e)
+                // Échec : On annule l'optimisme (le retrait de la clé localFavorites ramène à la valeur du serveur)
+                _uiState.update { state ->
+                    val revertedLocalFavorites = state.localFavorites.toMutableMap()
+                    revertedLocalFavorites.remove(currentAsset.id)
+                    state.copy(localFavorites = revertedLocalFavorites)
+                }
+            }
         }
     }
 
@@ -748,10 +776,6 @@ class SwipeViewModel(
         val toLock = decisions.filter { it.value == SwipeDecision.LOCK }.keys.toList()
         val toKeep = decisions.filter { it.value == SwipeDecision.KEEP }.keys.toList()
         val toSkip = decisions.filter { it.value == SwipeDecision.SKIP }.keys.toList()
-        
-        // Gestion des favoris
-        val toFavorite = currentState.localFavorites.filter { it.value }.keys.toList()
-        val toUnfavorite = currentState.localFavorites.filter { !it.value }.keys.toList()
 
         viewModelScope.launch {
             AppLogger.i("Swipe", "Application des changements : DELETE(${toDelete.size}), ARCHIVE(${toArchive.size}), LOCK(${toLock.size}), KEEP(${toKeep.size}), SKIP(${toSkip.size})")
@@ -760,8 +784,6 @@ class SwipeViewModel(
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
                 // 1. Appels API
                 if (toDelete.isNotEmpty()) assetRepository.deleteAssets(toDelete)
-                if (toFavorite.isNotEmpty()) assetRepository.updateAssets(toFavorite, isFavorite = true)
-                if (toUnfavorite.isNotEmpty()) assetRepository.updateAssets(toUnfavorite, isFavorite = false)
                 if (toArchive.isNotEmpty()) assetRepository.updateAssets(toArchive, visibility = "archive")
                 if (toLock.isNotEmpty()) assetRepository.updateAssets(toLock, visibility = "locked")
 

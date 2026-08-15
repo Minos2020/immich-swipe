@@ -87,10 +87,6 @@ data class SwipeUiState(
     val archiveCount: Int get() = summaryCounts[SwipeDecision.ARCHIVE] ?: 0
     val lockedCount: Int get() = summaryCounts[SwipeDecision.LOCK] ?: 0
     val allKeptCount: Int get() = keptCount + archiveCount + lockedCount
-
-    // Favoris (Cas particulier car non lié à une décision de swipe unique)
-    val favoritesAddedCount: Int get() = localFavorites.count { (id, fav) -> fav && !(assets.find { it.id == id }?.isFavorite ?: false) }
-    val favoritesRemovedCount: Int get() = localFavorites.count { (id, fav) -> !fav && (assets.find { it.id == id }?.isFavorite ?: false) }
     
     // Calcul des poids (en bytes)
     val keptSize: Long get() = summarySizes[SwipeDecision.KEEP] ?: 0L
