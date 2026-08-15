@@ -99,7 +99,7 @@
     <string name="settings_tri_favorite">Botón Favorito</string>
     <string name="settings_tri_archive">Botón Archivar</string>
     <string name="settings_tri_lock">Botón Carpeta Bloqueada</string>
-    <string name="settings_auto_next_label">Avanzar automáticamente</string>
+    <string name="settings_auto_next_label">CONSERVAR automáticamente</string>
     <string name="settings_auto_next_desc">Pasar a la siguiente foto y marcar automáticamente como CONSERVAR después de marcar como favorito</string>
     <string name="settings_section_account">Cuenta</string>
     <string name="settings_pos_top_left">Arriba a la izquierda</string>
