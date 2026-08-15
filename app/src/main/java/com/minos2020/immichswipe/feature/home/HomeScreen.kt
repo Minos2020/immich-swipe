@@ -87,9 +87,10 @@ fun HomeScreen(
     val isSwipe = uiState.currentTab == HomeTab.SWIPE
 
     // On instancie le SwipeViewModel ici pour pouvoir l'utiliser dans la TopAppBar
+    // SOLUTION : On ajoute le sessionKey à la clé du ViewModel pour éviter les fuites de données entre utilisateurs
     val swipeViewModel: SwipeViewModel? = if (uiState.selectedAlbum != null) {
         viewModel(
-            key = uiState.selectedAlbum!!.id,
+            key = "${uiState.selectedAlbum!!.id}-$sessionKey",
             factory = SwipeViewModelFactory(
                 assetRepository,
                 viewModel.getSessionRepository(),
