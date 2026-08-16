@@ -16,14 +16,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -112,6 +115,7 @@ fun Context.findActivity(): Activity? = when (this) {
 @Composable
 fun SwipeScreen(
     viewModel: SwipeViewModel,
+    availableAlbums: List<Album> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -286,6 +290,18 @@ fun SwipeScreen(
                 }
             }
 
+            // AJOUTER À UN ALBUM
+            IconButton(
+                onClick = { viewModel.toggleAlbumSelection(true, availableAlbums) },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LibraryAdd,
+                    contentDescription = "Ajouter à un album",
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+
             // SKIP
             IconButton(
                 onClick = { viewModel.onSwipe(SwipeDecision.SKIP) },
@@ -346,6 +362,18 @@ fun SwipeScreen(
                 }
             },
             shape = RoundedCornerShape(24.dp)
+        )
+    }
+
+    // Popup de sélection d'album
+    if (uiState.showAlbumSelection) {
+        AlbumSelectionPopup(
+            availableAlbums = uiState.availableAlbums,
+            searchQuery = uiState.albumSearchQuery,
+            onSearchQueryChange = { viewModel.setAlbumSearchQuery(it) },
+            onAlbumSelected = { viewModel.addCurrentAssetToAlbum(it) },
+            onDismiss = { viewModel.toggleAlbumSelection(false) },
+            isAdding = uiState.isAddingToAlbum
         )
     }
 }
@@ -2151,5 +2179,186 @@ fun ZoomableBox(
             },
         content = content
     )
+}
+
+@Composable
+fun AlbumSelectionPopup(
+    availableAlbums: List<Album>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onAlbumSelected: (Album) -> Unit,
+    onDismiss: () -> Unit,
+    isAdding: Boolean
+) {
+    val filteredAlbums = remember(availableAlbums, searchQuery) {
+        if (searchQuery.isBlank()) availableAlbums
+        else availableAlbums.filter { it.albumName.contains(searchQuery, ignoreCase = true) }
+    }
+
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { isVisible = true }
+
+    // Déclenchement automatique de la fermeture à la fin de l'ajout réussi
+    var wasAdding by remember { mutableStateOf(false) }
+    LaunchedEffect(isAdding) {
+        if (isAdding) wasAdding = true
+        if (!isAdding && wasAdding) {
+            isVisible = false
+        }
+    }
+
+    // On observe l'état isVisible pour fermer réellement le dialogue après l'anim
+    if (!isVisible) {
+        LaunchedEffect(Unit) {
+            delay(250) // Durée de l'animation de sortie
+            onDismiss()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = { isVisible = false },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isVisible,
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
+            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(targetScale = 0.8f)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.7f),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Ajouter à un album",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Rechercher un album...", fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { onSearchQueryChange("") }) {
+                                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_cancel), modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    if (isAdding) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredAlbums, key = { it.id }) { album ->
+                                AlbumSelectionItem(
+                                    album = album, 
+                                    onClick = { onAlbumSelected(album) },
+                                    modifier = Modifier.animateItem()
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    TextButton(
+                        onClick = { isVisible = false },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AlbumSelectionItem(
+    album: Album,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/")
+    val apiKey = SessionManager.getApiKey() ?: ""
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val thumbnailRequest = remember(album.albumThumbnailAssetId, baseUrl, apiKey) {
+                ImageRequest.Builder(context)
+                    .data(
+                        if (album.albumThumbnailAssetId != null)
+                            "$baseUrl/api/assets/${album.albumThumbnailAssetId}/thumbnail?format=WEBP"
+                        else R.drawable.ic_launcher_icon_foreground // Placeholder if no thumbnail
+                    )
+                    .addHeader("x-api-key", apiKey)
+                    .crossfade(true)
+                    .build()
+            }
+
+            AsyncImage(
+                model = thumbnailRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = album.albumName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${album.assetCount} médias",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }
 

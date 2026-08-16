@@ -43,7 +43,17 @@ interface ImmichApi {
 
     @PUT("api/assets")
     suspend fun updateAssets(@Body request: UpdateAssetsRequest)
+
+    @PUT("api/albums/{id}/assets")
+    suspend fun addAssetsToAlbum(@Path("id") albumId: String, @Body request: AddAssetsToAlbumRequest)
 }
+
+/**
+ * Corps de la requête pour ajouter des assets à un album.
+ */
+data class AddAssetsToAlbumRequest(
+    val ids: List<String>
+)
 
 /**
  * Corps de la requête pour mettre à jour des assets.

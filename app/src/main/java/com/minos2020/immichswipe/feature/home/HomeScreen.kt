@@ -78,6 +78,7 @@ import com.minos2020.immichswipe.feature.swipe.SwipeViewModelFactory
 import com.minos2020.immichswipe.ui.theme.VirtualGold
 import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.core.SwipeSortPriority
+import com.minos2020.immichswipe.data.repository.AlbumRepository
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -87,6 +88,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     assetRepository: AssetRepository,
     swipeDecisionRepository: SwipeDecisionRepository,
+    albumRepository: AlbumRepository,
     sessionKey: String,
     modifier: Modifier = Modifier,
 ) {
@@ -97,14 +99,17 @@ fun HomeScreen(
 
     // On instancie le SwipeViewModel ici pour pouvoir l'utiliser dans la TopAppBar
     // SOLUTION : On ajoute le sessionKey à la clé du ViewModel pour éviter les fuites de données entre utilisateurs
+    // On ajoute également l'assetCount à la clé pour forcer le rafraîchissement si le contenu de l'album change
     val swipeViewModel: SwipeViewModel? = if (uiState.selectedAlbum != null) {
+        val album = uiState.selectedAlbum!!
         viewModel(
-            key = "${uiState.selectedAlbum!!.id}-$sessionKey",
+            key = "${album.id}-${album.assetCount}-$sessionKey",
             factory = SwipeViewModelFactory(
                 assetRepository,
                 viewModel.getSessionRepository(),
                 swipeDecisionRepository,
-                uiState.selectedAlbum!!
+                albumRepository,
+                album
             )
         )
     } else null
@@ -520,7 +525,8 @@ fun HomeScreen(
                     HomeTab.SWIPE -> {
                         if (uiState.selectedAlbum != null && swipeViewModel != null) {
                             SwipeScreen(
-                                viewModel = swipeViewModel
+                                viewModel = swipeViewModel,
+                                availableAlbums = uiState.albums
                             )
                         } else {
                             SwipePlaceholder(selectedAlbum = null)

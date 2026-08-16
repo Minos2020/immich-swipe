@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
                                         ),
                                         assetRepository = assetRepository,
                                         swipeDecisionRepository = swipeDecisionRepository,
+                                        albumRepository = albumRepository,
                                         sessionKey = sessionKey
                                     )
                                 } else {

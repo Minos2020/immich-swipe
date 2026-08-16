@@ -10,6 +10,7 @@ import com.minos2020.immichswipe.core.SwipeSortPriority
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.local.entity.SwipeDecisionEntity
+import com.minos2020.immichswipe.data.repository.AlbumRepository
 import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,7 @@ class SwipeViewModel(
     private val assetRepository: AssetRepository,
     private val sessionRepository: SessionRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository,
+    private val albumRepository: AlbumRepository,
     private val album: Album
 ) : ViewModel() {
 
@@ -977,5 +979,60 @@ class SwipeViewModel(
         }
         
         return -1
+    }
+
+    fun setAlbumSearchQuery(query: String) {
+        _uiState.update { it.copy(albumSearchQuery = query) }
+    }
+
+    fun toggleAlbumSelection(show: Boolean, externalAlbums: List<Album>? = null) {
+        if (show) {
+            if (externalAlbums != null) {
+                val sortedAlbums = externalAlbums.sortedByDescending { it.updatedAt ?: "" }
+                _uiState.update { it.copy(availableAlbums = sortedAlbums, showAlbumSelection = true, albumSearchQuery = "") }
+            } else if (_uiState.value.availableAlbums.isEmpty()) {
+                loadAvailableAlbums()
+                _uiState.update { it.copy(showAlbumSelection = true, albumSearchQuery = "") }
+            } else {
+                _uiState.update { it.copy(showAlbumSelection = true, albumSearchQuery = "") }
+            }
+        } else {
+            _uiState.update { it.copy(showAlbumSelection = false) }
+        }
+    }
+
+    private fun loadAvailableAlbums() {
+        viewModelScope.launch {
+            try {
+                val albums = albumRepository.refreshAlbums(includeArchived = _uiState.value.includeArchived)
+                // Tri par updatedAt desc (plus récents en premier)
+                val sortedAlbums = albums.sortedByDescending { it.updatedAt ?: "" }
+                _uiState.update { it.copy(availableAlbums = sortedAlbums) }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("Swipe", "Erreur lors du chargement des albums", e)
+            }
+        }
+    }
+
+    fun addCurrentAssetToAlbum(targetAlbum: Album) {
+        val asset = _uiState.value.currentAsset ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAddingToAlbum = true) }
+            try {
+                val config = sessionRepository.sessionConfig.first()
+                albumRepository.addAssetsToAlbum(targetAlbum.id, listOf(asset.id), config?.userId)
+                AppLogger.i("Swipe", "Asset ajouté à l'album ${targetAlbum.albumName}")
+                
+                // On rafraîchit la liste pour mettre à jour updatedAt et les comptes
+                loadAvailableAlbums()
+
+                _uiState.update { it.copy(isAddingToAlbum = false) }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("Swipe", "Erreur lors de l'ajout à l'album", e)
+                _uiState.update { it.copy(isAddingToAlbum = false, error = "Erreur lors de l'ajout à l'album") }
+            }
+        }
     }
 }

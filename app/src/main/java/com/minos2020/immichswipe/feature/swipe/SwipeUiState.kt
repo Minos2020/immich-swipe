@@ -1,6 +1,7 @@
 package com.minos2020.immichswipe.feature.swipe
 
 import com.minos2020.immichswipe.domain.model.Asset
+import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.CardDisplayMode
@@ -48,6 +49,12 @@ data class SwipeUiState(
     val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
     val sortOrder: SwipeSortOrder = SwipeSortOrder.DATE_DESC,
     val sortPriority: SwipeSortPriority = SwipeSortPriority.NONE,
+
+    // États pour l'ajout à un album
+    val showAlbumSelection: Boolean = false,
+    val availableAlbums: List<Album> = emptyList(),
+    val albumSearchQuery: String = "",
+    val isAddingToAlbum: Boolean = false,
 
     // Statistiques pré-calculées pour le Review Screen (Performance)
     val summaryDeletedAssets: List<Asset> = emptyList(),

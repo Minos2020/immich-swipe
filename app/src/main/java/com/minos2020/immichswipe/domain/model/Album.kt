@@ -8,7 +8,8 @@ data class Album(
     val albumName: String,
     val description: String? = null,
     val assetCount: Int,
-    val albumThumbnailAssetId: String?
+    val albumThumbnailAssetId: String?,
+    val updatedAt: String? = null
 ) {
     companion object {
         const val VIRTUAL_SKIPPED_ID = "virtual_skipped_synced"
