@@ -213,6 +213,30 @@ class AssetRepository(
     }
 
     /**
+     * Télécharge l'asset original dans un fichier temporaire pour le partage.
+     */
+    suspend fun downloadAssetForSharing(context: android.content.Context, asset: Asset): java.io.File? {
+        val response = api.downloadAsset(asset.id)
+        if (!response.isSuccessful) return null
+
+        val body = response.body() ?: return null
+        val fileName = asset.originalFileName ?: "${asset.id}.${asset.fileExtension ?: "bin"}"
+        
+        val sharedDir = java.io.File(context.cacheDir, "shared_assets")
+        if (!sharedDir.exists()) sharedDir.mkdirs()
+        
+        val file = java.io.File(sharedDir, fileName)
+        
+        body.byteStream().use { input ->
+            file.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        
+        return file
+    }
+
+    /**
      * Reconstruit la collection virtuelle "Tous les médias" à partir des IDs
      * trouvés dans les autres albums et orphelins.
      */

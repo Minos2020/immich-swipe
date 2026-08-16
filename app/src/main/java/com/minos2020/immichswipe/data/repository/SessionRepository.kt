@@ -92,6 +92,10 @@ class SessionRepository(context: Context) {
         it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
     }
 
+    val shareButtonPosition: Flow<IconPosition> = dataStore.getShareIconPosition().map {
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_LEFT } } ?: IconPosition.TOP_LEFT
+    }
+
     /**
      * Expose la préférence du mode d'affichage par défaut.
      */
@@ -107,6 +111,7 @@ class SessionRepository(context: Context) {
     val showLockButton: Flow<Boolean> = dataStore.isShowLock()
     val showKeepDeleteButtons: Flow<Boolean> = dataStore.isShowKeepDelete()
     val showAddToAlbumButton: Flow<Boolean> = dataStore.isShowAddToAlbum()
+    val showShareButton: Flow<Boolean> = dataStore.isShowShare()
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
 
@@ -188,6 +193,10 @@ class SessionRepository(context: Context) {
         dataStore.saveMuteIconPosition(pos.name)
     }
 
+    suspend fun saveShareButtonPosition(pos: IconPosition) {
+        dataStore.saveShareIconPosition(pos.name)
+    }
+
     /**
      * Sauvegarde le mode d'affichage par défaut.
      */
@@ -207,6 +216,7 @@ class SessionRepository(context: Context) {
     suspend fun saveShowLock(show: Boolean) { dataStore.saveShowLock(show) }
     suspend fun saveShowKeepDelete(show: Boolean) { dataStore.saveShowKeepDelete(show) }
     suspend fun saveShowAddToAlbum(show: Boolean) { dataStore.saveShowAddToAlbum(show) }
+    suspend fun saveShowShare(show: Boolean) { dataStore.saveShowShare(show) }
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
 

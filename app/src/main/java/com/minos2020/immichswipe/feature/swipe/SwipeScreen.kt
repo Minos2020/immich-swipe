@@ -119,6 +119,7 @@ fun SwipeScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val localContext = LocalContext.current
     
     // On observe la santé globale de la connexion
     val connectionStatus by SessionManager.connectionStatus.collectAsState()
@@ -202,10 +203,13 @@ fun SwipeScreen(
                             immichButtonPosition = uiState.immichButtonPosition,
                             cardDisplayButtonPosition = uiState.cardDisplayButtonPosition,
                             muteButtonPosition = uiState.muteButtonPosition,
+                            shareButtonPosition = uiState.shareButtonPosition,
                             isMuted = uiState.isMuted,
                             cardDisplayMode = uiState.cardDisplayMode,
+                            showShareButton = uiState.showShareButton,
                             onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                             onToggleMute = { viewModel.toggleMute() },
+                            onShare = { viewModel.shareCurrentAsset(localContext) },
                             onUpdateDescription = { id, desc -> viewModel.updateAssetDescription(id, desc) }
                         )
                     }
@@ -849,10 +853,13 @@ fun SwipeCard(
     immichButtonPosition: IconPosition,
     cardDisplayButtonPosition: IconPosition,
     muteButtonPosition: IconPosition,
+    shareButtonPosition: IconPosition,
     isMuted: Boolean,
     cardDisplayMode: CardDisplayMode,
+    showShareButton: Boolean,
     onToggleDisplayMode: () -> Unit,
     onToggleMute: () -> Unit,
+    onShare: () -> Unit,
     onUpdateDescription: (String, String) -> Unit
 ) {
     val context = LocalContext.current
@@ -1166,7 +1173,8 @@ fun SwipeCard(
                         fullscreenButtonPosition, 
                         immichButtonPosition, 
                         cardDisplayButtonPosition,
-                        muteButtonPosition
+                        muteButtonPosition,
+                        shareButtonPosition
                     ).distinct()
                     distinctPositions.forEach { position ->
                         Column(
@@ -1201,6 +1209,13 @@ fun SwipeCard(
                                     icon = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
                                     contentDescription = stringResource(R.string.swipe_toggle_mute),
                                     onClick = onToggleMute
+                                )
+                            }
+                            if (shareButtonPosition == position && showShareButton) {
+                                SwipeActionIconButton(
+                                    icon = Icons.Default.Share,
+                                    contentDescription = "Partager le média",
+                                    onClick = onShare
                                 )
                             }
                             if (immichButtonPosition == position) {

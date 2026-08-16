@@ -324,6 +324,12 @@ fun SettingsScreen(
                             icon = Icons.Default.LibraryAdd
                         )
                         SettingsToggleItemSmall(
+                            title = stringResource(R.string.settings_tri_share),
+                            checked = uiState.showShareButton,
+                            onCheckedChange = { viewModel.setShowShare(it) },
+                            icon = Icons.Default.Share
+                        )
+                        SettingsToggleItemSmall(
                             title = stringResource(R.string.settings_tri_keep_delete),
                             checked = uiState.showKeepDeleteButtons,
                             onCheckedChange = { viewModel.setShowKeepDelete(it) },
@@ -376,6 +382,33 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_mute_pos_label),
                         selectedPosition = uiState.muteButtonPosition,
                         onPositionSelected = { viewModel.setMuteButtonPosition(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+                    // Position icône Partage (Nouveau)
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_share_pos_label),
+                        selectedPosition = uiState.shareButtonPosition,
+                        onPositionSelected = { viewModel.setShareButtonPosition(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+                    // Position icône Partage (Nouveau)
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_share_pos_label),
+                        selectedPosition = uiState.shareButtonPosition,
+                        onPositionSelected = { viewModel.setShareButtonPosition(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+                    // Position icône Partage (Nouveau)
+                    IconPositionPicker(
+                        title = stringResource(R.string.settings_share_pos_label),
+                        selectedPosition = uiState.shareButtonPosition,
+                        onPositionSelected = { viewModel.setShareButtonPosition(it) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)

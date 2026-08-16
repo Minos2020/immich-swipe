@@ -34,6 +34,10 @@ interface ImmichApi {
     @GET("api/assets/{id}")
     suspend fun getAssetDetail(@Path("id") assetId: String): Asset
 
+    @GET("api/assets/{id}/original")
+    @retrofit2.http.Streaming
+    suspend fun downloadAsset(@Path("id") assetId: String): retrofit2.Response<okhttp3.ResponseBody>
+
     /**
      * Supprime une liste d'assets (les déplace vers la corbeille).
      * Retourne 204 No Content en cas de succès.

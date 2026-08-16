@@ -35,11 +35,13 @@ data class SettingsUiState(
     val showLockButton: Boolean = true,
     val showKeepDeleteButtons: Boolean = true,
     val showAddToAlbumButton: Boolean = true,
+    val showShareButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val showLogsDialog: Boolean = false,
     val showClearLogsConfirmation: Boolean = false,
     val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
+    val shareButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     
     // Database actions
     val pendingDatabaseAction: DatabaseAction? = null,

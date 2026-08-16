@@ -123,6 +123,11 @@ class SwipeViewModel(
                 _uiState.value = _uiState.value.copy(showAddToAlbumButton = show)
             }
         }
+        viewModelScope.launch {
+            sessionRepository.showShareButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showShareButton = show)
+            }
+        }
     }
 
     private fun observeSkipLifespan() {
@@ -191,6 +196,11 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.muteButtonPosition.collect { pos ->
                 _uiState.value = _uiState.value.copy(muteButtonPosition = pos)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.shareButtonPosition.collect { pos ->
+                _uiState.value = _uiState.value.copy(shareButtonPosition = pos)
             }
         }
     }
@@ -1037,6 +1047,38 @@ class SwipeViewModel(
                 if (e is CancellationException) throw e
                 AppLogger.e("Swipe", "Erreur lors de l'ajout à l'album", e)
                 _uiState.update { it.copy(isAddingToAlbum = false, error = "Erreur lors de l'ajout à l'album") }
+            }
+        }
+    }
+
+    fun shareCurrentAsset(context: android.content.Context) {
+        val asset = _uiState.value.currentAsset ?: return
+        viewModelScope.launch {
+            try {
+                val file = assetRepository.downloadAssetForSharing(context, asset) ?: return@launch
+                
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                
+                val mimeType = context.contentResolver.getType(uri) ?: "image/*"
+                
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = mimeType
+                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    // EXTRA_TITLE permet d'afficher un titre propre dans l'aperçu du sélecteur
+                    putExtra(android.content.Intent.EXTRA_TITLE, asset.originalFileName ?: "Partager le média")
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    // Ajout du ClipData pour activer l'aperçu visuel dans le sélecteur Android (API 29+)
+                    clipData = android.content.ClipData.newRawUri(null, uri)
+                }
+                
+                val chooser = android.content.Intent.createChooser(intent, asset.originalFileName ?: "Partager le média")
+                context.startActivity(chooser)
+            } catch (e: Exception) {
+                AppLogger.e("Swipe", "Erreur lors du partage", e)
             }
         }
     }

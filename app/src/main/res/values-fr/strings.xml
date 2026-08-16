@@ -111,6 +111,7 @@
     <string name="settings_tri_archive">Bouton Archiver</string>
     <string name="settings_tri_lock">Bouton \"Dossier verrouillé\"</string>
     <string name="settings_tri_add_to_album">Bouton \"Ajouter à un album\"</string>
+    <string name="settings_tri_share">Bouton Partager</string>
     <string name="settings_tri_keep_delete">Boutons \"KEEP\" et \"DELETE\"</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Marquer automatiquement comme KEEP après avoir marqué en favori, et passer à la photo suivante</string>
@@ -124,6 +125,7 @@
     <string name="settings_display_mode_fit">Ajuster</string>
     <string name="settings_display_mode_pos_label">Position du bouton Mode d\'affichage</string>
     <string name="settings_mute_pos_label">Position du bouton Mute (vidéos)</string>
+    <string name="settings_share_pos_label">Position du bouton Partager</string>
     <string name="swipe_toggle_display">Changer le mode d\'affichage</string>
 
     <!-- Écran Swipe -->

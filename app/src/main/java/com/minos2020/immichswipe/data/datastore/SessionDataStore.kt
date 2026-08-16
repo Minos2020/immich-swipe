@@ -23,6 +23,7 @@ class SessionDataStore(private val context: Context) {
         private val KEY_IMMICH_ICON_POS = stringPreferencesKey("immich_icon_pos")
         private val KEY_CARD_DISPLAY_ICON_POS = stringPreferencesKey("card_display_icon_pos")
         private val KEY_MUTE_ICON_POS = stringPreferencesKey("mute_icon_pos")
+        private val KEY_SHARE_ICON_POS = stringPreferencesKey("share_icon_pos")
         private val KEY_DEFAULT_LAYOUT_GRID = androidx.datastore.preferences.core.booleanPreferencesKey("default_layout_grid")
         private val KEY_SKIP_LIFESPAN = androidx.datastore.preferences.core.longPreferencesKey("skip_lifespan")
         private val KEY_SHOW_FAVORITE = androidx.datastore.preferences.core.booleanPreferencesKey("show_favorite")
@@ -30,6 +31,7 @@ class SessionDataStore(private val context: Context) {
         private val KEY_SHOW_LOCK = androidx.datastore.preferences.core.booleanPreferencesKey("show_lock")
         private val KEY_SHOW_KEEP_DELETE = androidx.datastore.preferences.core.booleanPreferencesKey("show_keep_delete")
         private val KEY_SHOW_ADD_TO_ALBUM = androidx.datastore.preferences.core.booleanPreferencesKey("show_add_to_album")
+        private val KEY_SHOW_SHARE = androidx.datastore.preferences.core.booleanPreferencesKey("show_share")
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
         private val KEY_INCLUDE_ARCHIVED = androidx.datastore.preferences.core.booleanPreferencesKey("include_archived")
         private val KEY_DEFAULT_CARD_DISPLAY_MODE = stringPreferencesKey("default_card_display_mode")
@@ -103,6 +105,12 @@ class SessionDataStore(private val context: Context) {
         context.dataStore.edit { it[KEY_MUTE_ICON_POS] = pos }
     }
 
+    fun getShareIconPosition(): Flow<String?> = context.dataStore.data.map { it[KEY_SHARE_ICON_POS] }
+
+    suspend fun saveShareIconPosition(pos: String) {
+        context.dataStore.edit { it[KEY_SHARE_ICON_POS] = pos }
+    }
+
     fun isDefaultLayoutGrid(): Flow<Boolean> = context.dataStore.data.map { it[KEY_DEFAULT_LAYOUT_GRID] ?: false }
 
     suspend fun saveDefaultLayoutGrid(isGrid: Boolean) {
@@ -129,6 +137,9 @@ class SessionDataStore(private val context: Context) {
 
     fun isShowAddToAlbum(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_ADD_TO_ALBUM] ?: true }
     suspend fun saveShowAddToAlbum(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_ADD_TO_ALBUM] = show } }
+
+    fun isShowShare(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_SHARE] ?: true }
+    suspend fun saveShowShare(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_SHARE] = show } }
 
     fun isAutoNextOnFav(): Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_NEXT_ON_FAV] ?: false }
     suspend fun saveAutoNextOnFav(autoNext: Boolean) { context.dataStore.edit { it[KEY_AUTO_NEXT_ON_FAV] = autoNext } }

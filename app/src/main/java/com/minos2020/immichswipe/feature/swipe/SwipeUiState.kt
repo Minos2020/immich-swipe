@@ -44,12 +44,14 @@ data class SwipeUiState(
     val showLockButton: Boolean = true,
     val showKeepDeleteButtons: Boolean = true,
     val showAddToAlbumButton: Boolean = true,
+    val showShareButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
     val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
     val sortOrder: SwipeSortOrder = SwipeSortOrder.DATE_DESC,
     val sortPriority: SwipeSortPriority = SwipeSortPriority.NONE,
+    val shareButtonPosition: IconPosition = IconPosition.TOP_LEFT,
 
     // États pour l'ajout à un album
     val showAlbumSelection: Boolean = false,

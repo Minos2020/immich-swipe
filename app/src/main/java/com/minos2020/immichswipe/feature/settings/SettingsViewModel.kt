@@ -92,6 +92,11 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.shareButtonPosition.collect { pos ->
+                _uiState.update { it.copy(shareButtonPosition = pos) }
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.defaultLayoutGrid.collect { isGrid ->
                 _uiState.update { it.copy(isDefaultLayoutGrid = isGrid) }
             }
@@ -124,6 +129,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             sessionRepository.showAddToAlbumButton.collect { show ->
                 _uiState.update { it.copy(showAddToAlbumButton = show) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showShareButton.collect { show ->
+                _uiState.update { it.copy(showShareButton = show) }
             }
         }
         viewModelScope.launch {
@@ -185,6 +195,12 @@ class SettingsViewModel(
         }
     }
 
+    fun setShareButtonPosition(pos: IconPosition) {
+        viewModelScope.launch {
+            sessionRepository.saveShareButtonPosition(pos)
+        }
+    }
+
     fun setDefaultLayoutGrid(isGrid: Boolean) {
         viewModelScope.launch {
             sessionRepository.saveDefaultLayoutGrid(isGrid)
@@ -209,6 +225,10 @@ class SettingsViewModel(
 
     fun setShowAddToAlbum(show: Boolean) {
         viewModelScope.launch { sessionRepository.saveShowAddToAlbum(show) }
+    }
+
+    fun setShowShare(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowShare(show) }
     }
 
     fun setAutoNextOnFav(autoNextOnFav: Boolean) {
