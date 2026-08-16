@@ -97,6 +97,8 @@
     <string name="settings_skip_warning_title">Modify SKIP duration</string>
     <string name="settings_skip_warning_msg">By changing this duration, some photos you previously \'skipped\' might immediately reappear in your sorting queue if they exceed the new limit.</string>
     <string name="settings_section_interaction">Interaction</string>
+    <string name="settings_interaction_sorting_title">Sorting actions</string>
+    <string name="settings_interaction_card_title">Swipe card actions</string>
     <string name="settings_swipe_invert_label">Invert swipe direction</string>
     <string name="settings_swipe_invert_desc">Left to keep, right to delete</string>
     <string name="settings_fullscreen_pos_label">Fullscreen button position</string>
@@ -110,7 +112,11 @@
     <string name="settings_tri_archive">Archive button</string>
     <string name="settings_tri_lock">Locked Folder button</string>
     <string name="settings_tri_add_to_album">\"Add to album\" button</string>
-    <string name="settings_tri_share">Share button</string>
+    <string name="settings_tri_share">\"Share\" button</string>
+    <string name="settings_card_fullscreen">Fullscreen button</string>
+    <string name="settings_card_immich">\"Open in Immich\" button</string>
+    <string name="settings_card_display_mode">Display mode button</string>
+    <string name="settings_card_mute">Mute button (videos)</string>
     <string name="settings_tri_keep_delete">KEEP and DELETE buttons</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Move to the next photo and automatically mark as KEEP after marking as favorite</string>

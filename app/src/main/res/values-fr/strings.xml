@@ -98,6 +98,8 @@
     <string name="settings_skip_warning_title">Modifier la durée des SKIP</string>
     <string name="settings_skip_warning_msg">En changeant cette durée, certaines photos que vous aviez \'passées\' pourraient réapparaître immédiatement dans votre pile de tri si elles dépassent le nouveau délai.</string>
     <string name="settings_section_interaction">Interaction</string>
+    <string name="settings_interaction_sorting_title">Actions de tri</string>
+    <string name="settings_interaction_card_title">Actions sur les cartes</string>
     <string name="settings_swipe_invert_label">Inverser le sens du swipe</string>
     <string name="settings_swipe_invert_desc">A gauche pour garder, à droite pour supprimer</string>
     <string name="settings_fullscreen_pos_label">Position du bouton Plein Écran</string>
@@ -111,7 +113,11 @@
     <string name="settings_tri_archive">Bouton Archiver</string>
     <string name="settings_tri_lock">Bouton \"Dossier verrouillé\"</string>
     <string name="settings_tri_add_to_album">Bouton \"Ajouter à un album\"</string>
-    <string name="settings_tri_share">Bouton Partager</string>
+    <string name="settings_tri_share">Bouton \"Partager\"</string>
+    <string name="settings_card_fullscreen">Bouton Plein Écran</string>
+    <string name="settings_card_immich">Bouton \"Ouvrir dans Immich\"</string>
+    <string name="settings_card_display_mode">Bouton Mode d\'affichage</string>
+    <string name="settings_card_mute">Bouton Mute (vidéos)</string>
     <string name="settings_tri_keep_delete">Boutons \"KEEP\" et \"DELETE\"</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Marquer automatiquement comme KEEP après avoir marqué en favori, et passer à la photo suivante</string>

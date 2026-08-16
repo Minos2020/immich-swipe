@@ -137,6 +137,26 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.showFullscreenButton.collect { show ->
+                _uiState.update { it.copy(showFullscreenButton = show) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showImmichButton.collect { show ->
+                _uiState.update { it.copy(showImmichButton = show) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showCardDisplayButton.collect { show ->
+                _uiState.update { it.copy(showCardDisplayButton = show) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showMuteButton.collect { show ->
+                _uiState.update { it.copy(showMuteButton = show) }
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.autoNextOnFav.collect { autoNextOnFav ->
                 _uiState.update { it.copy(autoNextOnFav = autoNextOnFav) }
             }
@@ -229,6 +249,22 @@ class SettingsViewModel(
 
     fun setShowShare(show: Boolean) {
         viewModelScope.launch { sessionRepository.saveShowShare(show) }
+    }
+
+    fun setShowFullscreen(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowFullscreen(show) }
+    }
+
+    fun setShowImmich(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowImmich(show) }
+    }
+
+    fun setShowCardDisplay(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowCardDisplay(show) }
+    }
+
+    fun setShowMute(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowMute(show) }
     }
 
     fun setAutoNextOnFav(autoNextOnFav: Boolean) {

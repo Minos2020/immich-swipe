@@ -207,6 +207,10 @@ fun SwipeScreen(
                             isMuted = uiState.isMuted,
                             cardDisplayMode = uiState.cardDisplayMode,
                             showShareButton = uiState.showShareButton,
+                            showFullscreenButton = uiState.showFullscreenButton,
+                            showImmichButton = uiState.showImmichButton,
+                            showCardDisplayButton = uiState.showCardDisplayButton,
+                            showMuteButton = uiState.showMuteButton,
                             onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                             onToggleMute = { viewModel.toggleMute() },
                             onShare = { viewModel.shareCurrentAsset(localContext) },
@@ -857,6 +861,10 @@ fun SwipeCard(
     isMuted: Boolean,
     cardDisplayMode: CardDisplayMode,
     showShareButton: Boolean,
+    showFullscreenButton: Boolean,
+    showImmichButton: Boolean,
+    showCardDisplayButton: Boolean,
+    showMuteButton: Boolean,
     onToggleDisplayMode: () -> Unit,
     onToggleMute: () -> Unit,
     onShare: () -> Unit,
@@ -1189,14 +1197,14 @@ fun SwipeCard(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             horizontalAlignment = position.toHorizontalAlignment()
                         ) {
-                            if (fullscreenButtonPosition == position) {
+                            if (fullscreenButtonPosition == position && showFullscreenButton) {
                                 SwipeActionIconButton(
                                     icon = Icons.Default.Fullscreen,
                                     contentDescription = stringResource(R.string.settings_fullscreen_pos_label),
                                     onClick = { isFullscreenOpen = true }
                                 )
                             }
-                            if (cardDisplayButtonPosition == position) {
+                            if (cardDisplayButtonPosition == position && showCardDisplayButton) {
                                 SwipeActionIconButton(
                                     icon = if (cardDisplayMode == CardDisplayMode.FILL) 
                                         Icons.Default.FitScreen else Icons.Default.AspectRatio,
@@ -1204,7 +1212,7 @@ fun SwipeCard(
                                     onClick = onToggleDisplayMode
                                 )
                             }
-                            if (muteButtonPosition == position && asset.type == "VIDEO") {
+                            if (muteButtonPosition == position && asset.type == "VIDEO" && showMuteButton) {
                                 SwipeActionIconButton(
                                     icon = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
                                     contentDescription = stringResource(R.string.swipe_toggle_mute),
@@ -1218,7 +1226,7 @@ fun SwipeCard(
                                     onClick = onShare
                                 )
                             }
-                            if (immichButtonPosition == position) {
+                            if (immichButtonPosition == position && showImmichButton) {
                                 SwipeActionIconButton(
                                     icon = Icons.AutoMirrored.Filled.OpenInNew,
                                     contentDescription = stringResource(R.string.settings_immich_pos_label),

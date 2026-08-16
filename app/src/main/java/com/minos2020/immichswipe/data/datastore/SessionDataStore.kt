@@ -32,6 +32,10 @@ class SessionDataStore(private val context: Context) {
         private val KEY_SHOW_KEEP_DELETE = androidx.datastore.preferences.core.booleanPreferencesKey("show_keep_delete")
         private val KEY_SHOW_ADD_TO_ALBUM = androidx.datastore.preferences.core.booleanPreferencesKey("show_add_to_album")
         private val KEY_SHOW_SHARE = androidx.datastore.preferences.core.booleanPreferencesKey("show_share")
+        private val KEY_SHOW_FULLSCREEN = androidx.datastore.preferences.core.booleanPreferencesKey("show_fullscreen")
+        private val KEY_SHOW_IMMICH = androidx.datastore.preferences.core.booleanPreferencesKey("show_immich")
+        private val KEY_SHOW_CARD_DISPLAY = androidx.datastore.preferences.core.booleanPreferencesKey("show_card_display")
+        private val KEY_SHOW_MUTE = androidx.datastore.preferences.core.booleanPreferencesKey("show_mute")
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
         private val KEY_INCLUDE_ARCHIVED = androidx.datastore.preferences.core.booleanPreferencesKey("include_archived")
         private val KEY_DEFAULT_CARD_DISPLAY_MODE = stringPreferencesKey("default_card_display_mode")
@@ -140,6 +144,18 @@ class SessionDataStore(private val context: Context) {
 
     fun isShowShare(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_SHARE] ?: true }
     suspend fun saveShowShare(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_SHARE] = show } }
+
+    fun isShowFullscreen(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_FULLSCREEN] ?: true }
+    suspend fun saveShowFullscreen(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_FULLSCREEN] = show } }
+
+    fun isShowImmich(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_IMMICH] ?: true }
+    suspend fun saveShowImmich(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_IMMICH] = show } }
+
+    fun isShowCardDisplay(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_CARD_DISPLAY] ?: true }
+    suspend fun saveShowCardDisplay(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_CARD_DISPLAY] = show } }
+
+    fun isShowMute(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_MUTE] ?: true }
+    suspend fun saveShowMute(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_MUTE] = show } }
 
     fun isAutoNextOnFav(): Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_NEXT_ON_FAV] ?: false }
     suspend fun saveAutoNextOnFav(autoNext: Boolean) { context.dataStore.edit { it[KEY_AUTO_NEXT_ON_FAV] = autoNext } }

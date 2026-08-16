@@ -20,6 +20,8 @@ import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -261,10 +263,10 @@ fun SettingsScreen(
             // SECTION INTERACTION
             SettingsSection(title = stringResource(R.string.settings_section_interaction), icon = Icons.Default.TouchApp) {
                 Column {
-                    // Actions de tri (Nouveau)
+                    // Actions de tri
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = stringResource(R.string.settings_tri_actions_label),
+                            text = stringResource(R.string.settings_interaction_sorting_title),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -324,16 +326,67 @@ fun SettingsScreen(
                             icon = Icons.Default.LibraryAdd
                         )
                         SettingsToggleItemSmall(
-                            title = stringResource(R.string.settings_tri_share),
-                            checked = uiState.showShareButton,
-                            onCheckedChange = { viewModel.setShowShare(it) },
-                            icon = Icons.Default.Share
-                        )
-                        SettingsToggleItemSmall(
                             title = stringResource(R.string.settings_tri_keep_delete),
                             checked = uiState.showKeepDeleteButtons,
                             onCheckedChange = { viewModel.setShowKeepDelete(it) },
                             icon = Icons.Default.Swipe // Icône évoquant le mouvement et les boutons
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+                    // Actions sur les cartes
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.settings_interaction_card_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(8.dp))
+
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_card_fullscreen),
+                            icon = Icons.Default.Fullscreen,
+                            checked = uiState.showFullscreenButton,
+                            onCheckedChange = { viewModel.setShowFullscreen(it) },
+                            position = uiState.fullscreenButtonPosition,
+                            onPositionSelected = { viewModel.setFullscreenButtonPosition(it) }
+                        )
+
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_card_immich),
+                            icon = Icons.AutoMirrored.Filled.OpenInNew,
+                            checked = uiState.showImmichButton,
+                            onCheckedChange = { viewModel.setShowImmich(it) },
+                            position = uiState.immichButtonPosition,
+                            onPositionSelected = { viewModel.setImmichButtonPosition(it) }
+                        )
+
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_card_display_mode),
+                            icon = Icons.Default.AspectRatio,
+                            checked = uiState.showCardDisplayButton,
+                            onCheckedChange = { viewModel.setShowCardDisplay(it) },
+                            position = uiState.cardDisplayButtonPosition,
+                            onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) }
+                        )
+
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_card_mute),
+                            icon = Icons.AutoMirrored.Filled.VolumeUp,
+                            checked = uiState.showMuteButton,
+                            onCheckedChange = { viewModel.setShowMute(it) },
+                            position = uiState.muteButtonPosition,
+                            onPositionSelected = { viewModel.setMuteButtonPosition(it) }
+                        )
+
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_tri_share),
+                            icon = Icons.Default.Share,
+                            checked = uiState.showShareButton,
+                            onCheckedChange = { viewModel.setShowShare(it) },
+                            position = uiState.shareButtonPosition,
+                            onPositionSelected = { viewModel.setShareButtonPosition(it) }
                         )
                     }
 
@@ -346,69 +399,6 @@ fun SettingsScreen(
                         checked = uiState.isSwipeInverted,
                         onCheckedChange = { viewModel.setSwipeInverted(it) },
                         icon = Icons.Default.SwapHoriz
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône plein écran
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_fullscreen_pos_label),
-                        selectedPosition = uiState.fullscreenButtonPosition,
-                        onPositionSelected = { viewModel.setFullscreenButtonPosition(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Immich
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_immich_pos_label),
-                        selectedPosition = uiState.immichButtonPosition,
-                        onPositionSelected = { viewModel.setImmichButtonPosition(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Mode d'affichage (Nouveau)
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_display_mode_pos_label),
-                        selectedPosition = uiState.cardDisplayButtonPosition,
-                        onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Sourdine (Nouveau)
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_mute_pos_label),
-                        selectedPosition = uiState.muteButtonPosition,
-                        onPositionSelected = { viewModel.setMuteButtonPosition(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Partage (Nouveau)
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_share_pos_label),
-                        selectedPosition = uiState.shareButtonPosition,
-                        onPositionSelected = { viewModel.setShareButtonPosition(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Partage (Nouveau)
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_share_pos_label),
-                        selectedPosition = uiState.shareButtonPosition,
-                        onPositionSelected = { viewModel.setShareButtonPosition(it) }
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Position icône Partage (Nouveau)
-                    IconPositionPicker(
-                        title = stringResource(R.string.settings_share_pos_label),
-                        selectedPosition = uiState.shareButtonPosition,
-                        onPositionSelected = { viewModel.setShareButtonPosition(it) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -1045,6 +1035,38 @@ fun ThemeButton(
                 style = MaterialTheme.typography.labelMedium,
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
             )
+        }
+    }
+}
+
+@Composable
+fun CardActionWithPosition(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    position: IconPosition,
+    onPositionSelected: (IconPosition) -> Unit
+) {
+    Column {
+        SettingsToggleItemSmall(
+            title = title,
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            icon = icon
+        )
+        AnimatedVisibility(
+            visible = checked,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Box(modifier = Modifier.padding(start = 32.dp, end = 16.dp, bottom = 12.dp)) {
+                IconPositionPicker(
+                    title = "Position",
+                    selectedPosition = position,
+                    onPositionSelected = onPositionSelected
+                )
+            }
         }
     }
 }

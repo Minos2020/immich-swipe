@@ -112,6 +112,10 @@ class SessionRepository(context: Context) {
     val showKeepDeleteButtons: Flow<Boolean> = dataStore.isShowKeepDelete()
     val showAddToAlbumButton: Flow<Boolean> = dataStore.isShowAddToAlbum()
     val showShareButton: Flow<Boolean> = dataStore.isShowShare()
+    val showFullscreenButton: Flow<Boolean> = dataStore.isShowFullscreen()
+    val showImmichButton: Flow<Boolean> = dataStore.isShowImmich()
+    val showCardDisplayButton: Flow<Boolean> = dataStore.isShowCardDisplay()
+    val showMuteButton: Flow<Boolean> = dataStore.isShowMute()
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
 
@@ -217,6 +221,10 @@ class SessionRepository(context: Context) {
     suspend fun saveShowKeepDelete(show: Boolean) { dataStore.saveShowKeepDelete(show) }
     suspend fun saveShowAddToAlbum(show: Boolean) { dataStore.saveShowAddToAlbum(show) }
     suspend fun saveShowShare(show: Boolean) { dataStore.saveShowShare(show) }
+    suspend fun saveShowFullscreen(show: Boolean) { dataStore.saveShowFullscreen(show) }
+    suspend fun saveShowImmich(show: Boolean) { dataStore.saveShowImmich(show) }
+    suspend fun saveShowCardDisplay(show: Boolean) { dataStore.saveShowCardDisplay(show) }
+    suspend fun saveShowMute(show: Boolean) { dataStore.saveShowMute(show) }
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
 

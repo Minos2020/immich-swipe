@@ -128,6 +128,26 @@ class SwipeViewModel(
                 _uiState.value = _uiState.value.copy(showShareButton = show)
             }
         }
+        viewModelScope.launch {
+            sessionRepository.showFullscreenButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showFullscreenButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showImmichButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showImmichButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showCardDisplayButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showCardDisplayButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showMuteButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showMuteButton = show)
+            }
+        }
     }
 
     private fun observeSkipLifespan() {
