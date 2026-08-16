@@ -50,6 +50,10 @@
     <string name="home_virtual_orphans">Orphelins</string>
     <string name="home_virtual_orphans_desc">Collection des médias qui ne sont dans aucun album</string>
     <string name="home_user_fallback">Utilisateur</string>
+    <string name="home_album_reset_title">Réinitialiser les choix ?</string>
+    <string name="home_album_reset_msg">Cela supprimera tous vos choix de tri pour l\'album %1$s de votre téléphone.\nNote : les actions déjà synchronisées (suppressions, archives) ne seront pas annulées sur Immich.</string>
+    <string name="home_album_keep_all_title">Tout marquer KEEP ?</string>
+    <string name="home_album_keep_all_msg">Voulez-vous marquer les %1$d photos de %2$s comme KEEP ?\nLes décisions locales non synchronisées déjà existantes dans cet album seront écrasées.</string>
 
     <!-- Popup Profil & Diagnostic -->
     <string name="profile_connected_label">Connecté au serveur Immich</string>
@@ -105,9 +109,10 @@
     <string name="settings_tri_actions_label">Actions de tri affichées</string>
     <string name="settings_tri_favorite">Bouton Favori</string>
     <string name="settings_tri_archive">Bouton Archiver</string>
-    <string name="settings_tri_lock">Bouton Dossier Verrouillé</string>
-    <string name="settings_auto_next_label">KEEP automatique</string>
-    <string name="settings_auto_next_desc">Marquer un asset comme favori le marque également KEEP et passe au suivant.</string>
+    <string name="settings_tri_lock">Bouton \"Dossier verrouillé\"</string>
+    <string name="settings_tri_keep_delete">Boutons \"KEEP\" et \"DELETE\"</string>
+    <string name="settings_auto_next_label">Auto-KEEP</string>
+    <string name="settings_auto_next_desc">Marquer automatiquement comme KEEP après avoir marqué en favori, et passer à la photo suivante</string>
     <string name="settings_section_account">Compte</string>
     <string name="settings_pos_top_left">Haut-Gauche</string>
     <string name="settings_pos_top_right">Haut-Droite</string>
@@ -162,7 +167,7 @@
     <string name="swipe_sort_faster_loading">Chargement plus rapide</string>
     <string name="swipe_reset_button">Réinitialiser la session</string>
     <string name="swipe_reset_confirm_title">Réinitialiser les choix ?</string>
-    <string name="swipe_reset_confirm_msg">Voulez-vous vraiment supprimer les %1$d choix de tri non synchronisés de cette session ? Cette action est irréversible.</string>
+    <string name="swipe_reset_confirm_msg">Voulez-vous vraiment supprimer les %1$d choix de tri non synchronisés de cette session ?\nCette action est irréversible.</string>
 
     <!-- Durées -->
     <string name="duration_never">Jamais</string>

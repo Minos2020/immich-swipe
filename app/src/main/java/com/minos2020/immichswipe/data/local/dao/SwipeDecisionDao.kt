@@ -173,6 +173,17 @@ interface SwipeDecisionDao {
     suspend fun insertSyncHistoryList(history: List<SyncHistoryEntity>)
 
     /**
+     * Supprime toutes les décisions d'un album pour un utilisateur (uniquement en local).
+     * Se base sur la table de jointure album_assets.
+     */
+    @Query("""
+        DELETE FROM swipe_decisions 
+        WHERE userId = :userId 
+        AND assetId IN (SELECT assetId FROM album_assets WHERE albumId = :albumId AND userId = :userId)
+    """)
+    suspend fun deleteDecisionsForAlbum(albumId: String, userId: String)
+
+    /**
      * Supprime les décisions pour les photos qui n'existent plus sur le serveur.
      * Se base sur la table de cache album_assets qui doit être à jour.
      */

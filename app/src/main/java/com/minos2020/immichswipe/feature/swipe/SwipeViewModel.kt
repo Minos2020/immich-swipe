@@ -9,6 +9,7 @@ import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.core.SwipeSortPriority
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
+import com.minos2020.immichswipe.data.local.entity.SwipeDecisionEntity
 import com.minos2020.immichswipe.domain.model.Album
 import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,9 +17,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.last
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 
 class SwipeViewModel(
     private val assetRepository: AssetRepository,
@@ -186,9 +190,11 @@ class SwipeViewModel(
     // On garde en mémoire les décisions qui étaient déjà synchronisées au début de la session
     private var initialSyncedDecisions = mapOf<String, SwipeDecision>()
     private var lastLoadedUserId: String? = null
+    private var assetsJob: kotlinx.coroutines.Job? = null
 
     private fun loadAssetsAndDecisions() {
-        viewModelScope.launch {
+        assetsJob?.cancel()
+        assetsJob = viewModelScope.launch {
             try {
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
                 
@@ -203,40 +209,53 @@ class SwipeViewModel(
                 hasStartedSwiping = false
                 val includeArchived = sessionRepository.includeArchived.first()
                 val sortOrder = sessionRepository.swipeSortOrder.first()
-
-                // On charge les décisions une seule fois au début pour le filtrage
-                val localDecisions = swipeDecisionRepository.getAllDecisionsForUser(config.userId).first()
-                
-                // On mémorise l'état synchronisé pour calculer les deltas lors de la synchronisation.
-                initialSyncedDecisions = localDecisions
-                    .filter { it.isSynced || it.wasSyncedSkip }
-                    .associate { entity ->
-                        val decision = if (entity.wasSyncedSkip) SwipeDecision.SKIP 
-                                      else try { SwipeDecision.valueOf(entity.decision) } catch (_: Exception) { SwipeDecision.SKIP }
-                        entity.assetId to decision
-                    }
-
-                // 3. On prépare la Map des décisions locales (non synchronisées)
-                val allLocalDecisions = mutableMapOf<String, SwipeDecision>()
-                val sizeMap = mutableMapOf<String, Long>()
-                localDecisions.forEach { entity ->
-                    if (!entity.isSynced) {
-                        try { allLocalDecisions[entity.assetId] = SwipeDecision.valueOf(entity.decision) } catch(_: Exception) {}
-                    }
-
-                    // On garde toujours la taille connue de l'asset
-                    entity.fileSize?.let { sizeMap[entity.assetId] = it }
-                }
-
-                // 4. On lance le chargement incrémental des assets
-                AppLogger.d("Swipe", "Chargement de l'album ${album.albumName} (ID: ${album.id})")
-                
                 val isChronologicalSort = sortOrder == SwipeSortOrder.DATE_DESC || sortOrder == SwipeSortOrder.DATE_ASC
 
-                assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId, sortOrder).collect { allAssetsFound ->
+                // On utilise des flux intermédiaires pour synchroniser le chargement réseau et la réactivité DB
+                val allAssetsFoundFlow = MutableStateFlow<List<Asset>>(emptyList())
+                val isAssetsLoadingFlow = MutableStateFlow(true)
+
+                // Lancement du chargement des assets en parallèle
+                launch {
+                    try {
+                        assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId, sortOrder).collect { 
+                            allAssetsFoundFlow.value = it 
+                        }
+                    } finally {
+                        isAssetsLoadingFlow.value = false
+                    }
+                }
+
+                // On combine les deux flux pour une réactivité totale (Reset/Keep All du Home)
+                combine(
+                    swipeDecisionRepository.getDecisionsForAlbum(album.id, config.userId),
+                    allAssetsFoundFlow,
+                    isAssetsLoadingFlow
+                ) { localDecisions, allAssetsFound, isFetching ->
+                    Triple(localDecisions, allAssetsFound, isFetching)
+                }.collect { (localDecisions, allAssetsFound, isFetching) ->
                     val currentState = _uiState.value
                     
-                    // Filtrage de la pile de travail (Exclut les synchronisés sauf pour l'album SKIP)
+                    // 1. Mise à jour des décisions synchronisées
+                    initialSyncedDecisions = localDecisions
+                        .filter { it.isSynced || it.wasSyncedSkip }
+                        .associate { entity ->
+                            val decision = if (entity.wasSyncedSkip) SwipeDecision.SKIP 
+                                          else try { SwipeDecision.valueOf(entity.decision) } catch (_: Exception) { SwipeDecision.SKIP }
+                            entity.assetId to decision
+                        }
+
+                    // 2. Préparation des décisions locales et des tailles
+                    val allLocalDecisions = mutableMapOf<String, SwipeDecision>()
+                    val sizeMap = mutableMapOf<String, Long>()
+                    localDecisions.forEach { entity ->
+                        if (!entity.isSynced) {
+                            try { allLocalDecisions[entity.assetId] = SwipeDecision.valueOf(entity.decision) } catch(_: Exception) {}
+                        }
+                        entity.fileSize?.let { sizeMap[entity.assetId] = it }
+                    }
+
+                    // 3. Filtrage de la pile de travail
                     val isVirtualSkipped = album.id == Album.VIRTUAL_SKIPPED_ID
                     val syncedIds = if (isVirtualSkipped) emptySet() else initialSyncedDecisions.keys
                     val workPile = allAssetsFound.filter { !syncedIds.contains(it.id) }
@@ -245,15 +264,19 @@ class SwipeViewModel(
                     // On met à jour la liste maître (non triée)
                     masterWorkPile = workPile
 
-                    // FUSION INTELLIGENTE : On garde les décisions de la session actuelle 
-                    // et on ajoute celles du pool initial pour les nouveaux assets découverts
+                    // 4. Fusion avec les décisions de la session actuelle
                     val mergedDecisions = currentState.decisions.toMutableMap()
                     val mergedSizes = currentState.assetSizes.toMutableMap()
 
+                    // On synchronise mergedDecisions avec la DB (localDecisions)
                     workPileIds.forEach { id ->
-                        if (!mergedDecisions.containsKey(id)) {
-                            allLocalDecisions[id]?.let { mergedDecisions[id] = it }
+                        val dbDecision = allLocalDecisions[id]
+                        if (dbDecision != null) {
+                            mergedDecisions[id] = dbDecision
+                        } else {
+                            mergedDecisions.remove(id)
                         }
+                        
                         if (!mergedSizes.containsKey(id)) {
                             sizeMap[id]?.let { mergedSizes[id] = it }
                         }
@@ -263,9 +286,9 @@ class SwipeViewModel(
                     mergedDecisions.keys.retainAll(workPileIds)
 
                     // GESTION DU CHARGEMENT :
-                    // Si tri chronologique : on peut afficher dès qu'on a des assets.
-                    // Sinon : on attend la fin du flux (isLoading restera à true ici).
-                    val shouldKeepLoading = !isChronologicalSort && !hasStartedSwiping
+                    // On garde le cercle de chargement tant que le réseau n'a pas fini (isFetching)
+                    // ET qu'on est en tri non chronologique (complexité de tri).
+                    val shouldKeepLoading = !isChronologicalSort && !hasStartedSwiping && isFetching
 
                     refreshSortedWorkPile(
                         forceFirstUnprocessed = currentState.assets.isEmpty(),
@@ -283,15 +306,8 @@ class SwipeViewModel(
                     }
                 }
                 
-                // FIN DU CHARGEMENT : une fois le collect terminé, on libère tout.
-                _uiState.value = _uiState.value.copy(isLoading = false)
-                
-                // Si on était en attente (tri complexe), on recalcule l'index final maintenant qu'on a tout.
-                if (!isChronologicalSort) {
-                    refreshSortedWorkPile()
-                }
-
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 AppLogger.e("Swipe", "Erreur lors du chargement de l'album", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -587,6 +603,7 @@ class SwipeViewModel(
                     state.copy(assets = updatedAssets, localFavorites = finalLocalFavorites)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 AppLogger.e("Swipe", "Échec de mise à jour du favori", e)
                 // Échec : On annule l'optimisme (le retrait de la clé localFavorites ramène à la valeur du serveur)
                 _uiState.update { state ->
@@ -659,6 +676,7 @@ class SwipeViewModel(
                 
                 AppLogger.i("Swipe", "Session réinitialisée : ${unsyncedIds.size} décisions supprimées")
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 AppLogger.e("Swipe", "Erreur lors du reset de la session", e)
                 setShowResetConfirmation(false)
             }
@@ -694,6 +712,7 @@ class SwipeViewModel(
                 assetRepository.updateAssets(listOf(assetId), description = newDescription)
                 AppLogger.d("Swipe", "Description mise à jour pour l'asset $assetId")
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 AppLogger.e("Swipe", "Échec de mise à jour de la description", e)
                 // Restauration de l'ancienne valeur en cas d'erreur pour garantir la cohérence
                 val revertedState = _uiState.value
@@ -713,55 +732,60 @@ class SwipeViewModel(
         val lastAssetIdFromHistory = currentState.history.lastOrNull()
 
         viewModelScope.launch {
-            val config = sessionRepository.sessionConfig.first() ?: return@launch
-            if (lastAssetIdFromHistory != null) {
-                // 1. LOGIQUE DE SESSION (Historique présent)
-                swipeDecisionRepository.removeDecision(lastAssetIdFromHistory, config.userId)
-                
-                val newDecisions = currentState.decisions.toMutableMap()
-                newDecisions.remove(lastAssetIdFromHistory)
+            try {
+                val config = sessionRepository.sessionConfig.first() ?: return@launch
+                if (lastAssetIdFromHistory != null) {
+                    // 1. LOGIQUE DE SESSION (Historique présent)
+                    swipeDecisionRepository.removeDecision(lastAssetIdFromHistory, config.userId)
+                    
+                    val newDecisions = currentState.decisions.toMutableMap()
+                    newDecisions.remove(lastAssetIdFromHistory)
 
-                val newHistory = currentState.history.toMutableList()
-                newHistory.removeAt(newHistory.size - 1)
+                    val newHistory = currentState.history.toMutableList()
+                    newHistory.removeAt(newHistory.size - 1)
 
-                val previousIndex = currentState.assets.indexOfFirst { it.id == lastAssetIdFromHistory }
+                    val previousIndex = currentState.assets.indexOfFirst { it.id == lastAssetIdFromHistory }
 
-                _uiState.value = currentState.copy(
-                    currentIndex = if (previousIndex != -1) previousIndex else currentState.currentIndex,
-                    decisions = newDecisions,
-                    history = newHistory
-                )
-                
-                updateSummaryStats()
-                
-                if (previousIndex != -1) {
-                    loadAssetDetail(lastAssetIdFromHistory, previousIndex)
+                    _uiState.value = currentState.copy(
+                        currentIndex = if (previousIndex != -1) previousIndex else currentState.currentIndex,
+                        decisions = newDecisions,
+                        history = newHistory
+                    )
+                    
+                    updateSummaryStats()
+                    
+                    if (previousIndex != -1) {
+                        loadAssetDetail(lastAssetIdFromHistory, previousIndex)
+                    }
+                } else if (currentState.currentIndex > 0) {
+                    // 2. LOGIQUE DE REMONTÉE (Historique vide, on recule manuellement)
+                    // "annule l'asset affiché actuellement, puis passe au précédent"
+                    val currentAsset = currentState.currentAsset
+                    val previousIndex = currentState.currentIndex - 1
+                    val previousAssetId = currentState.assets[previousIndex].id
+
+                    // On nettoie UNIQUEMENT l'actuel
+                    if (currentAsset != null) {
+                        swipeDecisionRepository.removeDecision(currentAsset.id, config.userId)
+                    }
+                    
+                    val newDecisions = currentState.decisions.toMutableMap()
+                    if (currentAsset != null) {
+                        newDecisions.remove(currentAsset.id)
+                    }
+
+                    _uiState.value = currentState.copy(
+                        currentIndex = previousIndex,
+                        decisions = newDecisions
+                    )
+                    
+                    updateSummaryStats()
+                    
+                    loadAssetDetail(previousAssetId, previousIndex)
                 }
-            } else if (currentState.currentIndex > 0) {
-                // 2. LOGIQUE DE REMONTÉE (Historique vide, on recule manuellement)
-                // "annule l'asset affiché actuellement, puis passe au précédent"
-                val currentAsset = currentState.currentAsset
-                val previousIndex = currentState.currentIndex - 1
-                val previousAssetId = currentState.assets[previousIndex].id
-
-                // On nettoie UNIQUEMENT l'actuel
-                if (currentAsset != null) {
-                    swipeDecisionRepository.removeDecision(currentAsset.id, config.userId)
-                }
-                
-                val newDecisions = currentState.decisions.toMutableMap()
-                if (currentAsset != null) {
-                    newDecisions.remove(currentAsset.id)
-                }
-
-                _uiState.value = currentState.copy(
-                    currentIndex = previousIndex,
-                    decisions = newDecisions
-                )
-                
-                updateSummaryStats()
-                
-                loadAssetDetail(previousAssetId, previousIndex)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("Swipe", "Échec de l'annulation", e)
             }
         }
     }
@@ -790,22 +814,27 @@ class SwipeViewModel(
     fun undoSpecificDecision(assetId: String) {
         val currentState = _uiState.value
         viewModelScope.launch {
-            val config = sessionRepository.sessionConfig.first() ?: return@launch
-            // 1. Suppression base Room
-            swipeDecisionRepository.removeDecision(assetId, config.userId)
-            
-            // 2. Mise à jour UI
-            val newDecisions = currentState.decisions.toMutableMap()
-            newDecisions.remove(assetId)
-            
-            val newHistory = currentState.history.toMutableList()
-            newHistory.remove(assetId)
-            
-            _uiState.value = currentState.copy(
-                decisions = newDecisions,
-                history = newHistory
-            )
-            updateSummaryStats()
+            try {
+                val config = sessionRepository.sessionConfig.first() ?: return@launch
+                // 1. Suppression base Room
+                swipeDecisionRepository.removeDecision(assetId, config.userId)
+                
+                // 2. Mise à jour UI
+                val newDecisions = currentState.decisions.toMutableMap()
+                newDecisions.remove(assetId)
+                
+                val newHistory = currentState.history.toMutableList()
+                newHistory.remove(assetId)
+                
+                _uiState.value = currentState.copy(
+                    decisions = newDecisions,
+                    history = newHistory
+                )
+                updateSummaryStats()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("Swipe", "Échec de l'annulation spécifique", e)
+            }
         }
     }
 
@@ -909,6 +938,7 @@ class SwipeViewModel(
                 loadAssetsAndDecisions()
                 
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 AppLogger.e("Swipe", "Échec lors de l'application des changements", e)
                 _uiState.value = _uiState.value.copy(
                     isSyncing = false,

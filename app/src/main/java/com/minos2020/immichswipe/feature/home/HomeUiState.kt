@@ -44,7 +44,11 @@ data class HomeUiState(
     val showStatsPopup: Boolean = false, // Visibilité de la popup stats
     val stats: StatsUiData = StatsUiData(), // Données des stats
     val collapsedCategories: Set<AlbumStatus> = emptySet(), // Catégories réduites
-    val isDiscovering: Boolean = false // État de la tâche de découverte en arrière-plan
+    val isDiscovering: Boolean = false, // État de la tâche de découverte en arrière-plan
+    
+    // Actions rapides sur albums
+    val pendingAlbumAction: AlbumAction? = null,
+    val pendingAlbum: Album? = null
 ) {
     /**
      * Retourne la liste des albums filtrée par le texte de recherche.
@@ -161,4 +165,11 @@ enum class AlbumStatus(val label: String) {
     NOT_STARTED("Pas commencé"),
     COMPLETED("Terminés"),
     VIRTUAL("Collections")
+}
+
+/**
+ * Actions rapides applicables à un album complet.
+ */
+enum class AlbumAction {
+    RESET, KEEP_ALL
 }

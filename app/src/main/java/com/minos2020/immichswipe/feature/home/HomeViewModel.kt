@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collectLatest
@@ -20,6 +21,7 @@ import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import com.minos2020.immichswipe.core.AppTheme
+import com.minos2020.immichswipe.data.local.entity.SwipeDecisionEntity
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
@@ -206,6 +208,7 @@ class HomeViewModel(
                     )
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 AppLogger.e("Home", "Erreur lors du chargement initial", e)
                 _uiState.update { 
                     it.copy(
@@ -264,6 +267,7 @@ class HomeViewModel(
                     ) 
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { 
                     it.copy(
                         isRefreshing = false
@@ -352,6 +356,75 @@ class HomeViewModel(
                 newCollapsed.add(status)
             }
             state.copy(collapsedCategories = newCollapsed)
+        }
+    }
+
+    fun requestAlbumAction(album: Album, action: AlbumAction) {
+        _uiState.update { it.copy(pendingAlbum = album, pendingAlbumAction = action) }
+    }
+
+    fun dismissAlbumAction() {
+        _uiState.update { it.copy(pendingAlbum = null, pendingAlbumAction = null) }
+    }
+
+    /**
+     * Exécute la réinitialisation locale d'un album.
+     */
+    fun resetAlbumDecisions(albumId: String) {
+        viewModelScope.launch {
+            try {
+                val userId = sessionRepository.sessionConfig.first()?.userId ?: return@launch
+                swipeDecisionRepository.removeDecisionsForAlbum(albumId, userId)
+                AppLogger.i("Home", "Réinitialisation locale de l'album $albumId")
+                dismissAlbumAction()
+                refreshAlbums() // Pour mettre à jour les compteurs
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("Home", "Erreur lors du reset de l'album", e)
+            }
+        }
+    }
+
+    /**
+     * Marque tous les médias d'un album comme KEEP (localement).
+     */
+    fun markAlbumAsKeep(album: com.minos2020.immichswipe.domain.model.Album) {
+        viewModelScope.launch {
+            try {
+                val userId = sessionRepository.sessionConfig.first()?.userId ?: return@launch
+                _uiState.update { it.copy(isRefreshing = true) }
+                
+                // On récupère TOUS les assets de l'album via le repository
+                // .last() attend que le flux de chargement incrémental soit terminé
+                val allAssetsList: List<com.minos2020.immichswipe.domain.model.Asset> = 
+                    assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = userId).last()
+                
+                // Préparation du batch pour insertion massive (plus performant)
+                val timestamp = System.currentTimeMillis()
+                val newDecisions = allAssetsList.map { asset ->
+                    SwipeDecisionEntity(
+                        assetId = asset.id,
+                        albumId = album.id,
+                        userId = userId,
+                        decision = "KEEP",
+                        fileSize = asset.exifInfo?.fileSizeInBytes,
+                        createdAt = timestamp,
+                        isSynced = true, // On marque directement comme synchronisé (tri terminé)
+                        wasSyncedSkip = false
+                    )
+                }
+                
+                swipeDecisionRepository.importData(newDecisions, emptyList())
+                
+                AppLogger.i("Home", "Album ${album.albumName} marqué comme KEEP (${allAssetsList.size} médias)")
+                _uiState.update { it.copy(isRefreshing = false) }
+                dismissAlbumAction()
+                refreshAlbums()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("Home", "Erreur lors du marquage KEEP de l'album", e)
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
         }
     }
 

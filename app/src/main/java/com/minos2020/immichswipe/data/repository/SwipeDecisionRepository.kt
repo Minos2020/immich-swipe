@@ -111,6 +111,13 @@ class SwipeDecisionRepository(
     }
 
     /**
+     * Supprime toutes les décisions d'un album pour un utilisateur.
+     */
+    suspend fun removeDecisionsForAlbum(albumId: String, userId: String) {
+        swipeDecisionDao.deleteDecisionsForAlbum(albumId, userId)
+    }
+
+    /**
      * Récupère toutes les décisions 'SKIP' synchronisées pour un utilisateur.
      */
     fun getSyncedSkipDecisions(userId: String): Flow<List<SwipeDecisionEntity>> {

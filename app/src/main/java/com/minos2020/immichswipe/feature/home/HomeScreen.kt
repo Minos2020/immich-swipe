@@ -45,7 +45,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -506,6 +509,8 @@ fun HomeScreen(
                                         state = listState,
                                         onRefresh = { viewModel.refreshAlbums() },
                                         onAlbumClick = { viewModel.onAlbumSelected(it) },
+                                        onResetClick = { viewModel.requestAlbumAction(it, AlbumAction.RESET) },
+                                        onKeepAllClick = { viewModel.requestAlbumAction(it, AlbumAction.KEEP_ALL) },
                                         onToggleCategory = { viewModel.toggleCategory(it) }
                                     )
                                 }
@@ -554,6 +559,67 @@ fun HomeScreen(
         StatsPopup(
             stats = uiState.stats,
             onClose = { viewModel.toggleStatsPopup(false) }
+        )
+    }
+
+    // Affichage des dialogues de confirmation pour les actions d'album
+    uiState.pendingAlbumAction?.let { action ->
+        val album = uiState.pendingAlbum ?: return@let
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissAlbumAction() },
+            title = {
+                Text(
+                    text = when (action) {
+                        AlbumAction.RESET -> stringResource(R.string.home_album_reset_title)
+                        AlbumAction.KEEP_ALL -> stringResource(R.string.home_album_keep_all_title)
+                    }
+                )
+            },
+            text = {
+                val albumName = album.albumName
+                val fullText = when (action) {
+                    AlbumAction.RESET -> stringResource(R.string.home_album_reset_msg, albumName)
+                    AlbumAction.KEEP_ALL -> stringResource(R.string.home_album_keep_all_msg, album.assetCount, albumName)
+                }
+
+                val startIndex = fullText.indexOf(albumName)
+                val annotatedText = buildAnnotatedString {
+                    if (startIndex >= 0) {
+                        append(fullText.substring(0, startIndex))
+                        withStyle(
+                            style = SpanStyle(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            append(albumName)
+                        }
+                        append(fullText.substring(startIndex + albumName.length))
+                    } else {
+                        append(fullText)
+                    }
+                }
+                Text(text = annotatedText)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        when (action) {
+                            AlbumAction.RESET -> viewModel.resetAlbumDecisions(album.id)
+                            AlbumAction.KEEP_ALL -> viewModel.markAlbumAsKeep(album)
+                        }
+                    },
+                    colors = if (action == AlbumAction.RESET) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
+                ) {
+                    Text(stringResource(R.string.common_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissAlbumAction() }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
         )
     }
 }
@@ -1051,6 +1117,8 @@ fun SwipeableAlbumRow(
     swipedAlbumId: String?,
     onSwiped: (String?) -> Unit,
     onAlbumClick: () -> Unit,
+    onResetClick: () -> Unit,
+    onKeepAllClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -1094,6 +1162,7 @@ fun SwipeableAlbumRow(
                     .background(Color(0xFF2E7D32).copy(alpha = 0.15f))
                     .clickable { 
                         scope.launch { offsetX.animateTo(0f) }
+                        onKeepAllClick()
                     },
                 contentAlignment = Alignment.CenterEnd // Aligne le slot utile vers la droite (colle au bouton Reset)
             ) {
@@ -1119,6 +1188,7 @@ fun SwipeableAlbumRow(
                     .background(MaterialTheme.colorScheme.error.copy(alpha = 0.15f))
                     .clickable { 
                         scope.launch { offsetX.animateTo(0f) }
+                        onResetClick()
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -1185,6 +1255,8 @@ fun AlbumList(
     state: LazyListState,
     onRefresh: () -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onResetClick: (Album) -> Unit,
+    onKeepAllClick: (Album) -> Unit,
     onToggleCategory: (AlbumStatus) -> Unit
 ) {
     var swipedAlbumId by remember { mutableStateOf<String?>(null) }
@@ -1255,6 +1327,8 @@ fun AlbumList(
                                     swipedAlbumId = swipedAlbumId,
                                     onSwiped = { swipedAlbumId = it },
                                     onAlbumClick = { onAlbumClick(album) },
+                                    onResetClick = { onResetClick(album) },
+                                    onKeepAllClick = { onKeepAllClick(album) },
                                     modifier = Modifier.animateItem()
                                 )
                             }

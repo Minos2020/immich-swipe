@@ -50,6 +50,7 @@
     <string name="home_user_fallback">User</string>
 
     <!-- Profile Popup & Diag -->
+    <string name="home_album_keep_all_msg">Do you want to mark all %1$d photos in %2$s as KEEP? \nExisting unsynced decisions in this album will be overwritten.</string>
     <string name="profile_connected_label">Connected to Immich server</string>
     <string name="profile_logout_button">Logout</string>
     <string name="profile_source_code">Source code</string>
@@ -104,6 +105,7 @@
     <string name="settings_tri_favorite">Favorite button</string>
     <string name="settings_tri_archive">Archive button</string>
     <string name="settings_tri_lock">Locked Folder button</string>
+    <string name="settings_tri_keep_delete">KEEP and DELETE buttons</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Marking an asset as favorite also marks it as KEEP, and move to the next.</string>
     <string name="settings_section_account">Account</string>
@@ -134,12 +136,14 @@
     <string name="swipe_metadata_format">Format</string>
     <string name="swipe_metadata_size">Size</string>
     <string name="swipe_metadata_resolution">Resolution</string>
+    <string name="swipe_metadata_description_placeholder">Add a description…</string>
     <string name="swipe_loading">Loading…</string>
     <string name="swipe_syncing">Syncing…</string>
     <string name="swipe_congratulations">Congratulations! Album sorted.</string>
     <string name="swipe_check_before_delete">Check before deletion</string>
 
     <!-- Durations -->
+    <string name="swipe_reset_confirm_msg">Are you sure you want to delete all %1$d unsynced swipe decisions for this session?</string>
     <string name="duration_never">Never</string>
     <string name="duration_day">%1$d d</string>
     <string name="duration_week">%1$d w</string>
@@ -217,4 +221,11 @@
     <string name="swipe_sort_priority_none">No type priority</string>
     <string name="swipe_sort_priority_videos">Videos first</string>
     <string name="swipe_sort_priority_photos">Photos first</string>
+    <string name="swipe_metadata_description">Description</string>
+    <string name="swipe_sort_faster_loading">Faster loading</string>
+    <string name="swipe_reset_button">Reset session</string>
+    <string name="swipe_reset_confirm_title">Reset decisions?</string>
+    <string name="home_album_reset_title">Reset decisions?</string>
+    <string name="home_album_reset_msg">This will delete all your local swipe choices for the album %1$s.\nNote: actions already synced (deletions, archives) will not be undone on Immich.</string>
+    <string name="home_album_keep_all_title">Mark all as KEEP?</string>
 </resources>
