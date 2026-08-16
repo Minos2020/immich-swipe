@@ -218,8 +218,19 @@ class SwipeViewModel(
                 // Lancement du chargement des assets en parallèle
                 launch {
                     try {
-                        assetRepository.getAssetsByAlbum(album.id, includeArchived, config.userId, sortOrder).collect { 
+                        assetRepository.getAssetsByAlbum(
+                            albumId = album.id,
+                            includeArchived = includeArchived,
+                            userId = config.userId,
+                            sortOrder = sortOrder,
+                            isReactive = true // Permet de rester à jour sur les albums virtuels comme SKIPS
+                        ).collect {
                             allAssetsFoundFlow.value = it 
+                            // Pour l'album virtuel SKIPS, le flux est réactif et ne se termine jamais.
+                            // On libère le loading UI dès qu'on a reçu au moins un batch (ou une liste vide).
+                            if (album.id == Album.VIRTUAL_SKIPPED_ID) {
+                                isAssetsLoadingFlow.value = false
+                            }
                         }
                     } finally {
                         isAssetsLoadingFlow.value = false

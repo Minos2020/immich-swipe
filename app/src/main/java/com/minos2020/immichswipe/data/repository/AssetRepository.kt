@@ -17,7 +17,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
 
 /**
  * Repository gérant les photos et vidéos (Assets).
@@ -31,12 +31,14 @@ class AssetRepository(
     /**
      * Récupère les photos d'un album de manière incrémentale (Flow).
      * Émet la liste cumulative à chaque page reçue du serveur.
+     * @param isReactive Si vrai, le flux restera ouvert pour les collections locales (comme SKIPS) afin de refléter les changements en temps réel.
      */
     fun getAssetsByAlbum(
         albumId: String, 
         includeArchived: Boolean = false, 
         userId: String? = null,
-        sortOrder: SwipeSortOrder = SwipeSortOrder.DATE_DESC
+        sortOrder: SwipeSortOrder = SwipeSortOrder.DATE_DESC,
+        isReactive: Boolean = false
     ): Flow<List<Asset>> = channelFlow {
         // Nettoyage systématique des anciens liens pour cet album avant de les recréer (pour cet utilisateur uniquement)
         if (userId != null) albumAssetDao?.clearAlbumRelations(albumId, userId)
@@ -45,31 +47,46 @@ class AssetRepository(
 
         // Cas particulier : Album virtuel "SKIP" (données locales)
         if (albumId == Album.VIRTUAL_SKIPPED_ID && swipeDecisionDao != null && userId != null) {
-            // Album virtuel : On récupère les IDs des assets skipped depuis la base locale pour cet utilisateur
-            val skippedDecisions = swipeDecisionDao.getSyncedSkipDecisions(userId).first()
-            val assetIds = skippedDecisions.map { it.assetId }
+            val loadedAssets = mutableMapOf<String, Asset>()
             
-            if (assetIds.isNotEmpty()) {
-                // On charge par paquets de 50 pour simuler un chargement progressif
-                assetIds.chunked(50).forEach { batch ->
-                    val detailedBatch = coroutineScope {
-                        batch.map { id ->
-                            async {
-                                try { getAssetDetail(id, userId) } catch (_: Exception) { null }
-                            }
-                        }.awaitAll().filterNotNull()
-                            .filter { !it.isTrashed }
-                    }
+            // On observe les skips synchronisés. Si isReactive est faux, on ne prend que le premier snapshot (pour .last() ou .first())
+            val skipFlow = swipeDecisionDao.getSyncedSkipDecisions(userId)
+            val collector = if (isReactive) skipFlow else skipFlow.take(1)
+            
+            collector.collect { skippedDecisions ->
+                val assetIds = skippedDecisions.map { it.assetId }
+                
+                if (assetIds.isEmpty()) {
+                    send(emptyList())
+                    return@collect
+                }
 
-                    // Mise à jour du cache avec les statuts d'archivage réels
-                    if (albumAssetDao != null) {
-                        albumAssetDao.insertAlbumAssets(detailedBatch.map { 
-                            AlbumAssetEntity(albumId, it.id, userId, it.isArchived) 
-                        })
-                    }
+                val newIds = assetIds.filter { !loadedAssets.containsKey(it) }
+                if (newIds.isNotEmpty()) {
+                    newIds.chunked(50).forEach { batch ->
+                        val detailedBatch = coroutineScope {
+                            batch.map { id ->
+                                async {
+                                    try { getAssetDetail(id, userId) } catch (_: Exception) { null }
+                                }
+                            }.awaitAll().filterNotNull()
+                                .filter { !it.isTrashed }
+                        }
 
-                    allAssets.addAll(detailedBatch)
-                    send(allAssets.sortedByDescending { it.fileCreatedAt })
+                        if (albumAssetDao != null) {
+                            albumAssetDao.insertAlbumAssets(detailedBatch.map { 
+                                AlbumAssetEntity(albumId, it.id, userId, it.isArchived) 
+                            })
+                        }
+
+                        detailedBatch.forEach { loadedAssets[it.id] = it }
+                        
+                        val currentList = assetIds.mapNotNull { loadedAssets[it] }
+                        send(currentList.sortedByDescending { it.fileCreatedAt })
+                    }
+                } else {
+                    val currentList = assetIds.mapNotNull { loadedAssets[it] }
+                    send(currentList.sortedByDescending { it.fileCreatedAt })
                 }
             }
             return@channelFlow
