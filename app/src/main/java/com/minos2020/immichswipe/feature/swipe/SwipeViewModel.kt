@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 
 class SwipeViewModel(
     private val assetRepository: AssetRepository,
@@ -191,6 +192,8 @@ class SwipeViewModel(
     private var initialSyncedDecisions = mapOf<String, SwipeDecision>()
     private var lastLoadedUserId: String? = null
     private var assetsJob: kotlinx.coroutines.Job? = null
+    private val allAssetsFoundFlow = MutableStateFlow<List<Asset>>(emptyList())
+    private val isAssetsLoadingFlow = MutableStateFlow(false)
 
     private fun loadAssetsAndDecisions() {
         assetsJob?.cancel()
@@ -207,13 +210,14 @@ class SwipeViewModel(
 
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 hasStartedSwiping = false
+
+                // On réinitialise les flux de chargement
+                allAssetsFoundFlow.value = emptyList()
+                isAssetsLoadingFlow.value = true
+
                 val includeArchived = sessionRepository.includeArchived.first()
                 val sortOrder = sessionRepository.swipeSortOrder.first()
                 val isChronologicalSort = sortOrder == SwipeSortOrder.DATE_DESC || sortOrder == SwipeSortOrder.DATE_ASC
-
-                // On utilise des flux intermédiaires pour synchroniser le chargement réseau et la réactivité DB
-                val allAssetsFoundFlow = MutableStateFlow<List<Asset>>(emptyList())
-                val isAssetsLoadingFlow = MutableStateFlow(true)
 
                 // Lancement du chargement des assets en parallèle
                 launch {
@@ -224,9 +228,9 @@ class SwipeViewModel(
                             userId = config.userId,
                             sortOrder = sortOrder,
                             isReactive = true // Permet de rester à jour sur les albums virtuels comme SKIPS
-                        ).collect {
+                        ).collect { 
                             allAssetsFoundFlow.value = it 
-                            // Pour l'album virtuel SKIPS, le flux est réactif et ne se termine jamais.
+                            // Pour l'album virtuel SKIPS, le flux est désormais réactif.
                             // On libère le loading UI dès qu'on a reçu au moins un batch (ou une liste vide).
                             if (album.id == Album.VIRTUAL_SKIPPED_ID) {
                                 isAssetsLoadingFlow.value = false
@@ -865,40 +869,35 @@ class SwipeViewModel(
 
         viewModelScope.launch {
             AppLogger.i("Swipe", "Application des changements : DELETE(${toDelete.size}), ARCHIVE(${toArchive.size}), LOCK(${toLock.size}), KEEP(${toKeep.size}), SKIP(${toSkip.size})")
-            _uiState.value = _uiState.value.copy(isSyncing = true)
+            _uiState.update { it.copy(isSyncing = true) }
             try {
                 val config = sessionRepository.sessionConfig.first() ?: return@launch
-                // 1. Appels API
-                if (toDelete.isNotEmpty()) assetRepository.deleteAssets(toDelete)
-                if (toArchive.isNotEmpty()) assetRepository.updateAssets(toArchive, visibility = "archive")
-                if (toLock.isNotEmpty()) assetRepository.updateAssets(toLock, visibility = "locked")
-
-                // 2. Vérification et mise à jour de la base locale
-                val freshAssets = assetRepository.getAssetsByAlbum(album.id, includeArchived = true, userId = config.userId).last()
-                val freshIds = freshAssets.map { it.id }.toSet()
-
-                // - Identification des succès (ceux qui ont disparu de l'album)
-                // Note: LOCK retire l'asset de l'album sur Immich, donc on le traite comme DELETE pour le nettoyage
-                val successfullyDisappeared = (toDelete + toLock).filter { !freshIds.contains(it) }
-                val failedDeletionsCount = toDelete.size - toDelete.filter { disappeared -> successfullyDisappeared.contains(disappeared) }.size
                 
-                val successfulKeeps = (toKeep + toArchive + toSkip).filter { freshIds.contains(it) || toSkip.contains(it) }
+                // 1. Appels API en parallèle pour plus de rapidité
+                coroutineScope {
+                    if (toDelete.isNotEmpty()) launch { assetRepository.deleteAssets(toDelete) }
+                    if (toArchive.isNotEmpty()) launch { assetRepository.updateAssets(toArchive, visibility = "archive") }
+                    if (toLock.isNotEmpty()) launch { assetRepository.updateAssets(toLock, visibility = "locked") }
+                }
 
-                // 3. Mise à jour de la base de données locale
-                if (successfullyDisappeared.isNotEmpty()) {
-                    // On retire de la base locale car ils ne sont plus dans l'album
-                    swipeDecisionRepository.removeDecisions(successfullyDisappeared, config.userId)
+                // 2. Mise à jour de la base de données locale (On fait confiance au succès des appels API)
+                val disappeared = (toDelete + toLock).toSet()
+                val successfulKeeps = (toKeep + toArchive + toSkip).toList()
+
+                if (disappeared.isNotEmpty()) {
+                    swipeDecisionRepository.removeDecisions(disappeared.toList(), config.userId)
                 }
 
                 if (successfulKeeps.isNotEmpty()) {
                     swipeDecisionRepository.markAsSynced(successfulKeeps, config.userId)
                 }
 
-                // 3.5 Enregistrement dans l'historique avec calcul de DELTAS pour éviter les doublons
-                val deltaDelete = toDelete.filter { successfullyDisappeared.contains(it) }.size
-                val deltaLock = toLock.filter { successfullyDisappeared.contains(it) }.size
-                
-                // Pour KEEP, ARCHIVE, SKIP : on soustrait l'ancienne valeur si elle existait déjà dans l'historique
+                // 3. Mise à jour de l'état en mémoire pour un rafraîchissement immédiat sans rechargement réseau
+                if (disappeared.isNotEmpty()) {
+                    allAssetsFoundFlow.update { list -> list.filter { !disappeared.contains(it.id) } }
+                }
+
+                // 4. Enregistrement dans l'historique avec calcul de DELTAS
                 var deltaKeep = toKeep.size
                 var deltaArchive = toArchive.size
                 var deltaSkip = toSkip.size
@@ -918,43 +917,36 @@ class SwipeViewModel(
 
                 swipeDecisionRepository.saveSyncHistory(
                     userId = config.userId,
-                    deletedCount = deltaDelete,
-                    bytesSaved = toDelete.filter { successfullyDisappeared.contains(it) }.sumOf { assetSizes[it] ?: 0L },
+                    deletedCount = toDelete.size,
+                    bytesSaved = toDelete.sumOf { assetSizes[it] ?: 0L },
                     keptCount = deltaKeep,
                     archivedCount = deltaArchive,
-                    lockedCount = deltaLock,
+                    lockedCount = toLock.size,
                     skippedCount = deltaSkip
                 )
 
-                AppLogger.i("Swipe", "Synchronisation réussie. ${successfullyDisappeared.size} supprimés/verrouillés, ${successfulKeeps.size} gardés localement.")
+                AppLogger.i("Swipe", "Synchronisation réussie (Smooth Sync).")
 
-                // 4. Feedback utilisateur et rechargement
-                if (failedDeletionsCount > 0) {
-                    AppLogger.w("Swipe", "$failedDeletionsCount échecs de suppression détectés après vérification")
-                    _uiState.value = _uiState.value.copy(
-                        isSyncing = false,
-                        showSummary = false,
-                        error = "Attention : $failedDeletionsCount photos n'ont pas pu être supprimées. Vérifiez votre connexion ou vos droits."
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isSyncing = false,
-                        showSummary = false,
-                        showSuccessAnimation = true
-                    )
-                    delay(2500)
-                    _uiState.value = _uiState.value.copy(showSuccessAnimation = false)
-                }
+                // 5. Feedback utilisateur
+                _uiState.update { it.copy(
+                    isSyncing = false,
+                    showSummary = false,
+                    showSuccessAnimation = true,
+                    decisions = emptyMap() // On vide les décisions locales car elles sont maintenant synchronisées
+                ) }
                 
-                loadAssetsAndDecisions()
+                delay(2500)
+                _uiState.update { it.copy(showSuccessAnimation = false) }
+                
+                // Note : On ne rappelle plus loadAssetsAndDecisions() car la transition est gérée par la réactivité des Flow
                 
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 AppLogger.e("Swipe", "Échec lors de l'application des changements", e)
-                _uiState.value = _uiState.value.copy(
+                _uiState.update { it.copy(
                     isSyncing = false,
                     error = "Erreur lors de la synchronisation : ${e.message}"
-                )
+                ) }
             }
         }
     }
