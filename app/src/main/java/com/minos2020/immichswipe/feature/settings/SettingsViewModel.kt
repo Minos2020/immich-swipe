@@ -122,6 +122,11 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch {
+            sessionRepository.showAddToAlbumButton.collect { show ->
+                _uiState.update { it.copy(showAddToAlbumButton = show) }
+            }
+        }
+        viewModelScope.launch {
             sessionRepository.autoNextOnFav.collect { autoNextOnFav ->
                 _uiState.update { it.copy(autoNextOnFav = autoNextOnFav) }
             }
@@ -200,6 +205,10 @@ class SettingsViewModel(
 
     fun setShowKeepDelete(show: Boolean) {
         viewModelScope.launch { sessionRepository.saveShowKeepDelete(show) }
+    }
+
+    fun setShowAddToAlbum(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowAddToAlbum(show) }
     }
 
     fun setAutoNextOnFav(autoNextOnFav: Boolean) {

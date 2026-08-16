@@ -318,6 +318,12 @@ fun SettingsScreen(
                             icon = Icons.Default.Lock
                         )
                         SettingsToggleItemSmall(
+                            title = stringResource(R.string.settings_tri_add_to_album),
+                            checked = uiState.showAddToAlbumButton,
+                            onCheckedChange = { viewModel.setShowAddToAlbum(it) },
+                            icon = Icons.Default.LibraryAdd
+                        )
+                        SettingsToggleItemSmall(
                             title = stringResource(R.string.settings_tri_keep_delete),
                             checked = uiState.showKeepDeleteButtons,
                             onCheckedChange = { viewModel.setShowKeepDelete(it) },

@@ -291,15 +291,17 @@ fun SwipeScreen(
             }
 
             // AJOUTER À UN ALBUM
-            IconButton(
-                onClick = { viewModel.toggleAlbumSelection(true, availableAlbums) },
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LibraryAdd,
-                    contentDescription = "Ajouter à un album",
-                    tint = MaterialTheme.colorScheme.secondary
-                )
+            if (uiState.showAddToAlbumButton) {
+                IconButton(
+                    onClick = { viewModel.toggleAlbumSelection(true, availableAlbums) },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LibraryAdd,
+                        contentDescription = "Ajouter à un album",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
 
             // SKIP

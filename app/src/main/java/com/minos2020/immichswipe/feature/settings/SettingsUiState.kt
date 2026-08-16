@@ -34,6 +34,7 @@ data class SettingsUiState(
     val showArchiveButton: Boolean = true,
     val showLockButton: Boolean = true,
     val showKeepDeleteButtons: Boolean = true,
+    val showAddToAlbumButton: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val showLogsDialog: Boolean = false,

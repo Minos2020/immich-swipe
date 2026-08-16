@@ -118,6 +118,11 @@ class SwipeViewModel(
                 _uiState.value = _uiState.value.copy(showKeepDeleteButtons = show)
             }
         }
+        viewModelScope.launch {
+            sessionRepository.showAddToAlbumButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showAddToAlbumButton = show)
+            }
+        }
     }
 
     private fun observeSkipLifespan() {

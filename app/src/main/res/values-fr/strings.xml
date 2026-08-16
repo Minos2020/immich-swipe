@@ -110,6 +110,7 @@
     <string name="settings_tri_favorite">Bouton Favori</string>
     <string name="settings_tri_archive">Bouton Archiver</string>
     <string name="settings_tri_lock">Bouton \"Dossier verrouillé\"</string>
+    <string name="settings_tri_add_to_album">Bouton \"Ajouter à un album\"</string>
     <string name="settings_tri_keep_delete">Boutons \"KEEP\" et \"DELETE\"</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Marquer automatiquement comme KEEP après avoir marqué en favori, et passer à la photo suivante</string>

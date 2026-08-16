@@ -109,6 +109,7 @@
     <string name="settings_tri_favorite">Favorite button</string>
     <string name="settings_tri_archive">Archive button</string>
     <string name="settings_tri_lock">Locked Folder button</string>
+    <string name="settings_tri_add_to_album">\"Add to album\" button</string>
     <string name="settings_tri_keep_delete">KEEP and DELETE buttons</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Move to the next photo and automatically mark as KEEP after marking as favorite</string>

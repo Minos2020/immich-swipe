@@ -106,6 +106,7 @@ class SessionRepository(context: Context) {
     val showArchiveButton: Flow<Boolean> = dataStore.isShowArchive()
     val showLockButton: Flow<Boolean> = dataStore.isShowLock()
     val showKeepDeleteButtons: Flow<Boolean> = dataStore.isShowKeepDelete()
+    val showAddToAlbumButton: Flow<Boolean> = dataStore.isShowAddToAlbum()
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
 
@@ -205,6 +206,7 @@ class SessionRepository(context: Context) {
     suspend fun saveShowArchive(show: Boolean) { dataStore.saveShowArchive(show) }
     suspend fun saveShowLock(show: Boolean) { dataStore.saveShowLock(show) }
     suspend fun saveShowKeepDelete(show: Boolean) { dataStore.saveShowKeepDelete(show) }
+    suspend fun saveShowAddToAlbum(show: Boolean) { dataStore.saveShowAddToAlbum(show) }
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
 
