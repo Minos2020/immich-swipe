@@ -24,6 +24,7 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
+import com.google.android.ump.ConsentDebugSettings
 import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
@@ -68,7 +69,14 @@ class PlayAdManager : AdManager {
     }
 
     override fun requestConsent(activity: android.app.Activity, onConsentComplete: () -> Unit) {
+        // Paramètres de debug pour forcer le formulaire pendant le développement
+        val debugSettings = ConsentDebugSettings.Builder(activity)
+            .addTestDeviceHashedId("F8C82941F914386C628929DE0B6D9518")
+            .setDebugGeography(ConsentDebugSettings.DebugGeography.DEBUG_GEOGRAPHY_EEA)
+            .build()
+
         val params = ConsentRequestParameters.Builder()
+            .setConsentDebugSettings(debugSettings)
             .setTagForUnderAgeOfConsent(false)
             .build()
 
@@ -91,6 +99,12 @@ class PlayAdManager : AdManager {
                 onConsentComplete()
             }
         )
+    }
+
+    override fun showPrivacyOptionsForm(activity: android.app.Activity, onComplete: () -> Unit) {
+        UserMessagingPlatform.showPrivacyOptionsForm(activity) { formError ->
+            onComplete()
+        }
     }
 
     private fun initializeMobileAds(context: Context) {

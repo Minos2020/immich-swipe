@@ -1,5 +1,8 @@
 package com.minos2020.immichswipe.feature.settings
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -43,6 +46,17 @@ import com.minos2020.immichswipe.R
 import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
+import com.minos2020.immichswipe.core.ads.AdManagerProvider
+import com.minos2020.immichswipe.BuildConfig
+
+/**
+ * Helper pour trouver l'Activity à partir du Context.
+ */
+private fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 @Composable
 fun SettingsScreen(
@@ -528,6 +542,26 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+
+            // SECTION CONFIDENTIALITÉ (Play Store uniquement)
+            if (BuildConfig.FLAVOR == "play") {
+                SettingsSection(title = stringResource(R.string.settings_section_privacy), icon = Icons.Default.PrivacyTip) {
+                    SettingsClickableItem(
+                        title = stringResource(R.string.settings_ad_privacy_label),
+                        subtitle = stringResource(R.string.settings_ad_privacy_desc),
+                        icon = Icons.Default.Security,
+                        onClick = {
+                            val activity = context.findActivity()
+                            if (activity != null) {
+                                AdManagerProvider.instance.showPrivacyOptionsForm(activity) {
+                                    // Consentement mis à jour
+                                }
+                            }
+                        }
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+            }
 
             // SECTION COMPTE
             SettingsSection(title = stringResource(R.string.settings_section_account), icon = Icons.Default.Person) {

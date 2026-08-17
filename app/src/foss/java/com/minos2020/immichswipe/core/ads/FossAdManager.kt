@@ -23,6 +23,10 @@ class FossAdManager : AdManager {
         onConsentComplete()
     }
 
+    override fun showPrivacyOptionsForm(activity: android.app.Activity, onComplete: () -> Unit) {
+        onComplete()
+    }
+
     override fun shouldInsertAdAt(index: Int): Boolean = false
 
     @Composable

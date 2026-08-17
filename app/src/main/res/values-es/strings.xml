@@ -223,4 +223,9 @@
     <string name="settings_logs_clear">Borrar registros</string>
     <string name="settings_logs_empty">No hay registros disponibles por el momento.</string>
     <string name="settings_logs_copied_toast">Registros copiados al portapapeles</string>
+
+    <!-- Ad Privacy -->
+    <string name="settings_section_privacy">Privacidad</string>
+    <string name="settings_ad_privacy_label">Preferencias de anuncios</string>
+    <string name="settings_ad_privacy_desc">Gestione sus opciones respecto al consentimiento RGPD</string>
 </resources>
