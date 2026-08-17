@@ -11,6 +11,7 @@
 # local.properties contient le chemin vers le SDK Android propre à votre machine
 /local.properties
 local.properties
+secrets.properties
 
 # Fichiers de configuration sensibles (Clés d'API, services Google, secrets)
 google-services.json

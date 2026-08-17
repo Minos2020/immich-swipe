@@ -15,6 +15,11 @@ interface AdManager {
     fun init(context: Context)
 
     /**
+     * Demande le consentement utilisateur (RGPD) si nécessaire.
+     */
+    fun requestConsent(activity: android.app.Activity, onConsentComplete: () -> Unit)
+
+    /**
      * Détermine si une publicité doit être insérée à cet index.
      */
     fun shouldInsertAdAt(index: Int): Boolean

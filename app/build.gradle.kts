@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -6,6 +9,15 @@ plugins {
 
 android {
     namespace = "com.minos2020.immichswipe"
+    
+    // --- Chargement des secrets ---
+    val secretsFile = rootProject.file("secrets.properties")
+    val secrets = Properties()
+    if (secretsFile.exists()) {
+        secrets.load(FileInputStream(secretsFile))
+    }
+    // ------------------------------
+
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -26,10 +38,22 @@ android {
     productFlavors {
         create("foss") {
             dimension = "distribution"
+            
+            // Valeurs vides ou de test pour la version FOSS
+            manifestPlaceholders["admobAppId"] = "unused"
+            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"\"")
         }
         create("play") {
             dimension = "distribution"
             versionNameSuffix = "-play"
+            
+            // Injection des vrais secrets depuis secrets.properties
+            // Fallback sur les IDs de test si le fichier est manquant
+            val appId = secrets.getProperty("admob.app.id") ?: "ca-app-pub-3940256099942544~3347511713"
+            val adUnitId = secrets.getProperty("admob.native.ad.unit.id") ?: "ca-app-pub-3940256099942544/2247696110"
+            
+            manifestPlaceholders["admobAppId"] = appId
+            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$adUnitId\"")
         }
     }
 
@@ -59,6 +83,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true // Permet de générer la classe BuildConfig contenant nos IDs
     }
 }
 
@@ -102,4 +127,5 @@ dependencies {
 
     // Publicité (Play Store uniquement)
     "playImplementation"(libs.play.services.ads)
+    "playImplementation"(libs.userMessagingPlatform)
 }
