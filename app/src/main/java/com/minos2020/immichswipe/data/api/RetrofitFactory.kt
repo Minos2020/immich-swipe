@@ -36,27 +36,35 @@ object RetrofitFactory {
             try {
                 val response = chain.proceed(request)
                 
-                when (response.code) {
-                    in 200..299 -> {
-                        SessionManager.updateStatus(ConnectionLevel.ONLINE, DiagStatus.CONNECTED)
+                if (!response.isSuccessful) {
+                    val errorBody = try {
+                        // On "peek" le body pour ne pas le consommer et permettre à Retrofit de le lire ensuite
+                        response.peekBody(4096).string()
+                    } catch (_: Exception) {
+                        null
                     }
-                    401, 403 -> {
-                        AppLogger.e("Retrofit", "Erreur d'authentification (${response.code}) sur $urlPath")
-                        SessionManager.updateStatus(ConnectionLevel.ISSUES, DiagStatus.AUTH_ERROR)
-                    }
-                    404 -> {
-                        AppLogger.e("Retrofit", "Ressource non trouvée (404) sur $urlPath. Vérifiez l'URL du serveur.")
-                    }
-                    502, 503, 504 -> {
-                        AppLogger.e("Retrofit", "Serveur indisponible (${response.code}) sur $urlPath")
-                        SessionManager.updateStatus(ConnectionLevel.ISSUES, DiagStatus.UNAVAILABLE, response.code)
-                    }
-                    else -> {
-                        if (response.code >= 400) {
-                            AppLogger.w("Retrofit", "Réponse inattendue (${response.code}) sur $urlPath")
+
+                    val baseMsg = "sur $urlPath" + if (errorBody.isNullOrBlank()) "" else " : $errorBody"
+
+                    when (response.code) {
+                        401, 403 -> {
+                            AppLogger.e("Retrofit", "Erreur d'authentification (${response.code}) $baseMsg")
+                            SessionManager.updateStatus(ConnectionLevel.ISSUES, DiagStatus.AUTH_ERROR)
+                        }
+                        404 -> {
+                            AppLogger.e("Retrofit", "Ressource non trouvée (404) $baseMsg. Vérifiez l'URL du serveur.")
+                        }
+                        502, 503, 504 -> {
+                            AppLogger.e("Retrofit", "Serveur indisponible (${response.code}) $baseMsg")
+                            SessionManager.updateStatus(ConnectionLevel.ISSUES, DiagStatus.UNAVAILABLE, response.code)
+                        }
+                        else -> {
+                            AppLogger.w("Retrofit", "Réponse inattendue (${response.code}) $baseMsg")
                             SessionManager.updateStatus(ConnectionLevel.ISSUES, DiagStatus.UNEXPECTED, response.code)
                         }
                     }
+                } else {
+                    SessionManager.updateStatus(ConnectionLevel.ONLINE, DiagStatus.CONNECTED)
                 }
                 response
             } catch (e: Exception) {

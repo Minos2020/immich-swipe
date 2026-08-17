@@ -2,6 +2,7 @@ package com.minos2020.immichswipe.core
 
 import android.content.Context
 import android.util.Log
+import retrofit2.HttpException
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -41,12 +42,52 @@ object AppLogger {
 
     fun w(tag: String, message: String, throwable: Throwable? = null) {
         Log.w(tag, message, throwable)
-        write("W", tag, "$message ${throwable?.stackTraceToString() ?: ""}")
+        val fullMsg = buildString {
+            append(message)
+            if (throwable != null) {
+                append(" ")
+                append(extractErrorInfo(throwable))
+                append("\n")
+                append(throwable.stackTraceToString())
+            }
+        }
+        write("W", tag, fullMsg)
     }
 
     fun e(tag: String, message: String, throwable: Throwable? = null) {
         Log.e(tag, message, throwable)
-        write("E", tag, "$message ${throwable?.stackTraceToString() ?: ""}")
+        val fullMsg = buildString {
+            append(message)
+            if (throwable != null) {
+                append(" ")
+                append(extractErrorInfo(throwable))
+                append("\n")
+                append(throwable.stackTraceToString())
+            }
+        }
+        write("E", tag, fullMsg)
+    }
+
+    /**
+     * Tente d'extraire des informations supplémentaires d'une exception (ex: body d'erreur Retrofit).
+     */
+    private fun extractErrorInfo(throwable: Throwable): String {
+        return try {
+            if (throwable is HttpException) {
+                val rawResponse = throwable.response()?.raw()
+                val errorBody = rawResponse?.peekBody(4096)?.string()
+                
+                if (!errorBody.isNullOrBlank()) {
+                    "[HTTP ${throwable.code()}] Body: $errorBody"
+                } else {
+                    "[HTTP ${throwable.code()}]"
+                }
+            } else {
+                throwable.toString()
+            }
+        } catch (_: Exception) {
+            throwable.toString()
+        }
     }
 
     @Synchronized
