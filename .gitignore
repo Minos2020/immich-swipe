@@ -4,6 +4,8 @@
 /build
 /captures
 /app/release
+/app/play/release
+/app/foss/release
 .externalNativeBuild
 .cxx
 
