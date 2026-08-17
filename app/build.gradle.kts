@@ -22,6 +22,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("foss") {
+            dimension = "distribution"
+        }
+        create("play") {
+            dimension = "distribution"
+            versionNameSuffix = "-play"
+        }
+    }
+
     dependenciesInfo {
         // Disables dependency metadata when building APKs (for IzzyOnDroid/F-Droid)
         includeInApk = false
@@ -88,4 +99,7 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    // Publicité (Play Store uniquement)
+    "playImplementation"(libs.play.services.ads)
 }
