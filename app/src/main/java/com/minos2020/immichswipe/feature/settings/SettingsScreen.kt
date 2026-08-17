@@ -90,7 +90,6 @@ fun SettingsScreen(
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-            // ... (rest of sections)
             // SECTION APPARENCE
             SettingsSection(title = stringResource(R.string.settings_section_appearance), icon = Icons.Default.Palette) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -260,181 +259,210 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // SECTION INTERACTION
-            SettingsSection(title = stringResource(R.string.settings_section_interaction), icon = Icons.Default.TouchApp) {
-                Column {
-                    // Actions de tri
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.settings_interaction_sorting_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        
-                        SettingsToggleItemSmall(
-                            title = stringResource(R.string.settings_tri_favorite),
-                            checked = uiState.showFavoriteButton,
-                            onCheckedChange = { viewModel.setShowFavorite(it) },
-                            icon = Icons.Default.Star
-                        )
+            // SECTION ACTIONS DE TRI
+            SettingsSection(title = stringResource(R.string.settings_interaction_sorting_title), icon = Icons.Default.TouchApp) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    SettingsToggleItemSmall(
+                        title = stringResource(R.string.settings_tri_favorite),
+                        checked = uiState.showFavoriteButton,
+                        onCheckedChange = { viewModel.setShowFavorite(it) },
+                        icon = Icons.Default.Favorite
+                    )
 
-                        AnimatedVisibility(
-                            visible = uiState.showFavoriteButton,
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
+                    AnimatedVisibility(
+                        visible = uiState.showFavoriteButton,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(start = 32.dp, end = 8.dp, bottom = 8.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    RoundedCornerShape(12.dp)
+                                )
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .padding(start = 32.dp, end = 8.dp, bottom = 8.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                            ) {
-                                SettingsToggleItemSmall(
-                                    title = stringResource(R.string.settings_auto_next_label),
-                                    checked = uiState.autoNextOnFav,
-                                    onCheckedChange = { viewModel.setAutoNextOnFav(it) },
-                                    icon = Icons.AutoMirrored.Filled.Forward
-                                )
-                                Text(
-                                    text = stringResource(R.string.settings_auto_next_desc),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
-                                )
-                            }
+                            SettingsToggleItemSmall(
+                                title = stringResource(R.string.settings_auto_next_label),
+                                checked = uiState.autoNextOnFav,
+                                onCheckedChange = { viewModel.setAutoNextOnFav(it) },
+                                icon = Icons.Default.Check
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_auto_next_desc),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
+                            )
                         }
-
-                        SettingsToggleItemSmall(
-                            title = stringResource(R.string.settings_tri_archive),
-                            checked = uiState.showArchiveButton,
-                            onCheckedChange = { viewModel.setShowArchive(it) },
-                            icon = Icons.Default.Archive
-                        )
-                        SettingsToggleItemSmall(
-                            title = stringResource(R.string.settings_tri_lock),
-                            checked = uiState.showLockButton,
-                            onCheckedChange = { viewModel.setShowLock(it) },
-                            icon = Icons.Default.Lock
-                        )
-                        SettingsToggleItemSmall(
-                            title = stringResource(R.string.settings_tri_add_to_album),
-                            checked = uiState.showAddToAlbumButton,
-                            onCheckedChange = { viewModel.setShowAddToAlbum(it) },
-                            icon = Icons.Default.LibraryAdd
-                        )
-                        SettingsToggleItemSmall(
-                            title = stringResource(R.string.settings_tri_keep_delete),
-                            checked = uiState.showKeepDeleteButtons,
-                            onCheckedChange = { viewModel.setShowKeepDelete(it) },
-                            icon = Icons.Default.Swipe // Icône évoquant le mouvement et les boutons
-                        )
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
-                    // Actions sur les cartes
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.settings_interaction_card_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.height(8.dp))
-
-                        CardActionWithPosition(
-                            title = stringResource(R.string.settings_card_fullscreen),
-                            icon = Icons.Default.Fullscreen,
-                            checked = uiState.showFullscreenButton,
-                            onCheckedChange = { viewModel.setShowFullscreen(it) },
-                            position = uiState.fullscreenButtonPosition,
-                            onPositionSelected = { viewModel.setFullscreenButtonPosition(it) }
-                        )
-
-                        CardActionWithPosition(
-                            title = stringResource(R.string.settings_card_immich),
-                            icon = Icons.AutoMirrored.Filled.OpenInNew,
-                            checked = uiState.showImmichButton,
-                            onCheckedChange = { viewModel.setShowImmich(it) },
-                            position = uiState.immichButtonPosition,
-                            onPositionSelected = { viewModel.setImmichButtonPosition(it) }
-                        )
-
-                        CardActionWithPosition(
-                            title = stringResource(R.string.settings_card_display_mode),
-                            icon = Icons.Default.AspectRatio,
-                            checked = uiState.showCardDisplayButton,
-                            onCheckedChange = { viewModel.setShowCardDisplay(it) },
-                            position = uiState.cardDisplayButtonPosition,
-                            onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) }
-                        )
-
-                        CardActionWithPosition(
-                            title = stringResource(R.string.settings_card_mute),
-                            icon = Icons.AutoMirrored.Filled.VolumeUp,
-                            checked = uiState.showMuteButton,
-                            onCheckedChange = { viewModel.setShowMute(it) },
-                            position = uiState.muteButtonPosition,
-                            onPositionSelected = { viewModel.setMuteButtonPosition(it) }
-                        )
-
-                        CardActionWithPosition(
-                            title = stringResource(R.string.settings_tri_share),
-                            icon = Icons.Default.Share,
-                            checked = uiState.showShareButton,
-                            onCheckedChange = { viewModel.setShowShare(it) },
-                            position = uiState.shareButtonPosition,
-                            onPositionSelected = { viewModel.setShareButtonPosition(it) }
-                        )
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
-
+                    SettingsToggleItemSmall(
+                        title = stringResource(R.string.settings_tri_archive),
+                        checked = uiState.showArchiveButton,
+                        onCheckedChange = { viewModel.setShowArchive(it) },
+                        icon = Icons.Default.Archive
+                    )
+                    SettingsToggleItemSmall(
+                        title = stringResource(R.string.settings_tri_lock),
+                        checked = uiState.showLockButton,
+                        onCheckedChange = { viewModel.setShowLock(it) },
+                        icon = Icons.Default.Lock
+                    )
+                    SettingsToggleItemSmall(
+                        title = stringResource(R.string.settings_tri_add_to_album),
+                        checked = uiState.showAddToAlbumButton,
+                        onCheckedChange = { viewModel.setShowAddToAlbum(it) },
+                        icon = Icons.Default.LibraryAdd
+                    )
+                    SettingsToggleItemSmall(
+                        title = stringResource(R.string.settings_tri_keep_delete),
+                        checked = uiState.showKeepDeleteButtons,
+                        onCheckedChange = { viewModel.setShowKeepDelete(it) },
+                        icon = Icons.Default.Swipe // Icône évoquant le mouvement et les boutons
+                    )
                     // Inversion du swipe
-                    SettingsToggleItem(
+                    SettingsToggleItemSmall(
                         title = stringResource(R.string.settings_swipe_invert_label),
-                        subtitle = stringResource(R.string.settings_swipe_invert_desc),
                         checked = uiState.isSwipeInverted,
                         onCheckedChange = { viewModel.setSwipeInverted(it) },
                         icon = Icons.Default.SwapHoriz
                     )
+                    Text(
+                        text = stringResource(R.string.settings_swipe_invert_desc),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 16.dp)
+                    )
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+                    HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp), thickness = 0.5.dp)
+                }
+            }
 
-                    // Comportement vidéo
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.settings_video_behavior_label),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_video_behavior_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Spacer(Modifier.height(16.dp))
+
+            // SECTION ACTIONS SUR CARTES
+            SettingsSection(title = stringResource(R.string.settings_interaction_card_title), icon = Icons.Default.Style) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    CardActionWithPosition(
+                        title = stringResource(R.string.settings_card_fullscreen),
+                        icon = Icons.Default.Fullscreen,
+                        checked = uiState.showFullscreenButton,
+                        onCheckedChange = { viewModel.setShowFullscreen(it) },
+                        position = uiState.fullscreenButtonPosition,
+                        onPositionSelected = { viewModel.setFullscreenButtonPosition(it) }
+                    )
+
+                    CardActionWithPosition(
+                        title = stringResource(R.string.settings_card_immich),
+                        icon = Icons.AutoMirrored.Filled.OpenInNew,
+                        checked = uiState.showImmichButton,
+                        onCheckedChange = { viewModel.setShowImmich(it) },
+                        position = uiState.immichButtonPosition,
+                        onPositionSelected = { viewModel.setImmichButtonPosition(it) }
+                    )
+
+                    CardActionWithPosition(
+                        title = stringResource(R.string.settings_card_display_mode),
+                        icon = Icons.Default.AspectRatio,
+                        checked = uiState.showCardDisplayButton,
+                        onCheckedChange = { viewModel.setShowCardDisplay(it) },
+                        position = uiState.cardDisplayButtonPosition,
+                        onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) }
+                    )
+
+                    CardActionWithPosition(
+                        title = stringResource(R.string.settings_card_mute),
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
+                        checked = uiState.showMuteButton,
+                        onCheckedChange = { viewModel.setShowMute(it) },
+                        position = uiState.muteButtonPosition,
+                        onPositionSelected = { viewModel.setMuteButtonPosition(it) }
+                    )
+
+                    CardActionWithPosition(
+                        title = stringResource(R.string.settings_tri_share),
+                        icon = Icons.Default.Share,
+                        checked = uiState.showShareButton,
+                        onCheckedChange = { viewModel.setShowShare(it) },
+                        position = uiState.shareButtonPosition,
+                        onPositionSelected = { viewModel.setShareButtonPosition(it) }
+                    )
+
+                    CardActionWithPosition(
+                        title = stringResource(R.string.settings_card_rotate),
+                        icon = Icons.Default.RotateRight,
+                        checked = uiState.showRotateButton,
+                        onCheckedChange = { viewModel.setShowRotate(it) },
+                        position = uiState.rotateButtonPosition,
+                        onPositionSelected = { viewModel.setRotateButtonPosition(it) }
+                    )
+
+                    AnimatedVisibility(
+                        visible = uiState.showRotateButton,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(start = 32.dp, end = 8.dp, bottom = 8.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    RoundedCornerShape(12.dp)
+                                )
                         ) {
-                            ThemeButton(
-                                text = stringResource(R.string.settings_video_pause),
-                                icon = Icons.Default.PauseCircleFilled,
-                                selected = uiState.playbackBehavior == PlaybackBehavior.PAUSE_OTHERS,
-                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.PAUSE_OTHERS) },
-                                modifier = Modifier.weight(1f)
+                            SettingsToggleItemSmall(
+                                title = stringResource(R.string.settings_sync_rotate_label),
+                                checked = uiState.syncRotate,
+                                onCheckedChange = { viewModel.setSyncRotate(it) },
+                                icon = Icons.Default.CloudUpload
                             )
-                            ThemeButton(
-                                text = stringResource(R.string.settings_video_ignore),
-                                icon = Icons.Default.ControlPointDuplicate,
-                                selected = uiState.playbackBehavior == PlaybackBehavior.IGNORE,
-                                onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.IGNORE) },
-                                modifier = Modifier.weight(1f)
+                            Text(
+                                text = stringResource(R.string.settings_sync_rotate_desc),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
                             )
                         }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // SECTION AVANCÉ (Interaction globale)
+            SettingsSection(title = stringResource(R.string.settings_section_interaction), icon = Icons.Default.Settings) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Comportement vidéo
+                    Text(
+                        text = stringResource(R.string.settings_video_behavior_label),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_video_behavior_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeButton(
+                            text = stringResource(R.string.settings_video_pause),
+                            icon = Icons.Default.PauseCircleFilled,
+                            selected = uiState.playbackBehavior == PlaybackBehavior.PAUSE_OTHERS,
+                            onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.PAUSE_OTHERS) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeButton(
+                            text = stringResource(R.string.settings_video_ignore),
+                            icon = Icons.Default.ControlPointDuplicate,
+                            selected = uiState.playbackBehavior == PlaybackBehavior.IGNORE,
+                            onClick = { viewModel.setPlaybackBehavior(PlaybackBehavior.IGNORE) },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -926,7 +954,7 @@ fun IconPositionPicker(
     selectedPosition: IconPosition,
     onPositionSelected: (IconPosition) -> Unit
 ) {
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
@@ -935,7 +963,10 @@ fun IconPositionPicker(
         Spacer(Modifier.height(12.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 CornerButton(
                     text = stringResource(R.string.settings_pos_top_left),
                     selected = selectedPosition == IconPosition.TOP_LEFT,
@@ -949,7 +980,10 @@ fun IconPositionPicker(
                     modifier = Modifier.weight(1f)
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 CornerButton(
                     text = stringResource(R.string.settings_pos_bottom_left),
                     selected = selectedPosition == IconPosition.BOTTOM_LEFT,
@@ -976,7 +1010,7 @@ fun CornerButton(
 ) {
     OutlinedCard(
         onClick = onClick,
-        modifier = modifier.height(48.dp),
+        modifier = modifier.height(40.dp),
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(
             width = if (selected) 2.dp else 1.dp,

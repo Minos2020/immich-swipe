@@ -118,6 +118,9 @@
     <string name="settings_card_immich">Bouton \"Ouvrir dans Immich\"</string>
     <string name="settings_card_display_mode">Bouton Mode d\'affichage</string>
     <string name="settings_card_mute">Bouton Mute (vidéos)</string>
+    <string name="settings_card_rotate">Bouton Rotation (photos)</string>
+    <string name="settings_sync_rotate_label">Synchroniser la rotation</string>
+    <string name="settings_sync_rotate_desc">Sauvegarder la rotation sur le serveur (édition non-destructive)</string>
     <string name="settings_tri_keep_delete">Boutons \"KEEP\" et \"DELETE\"</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Marquer automatiquement comme KEEP après avoir marqué en favori, et passer à la photo suivante</string>

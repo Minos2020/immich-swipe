@@ -24,6 +24,7 @@ class SessionDataStore(private val context: Context) {
         private val KEY_CARD_DISPLAY_ICON_POS = stringPreferencesKey("card_display_icon_pos")
         private val KEY_MUTE_ICON_POS = stringPreferencesKey("mute_icon_pos")
         private val KEY_SHARE_ICON_POS = stringPreferencesKey("share_icon_pos")
+        private val KEY_ROTATE_ICON_POS = stringPreferencesKey("rotate_icon_pos")
         private val KEY_DEFAULT_LAYOUT_GRID = androidx.datastore.preferences.core.booleanPreferencesKey("default_layout_grid")
         private val KEY_SKIP_LIFESPAN = androidx.datastore.preferences.core.longPreferencesKey("skip_lifespan")
         private val KEY_SHOW_FAVORITE = androidx.datastore.preferences.core.booleanPreferencesKey("show_favorite")
@@ -36,6 +37,8 @@ class SessionDataStore(private val context: Context) {
         private val KEY_SHOW_IMMICH = androidx.datastore.preferences.core.booleanPreferencesKey("show_immich")
         private val KEY_SHOW_CARD_DISPLAY = androidx.datastore.preferences.core.booleanPreferencesKey("show_card_display")
         private val KEY_SHOW_MUTE = androidx.datastore.preferences.core.booleanPreferencesKey("show_mute")
+        private val KEY_SHOW_ROTATE = androidx.datastore.preferences.core.booleanPreferencesKey("show_rotate")
+        private val KEY_SYNC_ROTATE = androidx.datastore.preferences.core.booleanPreferencesKey("sync_rotate")
         private val KEY_AUTO_NEXT_ON_FAV = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next_on_fav")
         private val KEY_INCLUDE_ARCHIVED = androidx.datastore.preferences.core.booleanPreferencesKey("include_archived")
         private val KEY_DEFAULT_CARD_DISPLAY_MODE = stringPreferencesKey("default_card_display_mode")
@@ -115,6 +118,12 @@ class SessionDataStore(private val context: Context) {
         context.dataStore.edit { it[KEY_SHARE_ICON_POS] = pos }
     }
 
+    fun getRotateIconPosition(): Flow<String?> = context.dataStore.data.map { it[KEY_ROTATE_ICON_POS] }
+
+    suspend fun saveRotateIconPosition(pos: String) {
+        context.dataStore.edit { it[KEY_ROTATE_ICON_POS] = pos }
+    }
+
     fun isDefaultLayoutGrid(): Flow<Boolean> = context.dataStore.data.map { it[KEY_DEFAULT_LAYOUT_GRID] ?: false }
 
     suspend fun saveDefaultLayoutGrid(isGrid: Boolean) {
@@ -156,6 +165,12 @@ class SessionDataStore(private val context: Context) {
 
     fun isShowMute(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_MUTE] ?: true }
     suspend fun saveShowMute(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_MUTE] = show } }
+
+    fun isShowRotate(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SHOW_ROTATE] ?: true }
+    suspend fun saveShowRotate(show: Boolean) { context.dataStore.edit { it[KEY_SHOW_ROTATE] = show } }
+
+    fun isSyncRotate(): Flow<Boolean> = context.dataStore.data.map { it[KEY_SYNC_ROTATE] ?: true }
+    suspend fun saveSyncRotate(sync: Boolean) { context.dataStore.edit { it[KEY_SYNC_ROTATE] = sync } }
 
     fun isAutoNextOnFav(): Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_NEXT_ON_FAV] ?: false }
     suspend fun saveAutoNextOnFav(autoNext: Boolean) { context.dataStore.edit { it[KEY_AUTO_NEXT_ON_FAV] = autoNext } }

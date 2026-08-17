@@ -50,6 +50,8 @@ class SwipeViewModel(
         observeImmichButtonPosition()
         observeCardDisplayButtonPosition()
         observeMuteButtonPosition()
+        observeShareButtonPosition()
+        observeRotateButtonPosition()
         observeSkipLifespan()
         observeButtonVisibility()
         observeAutoNextOnFav()
@@ -148,6 +150,16 @@ class SwipeViewModel(
                 _uiState.value = _uiState.value.copy(showMuteButton = show)
             }
         }
+        viewModelScope.launch {
+            sessionRepository.showRotateButton.collect { show ->
+                _uiState.value = _uiState.value.copy(showRotateButton = show)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.syncRotate.collect { sync ->
+                _uiState.value = _uiState.value.copy(syncRotate = sync)
+            }
+        }
     }
 
     private fun observeSkipLifespan() {
@@ -218,9 +230,20 @@ class SwipeViewModel(
                 _uiState.value = _uiState.value.copy(muteButtonPosition = pos)
             }
         }
+    }
+
+    private fun observeShareButtonPosition() {
         viewModelScope.launch {
             sessionRepository.shareButtonPosition.collect { pos ->
                 _uiState.value = _uiState.value.copy(shareButtonPosition = pos)
+            }
+        }
+    }
+
+    private fun observeRotateButtonPosition() {
+        viewModelScope.launch {
+            sessionRepository.rotateButtonPosition.collect { pos ->
+                _uiState.value = _uiState.value.copy(rotateButtonPosition = pos)
             }
         }
     }
@@ -686,6 +709,30 @@ class SwipeViewModel(
 
     fun toggleMute() {
         _uiState.value = _uiState.value.copy(isMuted = !_uiState.value.isMuted)
+    }
+
+    fun rotateCurrentAsset() {
+        val asset = _uiState.value.currentAsset ?: return
+        val currentRotation = _uiState.value.localRotations[asset.id] ?: 0
+        val newRotation = currentRotation + 90
+        
+        // 1. Mise à jour UI immédiate
+        val newRotations = _uiState.value.localRotations.toMutableMap()
+        newRotations[asset.id] = newRotation
+        _uiState.value = _uiState.value.copy(localRotations = newRotations)
+        
+        // 2. Synchronisation serveur si activée
+        if (_uiState.value.syncRotate) {
+            viewModelScope.launch {
+                try {
+                    // On normalise la rotation pour le serveur (0, 90, 180, 270)
+                    assetRepository.updateAssetEdits(asset.id, newRotation % 360)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    AppLogger.e("Swipe", "Erreur synchro rotation", e)
+                }
+            }
+        }
     }
 
     fun setShowResetConfirmation(show: Boolean) {

@@ -51,13 +51,13 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,6 +112,32 @@ fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
+/**
+ * Modificateur pour échanger les dimensions lors d'une rotation de 90/270°.
+ * Indispensable pour que ContentScale.Fit/Fill fonctionne correctement sur un élément tourné.
+ */
+private fun Modifier.rotateLayout(rotation: Int) = layout { measurable, constraints ->
+    val isRotated = rotation % 180 != 0
+    val newConstraints = if (isRotated) {
+        Constraints(
+            minWidth = constraints.minHeight,
+            maxWidth = constraints.maxHeight,
+            minHeight = constraints.minWidth,
+            maxHeight = constraints.maxWidth
+        )
+    } else constraints
+    val placeable = measurable.measure(newConstraints)
+    if (isRotated) {
+        layout(placeable.height, placeable.width) {
+            placeable.place((placeable.height - placeable.width) / 2, (placeable.width - placeable.height) / 2)
+        }
+    } else {
+        layout(placeable.width, placeable.height) {
+            placeable.place(0, 0)
+        }
+    }
+}
+
 @Composable
 fun SwipeScreen(
     viewModel: SwipeViewModel,
@@ -127,7 +153,7 @@ fun SwipeScreen(
     // SOLUTION ROBUSTE : Relancer le chargement UNIQUEMENT si on passe de OFFLINE à ONLINE
     // et qu'on était en erreur. On ne surveille plus uiState.error ici pour éviter les boucles.
     LaunchedEffect(connectionStatus.level) {
-        if (uiState.error != null && connectionStatus.level == com.minos2020.immichswipe.core.ConnectionLevel.ONLINE) {
+        if (uiState.error != null && connectionStatus.level == ConnectionLevel.ONLINE) {
             viewModel.retryLoading()
         }
     }
@@ -204,6 +230,7 @@ fun SwipeScreen(
                             cardDisplayButtonPosition = uiState.cardDisplayButtonPosition,
                             muteButtonPosition = uiState.muteButtonPosition,
                             shareButtonPosition = uiState.shareButtonPosition,
+                            rotateButtonPosition = uiState.rotateButtonPosition,
                             isMuted = uiState.isMuted,
                             cardDisplayMode = uiState.cardDisplayMode,
                             showShareButton = uiState.showShareButton,
@@ -211,9 +238,12 @@ fun SwipeScreen(
                             showImmichButton = uiState.showImmichButton,
                             showCardDisplayButton = uiState.showCardDisplayButton,
                             showMuteButton = uiState.showMuteButton,
+                            showRotateButton = uiState.showRotateButton,
+                            localRotation = uiState.localRotations[asset.id] ?: 0,
                             onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                             onToggleMute = { viewModel.toggleMute() },
                             onShare = { viewModel.shareCurrentAsset(localContext) },
+                            onRotate = { viewModel.rotateCurrentAsset() },
                             onUpdateDescription = { id, desc -> viewModel.updateAssetDescription(id, desc) }
                         )
                     }
@@ -613,35 +643,6 @@ fun SwipeHeader(
 }
 
 @Composable
-private fun SortMenuItem(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    DropdownMenuItem(
-        text = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f),
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
-                if (selected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        },
-        onClick = onClick
-    )
-}
-
-@Composable
 private fun HeaderTitle(text: String, color: Color, modifier: Modifier = Modifier) {
     Text(
         text = text,
@@ -858,6 +859,7 @@ fun SwipeCard(
     cardDisplayButtonPosition: IconPosition,
     muteButtonPosition: IconPosition,
     shareButtonPosition: IconPosition,
+    rotateButtonPosition: IconPosition,
     isMuted: Boolean,
     cardDisplayMode: CardDisplayMode,
     showShareButton: Boolean,
@@ -865,9 +867,12 @@ fun SwipeCard(
     showImmichButton: Boolean,
     showCardDisplayButton: Boolean,
     showMuteButton: Boolean,
+    showRotateButton: Boolean,
+    localRotation: Int,
     onToggleDisplayMode: () -> Unit,
     onToggleMute: () -> Unit,
     onShare: () -> Unit,
+    onRotate: () -> Unit,
     onUpdateDescription: (String, String) -> Unit
 ) {
     val context = LocalContext.current
@@ -1035,6 +1040,17 @@ fun SwipeCard(
             shape = RoundedCornerShape(16.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp))) {
+                val animatedRotation by animateFloatAsState(
+                    targetValue = localRotation.toFloat(),
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    label = "PhotoRotation"
+                )
+
+                val contentModifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { rotationZ = animatedRotation }
+                    .rotateLayout(localRotation)
+
                 if (asset.type == "VIDEO" && !isNext && exoPlayer != null) {
                     // On ne garde qu'un seul PlayerView actif à la fois pour le même player
                     // Si le plein écran est ouvert, on cache celui de la carte pour qu'il puisse
@@ -1049,7 +1065,8 @@ fun SwipeCard(
                                 player = exoPlayer,
                                 isFullscreen = false,
                                 cardDisplayMode = cardDisplayMode,
-                                onDoubleTap = null // Géré par ZoomableBox
+                                onDoubleTap = null, // Géré par ZoomableBox
+                                modifier = contentModifier
                             )
 
                             // Indicateur de chargement si la vidéo n'est pas prête
@@ -1110,11 +1127,15 @@ fun SwipeCard(
                             .precision(coil.size.Precision.INEXACT)
                             .build()
                     }
+
                     ZoomableBox(
                         modifier = Modifier.fillMaxSize(),
                         resetOnRelease = true,
                         enabled = !isNext,
-                        aspectRatio = asset.exifInfo?.let { it.imageWidth?.toFloat()?.div(it.imageHeight?.toFloat() ?: 1f) },
+                        aspectRatio = asset.exifInfo?.let { 
+                            val baseAR = (it.imageWidth?.toFloat() ?: 1f) / (it.imageHeight?.toFloat() ?: 1f)
+                            if (localRotation % 180 != 0) 1f / baseAR else baseAR
+                        },
                         isFillMode = cardDisplayMode == CardDisplayMode.FILL,
                         onDoubleTap = { isFullscreenOpen = true }
                     ) {
@@ -1122,7 +1143,7 @@ fun SwipeCard(
                             model = photoRequest,
                             contentDescription = null,
                             contentScale = ContentScale.Fit, // Utilisation de Fit + ZoomableBox pour le mode FILL
-                            modifier = Modifier.fillMaxSize()
+                            modifier = contentModifier
                         )
                     }
                 }
@@ -1182,7 +1203,8 @@ fun SwipeCard(
                         immichButtonPosition, 
                         cardDisplayButtonPosition,
                         muteButtonPosition,
-                        shareButtonPosition
+                        shareButtonPosition,
+                        rotateButtonPosition
                     ).distinct()
                     distinctPositions.forEach { position ->
                         Column(
@@ -1217,6 +1239,13 @@ fun SwipeCard(
                                     icon = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
                                     contentDescription = stringResource(R.string.swipe_toggle_mute),
                                     onClick = onToggleMute
+                                )
+                            }
+                            if (rotateButtonPosition == position && asset.type == "IMAGE" && showRotateButton) {
+                                SwipeActionIconButton(
+                                    icon = Icons.Default.RotateRight,
+                                    contentDescription = stringResource(R.string.settings_card_rotate),
+                                    onClick = onRotate
                                 )
                             }
                             if (shareButtonPosition == position && showShareButton) {
@@ -1267,6 +1296,7 @@ fun SwipeCard(
         FullscreenViewer(
             asset = asset,
             player = exoPlayer,
+            rotation = localRotation,
             onClose = { isFullscreenOpen = false }
         )
     }
@@ -1278,7 +1308,8 @@ fun SharedVideoPlayer(
     player: Player,
     isFullscreen: Boolean,
     cardDisplayMode: com.minos2020.immichswipe.core.CardDisplayMode = CardDisplayMode.FILL,
-    onDoubleTap: (() -> Unit)? = null
+    onDoubleTap: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     AndroidView(
         factory = { context ->
@@ -1313,7 +1344,7 @@ fun SharedVideoPlayer(
             // Détache proprement le player de la vue avant destruction
             view.player = null
         },
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .then(
                 if (onDoubleTap != null) {
@@ -1329,6 +1360,7 @@ fun SharedVideoPlayer(
 fun FullscreenViewer(
     asset: Asset,
     player: Player?,
+    rotation: Int = 0,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1382,13 +1414,27 @@ fun FullscreenViewer(
                 .offset { IntOffset(0, swipeY.value.roundToInt()) },
             contentAlignment = Alignment.Center
         ) {
+            val animatedRotation by animateFloatAsState(
+                targetValue = rotation.toFloat(),
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "FullscreenRotation"
+            )
+
             ZoomableBox(
                 modifier = Modifier.fillMaxSize(),
                 resetOnRelease = false,
-                aspectRatio = asset.exifInfo?.let { it.imageWidth?.toFloat()?.div(it.imageHeight?.toFloat() ?: 1f) }
+                aspectRatio = asset.exifInfo?.let { 
+                    val baseAR = (it.imageWidth?.toFloat() ?: 1f) / (it.imageHeight?.toFloat() ?: 1f)
+                    if (rotation % 180 != 0) 1f / baseAR else baseAR
+                }
             ) {
+                val contentModifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { rotationZ = animatedRotation }
+                    .rotateLayout(rotation)
+
                 if (asset.type == "VIDEO" && player != null) {
-                    SharedVideoPlayer(player = player, isFullscreen = true)
+                    SharedVideoPlayer(player = player, isFullscreen = true, modifier = contentModifier)
                 } else {
                     val isGif = asset.originalMimeType == "image/gif" || 
                                 asset.originalFileName?.lowercase()?.endsWith(".gif") == true ||
@@ -1413,7 +1459,7 @@ fun FullscreenViewer(
                             }
                             .build(),
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = contentModifier,
                         contentScale = ContentScale.Fit
                     )
                 }

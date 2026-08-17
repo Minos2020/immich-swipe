@@ -3,7 +3,10 @@ package com.minos2020.immichswipe.data.repository
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.data.api.AssetOrder
+import com.minos2020.immichswipe.data.api.AssetEditAction
+import com.minos2020.immichswipe.data.api.AssetEditActionItem
 import com.minos2020.immichswipe.data.api.DeleteAssetsRequest
+import com.minos2020.immichswipe.data.api.EditAssetRequest
 import com.minos2020.immichswipe.data.api.ImmichApi
 import com.minos2020.immichswipe.data.api.SearchAssetsRequest
 import com.minos2020.immichswipe.data.api.UpdateAssetsRequest
@@ -277,5 +280,16 @@ class AssetRepository(
                 )
             )
         }
+    }
+
+    /**
+     * Met à jour les édits d'un asset (rotation).
+     */
+    suspend fun updateAssetEdits(assetId: String, rotation: Int) {
+        val edit = AssetEditActionItem(
+            action = AssetEditAction.rotate,
+            parameters = mapOf("angle" to rotation % 360)
+        )
+        api.editAsset(assetId, EditAssetRequest(edits = listOf(edit)))
     }
 }

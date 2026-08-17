@@ -48,6 +48,9 @@ interface ImmichApi {
     @PUT("api/assets")
     suspend fun updateAssets(@Body request: UpdateAssetsRequest)
 
+    @PUT("api/assets/{id}/edits")
+    suspend fun editAsset(@Path("id") assetId: String, @Body request: EditAssetRequest)
+
     @PUT("api/albums/{id}/assets")
     suspend fun addAssetsToAlbum(@Path("id") albumId: String, @Body request: AddAssetsToAlbumRequest)
 }
@@ -58,6 +61,22 @@ interface ImmichApi {
 data class AddAssetsToAlbumRequest(
     val ids: List<String>
 )
+
+/**
+ * Corps de la requête pour éditer un asset (rotation, etc).
+ */
+data class EditAssetRequest(
+    val edits: List<AssetEditActionItem>
+)
+
+data class AssetEditActionItem(
+    val action: AssetEditAction,
+    val parameters: Map<String, Any>
+)
+
+enum class AssetEditAction {
+    crop, rotate, mirror
+}
 
 /**
  * Corps de la requête pour mettre à jour des assets.

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 
 class SettingsViewModel(
     private val sessionRepository: SessionRepository,
@@ -50,6 +51,7 @@ class SettingsViewModel(
                 val user = userRepo.getCurrentUser()
                 _uiState.update { it.copy(userName = user.name ?: "") }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 android.util.Log.e("SettingsVM", "Erreur chargement user: ${e.message}")
             }
         }
@@ -94,6 +96,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             sessionRepository.shareButtonPosition.collect { pos ->
                 _uiState.update { it.copy(shareButtonPosition = pos) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.rotateButtonPosition.collect { pos ->
+                _uiState.update { it.copy(rotateButtonPosition = pos) }
             }
         }
         viewModelScope.launch {
@@ -154,6 +161,16 @@ class SettingsViewModel(
         viewModelScope.launch {
             sessionRepository.showMuteButton.collect { show ->
                 _uiState.update { it.copy(showMuteButton = show) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.showRotateButton.collect { show ->
+                _uiState.update { it.copy(showRotateButton = show) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.syncRotate.collect { sync ->
+                _uiState.update { it.copy(syncRotate = sync) }
             }
         }
         viewModelScope.launch {
@@ -221,6 +238,12 @@ class SettingsViewModel(
         }
     }
 
+    fun setRotateButtonPosition(pos: IconPosition) {
+        viewModelScope.launch {
+            sessionRepository.saveRotateButtonPosition(pos)
+        }
+    }
+
     fun setDefaultLayoutGrid(isGrid: Boolean) {
         viewModelScope.launch {
             sessionRepository.saveDefaultLayoutGrid(isGrid)
@@ -267,12 +290,22 @@ class SettingsViewModel(
         viewModelScope.launch { sessionRepository.saveShowMute(show) }
     }
 
+    fun setShowRotate(show: Boolean) {
+        viewModelScope.launch { sessionRepository.saveShowRotate(show) }
+    }
+
+    fun setSyncRotate(sync: Boolean) {
+        viewModelScope.launch { sessionRepository.saveSyncRotate(sync) }
+    }
+
     fun setAutoNextOnFav(autoNextOnFav: Boolean) {
         viewModelScope.launch { sessionRepository.saveAutoNextOnFav(autoNextOnFav) }
     }
 
     fun setIncludeArchived(include: Boolean) {
-        viewModelScope.launch { sessionRepository.saveIncludeArchived(include) }
+        viewModelScope.launch {
+            sessionRepository.saveIncludeArchived(include)
+        }
     }
 
     fun setDefaultCardDisplayMode(mode: com.minos2020.immichswipe.core.CardDisplayMode) {
@@ -354,6 +387,7 @@ class SettingsViewModel(
                 _uiState.update { it.copy(databaseActionStatus = "Données supprimées avec succès") }
                 AppLogger.i("Database", "Suppression des données locales (scope:${scope.name})")
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { it.copy(databaseActionStatus = "Erreur lors de la suppression: ${e.message}") }
                 AppLogger.e("Database", "Échec de la suppression des données", e)
             }
@@ -388,6 +422,7 @@ class SettingsViewModel(
                 _uiState.update { it.copy(databaseActionStatus = "Export terminé (${decisions.size} décisions)") }
                 AppLogger.i("Database", "Export réussi : ${decisions.size} décisions enregistrées (scope:${scope.name})")
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { it.copy(databaseActionStatus = "Erreur export: ${e.message}") }
                 AppLogger.e("Database", "Échec de l'export", e)
             } finally {
@@ -407,6 +442,7 @@ class SettingsViewModel(
                 _uiState.update { it.copy(databaseActionStatus = "Import réussi (${export.swipeDecisions.size} décisions)") }
                 AppLogger.i("Database", "Import réussi : ${export.swipeDecisions.size} décisions importées")
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { it.copy(databaseActionStatus = "Erreur import: ${e.message}") }
                 AppLogger.e("Database", "Échec de l'import", e)
             } finally {

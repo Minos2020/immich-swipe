@@ -40,12 +40,15 @@ data class SettingsUiState(
     val showImmichButton: Boolean = true,
     val showCardDisplayButton: Boolean = true,
     val showMuteButton: Boolean = true,
+    val showRotateButton: Boolean = true,
+    val syncRotate: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val showLogsDialog: Boolean = false,
     val showClearLogsConfirmation: Boolean = false,
     val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
     val shareButtonPosition: IconPosition = IconPosition.TOP_LEFT,
+    val rotateButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
     
     // Database actions
     val pendingDatabaseAction: DatabaseAction? = null,

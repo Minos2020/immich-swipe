@@ -93,7 +93,11 @@ class SessionRepository(context: Context) {
     }
 
     val shareButtonPosition: Flow<IconPosition> = dataStore.getShareIconPosition().map {
-        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_LEFT } } ?: IconPosition.TOP_LEFT
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.TOP_LEFT } } ?: IconPosition.TOP_LEFT
+    }
+
+    val rotateButtonPosition: Flow<IconPosition> = dataStore.getRotateIconPosition().map {
+        it?.let { try { IconPosition.valueOf(it) } catch(e: Exception) { IconPosition.BOTTOM_RIGHT } } ?: IconPosition.BOTTOM_RIGHT
     }
 
     /**
@@ -116,6 +120,8 @@ class SessionRepository(context: Context) {
     val showImmichButton: Flow<Boolean> = dataStore.isShowImmich()
     val showCardDisplayButton: Flow<Boolean> = dataStore.isShowCardDisplay()
     val showMuteButton: Flow<Boolean> = dataStore.isShowMute()
+    val showRotateButton: Flow<Boolean> = dataStore.isShowRotate()
+    val syncRotate: Flow<Boolean> = dataStore.isSyncRotate()
     val autoNextOnFav: Flow<Boolean> = dataStore.isAutoNextOnFav()
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
 
@@ -201,6 +207,10 @@ class SessionRepository(context: Context) {
         dataStore.saveShareIconPosition(pos.name)
     }
 
+    suspend fun saveRotateButtonPosition(pos: IconPosition) {
+        dataStore.saveRotateIconPosition(pos.name)
+    }
+
     /**
      * Sauvegarde le mode d'affichage par défaut.
      */
@@ -225,6 +235,8 @@ class SessionRepository(context: Context) {
     suspend fun saveShowImmich(show: Boolean) { dataStore.saveShowImmich(show) }
     suspend fun saveShowCardDisplay(show: Boolean) { dataStore.saveShowCardDisplay(show) }
     suspend fun saveShowMute(show: Boolean) { dataStore.saveShowMute(show) }
+    suspend fun saveShowRotate(show: Boolean) { dataStore.saveShowRotate(show) }
+    suspend fun saveSyncRotate(sync: Boolean) { dataStore.saveSyncRotate(sync) }
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
 

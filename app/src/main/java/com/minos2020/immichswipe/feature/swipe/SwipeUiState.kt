@@ -49,13 +49,17 @@ data class SwipeUiState(
     val showImmichButton: Boolean = true,
     val showCardDisplayButton: Boolean = true,
     val showMuteButton: Boolean = true,
+    val showRotateButton: Boolean = true,
+    val syncRotate: Boolean = true,
     val autoNextOnFav: Boolean = true,
     val includeArchived: Boolean = false,
     val localFavorites: Map<String, Boolean> = emptyMap(), // Map de AssetID -> Nouveau statut favori
+    val localRotations: Map<String, Int> = emptyMap(), // Map de AssetID -> Degrés de rotation (0, 90, 180, 270)
     val cardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
     val sortOrder: SwipeSortOrder = SwipeSortOrder.DATE_DESC,
     val sortPriority: SwipeSortPriority = SwipeSortPriority.NONE,
     val shareButtonPosition: IconPosition = IconPosition.TOP_LEFT,
+    val rotateButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
 
     // États pour l'ajout à un album
     val showAlbumSelection: Boolean = false,
