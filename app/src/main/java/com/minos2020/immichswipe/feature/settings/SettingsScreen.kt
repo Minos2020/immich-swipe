@@ -483,6 +483,8 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_db_delete_label),
                         subtitle = stringResource(R.string.settings_db_delete_desc),
                         icon = Icons.Default.DeleteForever,
+                        iconTint = MaterialTheme.colorScheme.error,
+                        titleColor = MaterialTheme.colorScheme.error,
                         onClick = { viewModel.requestDatabaseAction(DatabaseAction.DELETE, DatabaseScope.USER) }
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -512,6 +514,15 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.settings_view_logs_desc),
                         icon = Icons.Default.History,
                         onClick = { viewModel.setShowLogs(true) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+                    SettingsClickableItem(
+                        title = stringResource(R.string.settings_debug_clear_cache_label),
+                        subtitle = stringResource(R.string.settings_debug_clear_cache_desc),
+                        icon = Icons.Default.Cached,
+                        iconTint = MaterialTheme.colorScheme.error,
+                        titleColor = MaterialTheme.colorScheme.error,
+                        onClick = { viewModel.requestDatabaseAction(DatabaseAction.CLEAR_CACHE, DatabaseScope.USER) }
                     )
                 }
             }
@@ -702,6 +713,7 @@ fun SettingsScreen(
                     DatabaseAction.DELETE -> R.string.settings_db_confirm_delete_title
                     DatabaseAction.EXPORT -> R.string.settings_db_confirm_export_title
                     DatabaseAction.IMPORT -> R.string.settings_db_confirm_import_title
+                    DatabaseAction.CLEAR_CACHE -> R.string.settings_debug_confirm_clear_cache_title
                 }
                 Text(stringResource(titleRes))
             },
@@ -710,11 +722,12 @@ fun SettingsScreen(
                     val msgRes = when(action) {
                         DatabaseAction.DELETE -> R.string.settings_db_confirm_delete_msg
                         DatabaseAction.IMPORT -> R.string.settings_db_confirm_import_msg
+                        DatabaseAction.CLEAR_CACHE -> R.string.settings_debug_confirm_clear_cache_msg
                         DatabaseAction.EXPORT -> null
                     }
                     msgRes?.let { Text(stringResource(it)) }
                     
-                    if (action != DatabaseAction.IMPORT) {
+                    if (action != DatabaseAction.IMPORT && action != DatabaseAction.CLEAR_CACHE) {
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = "Portée de l'opération :",
@@ -759,6 +772,7 @@ fun SettingsScreen(
                     onClick = {
                         when(action) {
                             DatabaseAction.DELETE -> viewModel.executeDelete(scope)
+                            DatabaseAction.CLEAR_CACHE -> viewModel.clearAppCache(context)
                             DatabaseAction.EXPORT -> {
                                 val sdf = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm", java.util.Locale.getDefault())
                                 val dateStr = sdf.format(java.util.Date())
@@ -773,7 +787,7 @@ fun SettingsScreen(
                             DatabaseAction.IMPORT -> importLauncher.launch("application/json")
                         }
                     },
-                    colors = if (action == DatabaseAction.DELETE) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
+                    colors = if (action == DatabaseAction.DELETE || action == DatabaseAction.CLEAR_CACHE) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
                 ) {
                     Text(stringResource(R.string.common_confirm))
                 }
@@ -885,6 +899,8 @@ fun SettingsClickableItem(
     title: String,
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color = MaterialTheme.colorScheme.outline,
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
     onClick: () -> Unit
 ) {
     Row(
@@ -894,11 +910,15 @@ fun SettingsClickableItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
+        Icon(icon, contentDescription = null, tint = iconTint)
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            Text(text = title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (titleColor == MaterialTheme.colorScheme.error) titleColor.copy(alpha = 0.7f) else MaterialTheme.colorScheme.outline
+            )
         }
         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outlineVariant)
     }

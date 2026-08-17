@@ -201,6 +201,10 @@
     <string name="settings_section_debug">Debugging</string>
     <string name="settings_view_logs_label">View local logs</string>
     <string name="settings_view_logs_desc">View or export system events in case of problems</string>
+    <string name="settings_debug_clear_cache_label">Clear app cache</string>
+    <string name="settings_debug_clear_cache_desc">Delete temporary files and image cache (Coil).</string>
+    <string name="settings_debug_confirm_clear_cache_title">Clear cache?</string>
+    <string name="settings_debug_confirm_clear_cache_msg">Do you really want to delete all cached images and temporary files?\n\nThis will free up space, but images will have to be redownloaded next time you view them.</string>
     <string name="settings_logs_dialog_title">System Logs</string>
     <string name="settings_logs_copy">Copy all</string>
     <string name="settings_logs_clear">Clear logs</string>

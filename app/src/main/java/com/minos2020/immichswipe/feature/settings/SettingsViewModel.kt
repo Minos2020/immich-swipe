@@ -463,6 +463,30 @@ class SettingsViewModel(
         _uiState.update { it.copy(showClearLogsConfirmation = show) }
     }
 
+    fun clearAppCache(context: android.content.Context) {
+        viewModelScope.launch {
+            try {
+                val cacheDir = context.cacheDir
+                if (cacheDir.exists()) {
+                    val deleted = cacheDir.deleteRecursively()
+                    if (deleted) {
+                        AppLogger.i("Settings", "Cache de l'application vidé avec succès")
+                        _uiState.update { it.copy(databaseActionStatus = "Cache vidé avec succès") }
+                    } else {
+                        AppLogger.w("Settings", "Échec partiel de la suppression du cache")
+                        _uiState.update { it.copy(databaseActionStatus = "Échec partiel de la suppression du cache") }
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                AppLogger.e("Settings", "Erreur lors de la suppression du cache", e)
+                _uiState.update { it.copy(databaseActionStatus = "Erreur cache: ${e.message}") }
+            } finally {
+                dismissDatabaseConfirmation()
+            }
+        }
+    }
+
     fun clearLogs() {
         AppLogger.clearLogs()
         _uiState.update { it.copy(

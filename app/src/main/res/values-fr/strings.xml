@@ -235,6 +235,10 @@
     <string name="settings_section_debug">Débogage</string>
     <string name="settings_view_logs_label">Voir les journaux locaux</string>
     <string name="settings_view_logs_desc">Consulter ou exporter les événements système en cas de problème</string>
+    <string name="settings_debug_clear_cache_label">Vider le cache de l\'app</string>
+    <string name="settings_debug_clear_cache_desc">Supprime les fichiers temporaires et le cache des images (Coil).</string>
+    <string name="settings_debug_confirm_clear_cache_title">Vider le cache ?</string>
+    <string name="settings_debug_confirm_clear_cache_msg">Voulez-vous vraiment supprimer toutes les images et fichiers temporaires mis en cache ?\n\nCela libérera de l\'espace mais les images devront être retéléchargées lors de la prochaine consultation.</string>
     <string name="settings_logs_dialog_title">Journaux système</string>
     <string name="settings_logs_copy">Tout copier</string>
     <string name="settings_logs_clear">Effacer les logs</string>

@@ -214,6 +214,10 @@
     <string name="settings_section_debug">Depuración</string>
     <string name="settings_view_logs_label">Ver registros locales</string>
     <string name="settings_view_logs_desc">Consultar o exportar eventos del sistema en caso de problemas</string>
+    <string name="settings_debug_clear_cache_label">Vaciar caché de la app</string>
+    <string name="settings_debug_clear_cache_desc">Eliminar archivos temporales y caché de imágenes (Coil).</string>
+    <string name="settings_debug_confirm_clear_cache_title">¿Vaciar caché?</string>
+    <string name="settings_debug_confirm_clear_cache_msg">¿Realmente desea eliminar todas las imágenes y archivos temporales almacenados en caché?\n\nEsto liberará espacio, pero las imágenes deberán descargarse de nuevo la próxima vez que las vea.</string>
     <string name="settings_logs_dialog_title">Registros del sistema</string>
     <string name="settings_logs_copy">Copiar todo</string>
     <string name="settings_logs_clear">Borrar registros</string>

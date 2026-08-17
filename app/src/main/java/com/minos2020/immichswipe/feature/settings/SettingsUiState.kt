@@ -10,7 +10,7 @@ enum class DatabaseScope {
 }
 
 enum class DatabaseAction {
-    DELETE, EXPORT, IMPORT
+    DELETE, EXPORT, IMPORT, CLEAR_CACHE
 }
 
 /**
