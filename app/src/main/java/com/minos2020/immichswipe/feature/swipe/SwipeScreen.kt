@@ -195,9 +195,12 @@ fun SwipeScreen(
             isArchived = { uiState.isArchived(it) },
             isLocked = { uiState.isLocked(it) },
             onAssetClick = { realIndex ->
-                val targetAsset = realAssets.getOrNull(realIndex)
-                val globalIndex = uiState.assets.indexOfFirst { it.id == targetAsset?.id }
-                if (globalIndex != -1) viewModel.onMoveToAsset(globalIndex)
+                // Désactivation si une pub est affichée pour forcer le visionnage
+                if (uiState.currentAsset?.type != "AD") {
+                    val targetAsset = realAssets.getOrNull(realIndex)
+                    val globalIndex = uiState.assets.indexOfFirst { it.id == targetAsset?.id }
+                    if (globalIndex != -1) viewModel.onMoveToAsset(globalIndex)
+                }
             }
         )
 
@@ -292,6 +295,7 @@ fun SwipeScreen(
         }
 
         // 3. Barre d'actions en bas
+        val isAdShowing = uiState.currentAsset?.type == "AD"
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -303,9 +307,9 @@ fun SwipeScreen(
             // BOUTON SUPPRIMER (DELETE)
             if (uiState.showKeepDeleteButtons) {
                 FloatingActionButton(
-                    onClick = { viewModel.onSwipe(SwipeDecision.DELETE) },
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    onClick = { if (!isAdShowing) viewModel.onSwipe(SwipeDecision.DELETE) },
+                    containerColor = if (isAdShowing) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.errorContainer,
+                    contentColor = if (isAdShowing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onErrorContainer,
                     shape = CircleShape,
                     modifier = Modifier.size(56.dp)
                 ) {
@@ -316,7 +320,7 @@ fun SwipeScreen(
             // UNDO
             IconButton(
                 onClick = { viewModel.undo() },
-                enabled = uiState.currentIndex > 0 || uiState.history.isNotEmpty(),
+                enabled = !isAdShowing && (uiState.currentIndex > 0 || uiState.history.isNotEmpty()),
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.nav_back))
@@ -326,9 +330,10 @@ fun SwipeScreen(
             if (uiState.showArchiveButton) {
                 IconButton(
                     onClick = { viewModel.toggleArchive() },
+                    enabled = !isAdShowing,
                     modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(Icons.Default.Archive, contentDescription = stringResource(R.string.swipe_archive), tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Archive, contentDescription = stringResource(R.string.swipe_archive), tint = if (isAdShowing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -337,12 +342,13 @@ fun SwipeScreen(
                 val isFav = uiState.currentAsset?.let { uiState.isFavorite(it.id) } ?: false
                 IconButton(
                     onClick = { viewModel.toggleFavorite() },
+                    enabled = !isAdShowing,
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = stringResource(R.string.swipe_favorite),
-                        tint = if (isFav) Color.Red else MaterialTheme.colorScheme.onBackground
+                        tint = if (isAdShowing) MaterialTheme.colorScheme.outline else if (isFav) Color.Red else MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
@@ -351,9 +357,10 @@ fun SwipeScreen(
             if (uiState.showLockButton) {
                 IconButton(
                     onClick = { viewModel.toggleLock() },
+                    enabled = !isAdShowing,
                     modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(Icons.Default.Lock, contentDescription = stringResource(R.string.swipe_locked), tint = MaterialTheme.colorScheme.outline)
+                    Icon(Icons.Default.Lock, contentDescription = stringResource(R.string.swipe_locked), tint = if (isAdShowing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline)
                 }
             }
 
@@ -361,12 +368,13 @@ fun SwipeScreen(
             if (uiState.showAddToAlbumButton) {
                 IconButton(
                     onClick = { viewModel.toggleAlbumSelection(true, availableAlbums) },
+                    enabled = !isAdShowing,
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.LibraryAdd,
                         contentDescription = "Ajouter à un album",
-                        tint = MaterialTheme.colorScheme.secondary
+                        tint = if (isAdShowing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.secondary
                     )
                 }
             }
@@ -374,6 +382,7 @@ fun SwipeScreen(
             // SKIP
             IconButton(
                 onClick = { viewModel.onSwipe(SwipeDecision.SKIP) },
+                enabled = !isAdShowing,
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(Icons.AutoMirrored.Filled.Forward, contentDescription = stringResource(R.string.swipe_skip))
@@ -382,9 +391,9 @@ fun SwipeScreen(
             // BOUTON GARDER (KEEP)
             if (uiState.showKeepDeleteButtons) {
                 FloatingActionButton(
-                    onClick = { viewModel.onSwipe(SwipeDecision.KEEP) },
-                    containerColor = MaterialGreen,
-                    contentColor = Color.White,
+                    onClick = { if (!isAdShowing) viewModel.onSwipe(SwipeDecision.KEEP) },
+                    containerColor = if (isAdShowing) MaterialTheme.colorScheme.surfaceVariant else MaterialGreen,
+                    contentColor = if (isAdShowing) MaterialTheme.colorScheme.outline else Color.White,
                     shape = CircleShape,
                     modifier = Modifier.size(56.dp)
                 ) {

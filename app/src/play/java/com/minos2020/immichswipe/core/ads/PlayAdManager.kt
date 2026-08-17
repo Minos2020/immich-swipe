@@ -94,7 +94,7 @@ class PlayAdManager : AdManager {
         DisposableEffect(Unit) {
             val adLoader = AdLoader.Builder(context, "ca-app-pub-3940256099942544/2247696110")
                 .forNativeAd { ad -> 
-                    nativeAd = ad 
+                    nativeAd = ad
                 }
                 .build()
             

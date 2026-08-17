@@ -42,6 +42,8 @@ class SwipeViewModel(
     private var masterWorkPile: List<Asset> = emptyList()
     private var randomSeed: Long = System.currentTimeMillis()
     private var hasStartedSwiping: Boolean = false
+    private var sessionDecisionsCount = 0
+    private var sessionAdsSwipedCount = 0
 
     init {
         loadAssetsAndDecisions()
@@ -500,50 +502,62 @@ class SwipeViewModel(
             sorted
         }
 
-        // 3. Insertion des publicités (sur la liste triée)
-        val adManager = AdManagerProvider.instance
-        val finalWorkPile = mutableListOf<Asset>()
-        var assetCount = 0
-        sorted.forEach { asset ->
-            if (adManager.shouldInsertAdAt(assetCount)) {
-                finalWorkPile.add(adManager.createAdPlaceholder(asset.id))
-            }
-            finalWorkPile.add(asset)
-            assetCount++
-        }
-        val workPileWithAds = finalWorkPile
+        // 3. Plus d'insertion statique de publicités par index.
+        // On prépare la liste de base (réelle). Les pubs sont insérées dynamiquement.
+        val realAssets = sorted
 
-        // 4. Calcul de l'index de destination
+        // 4. Calcul de l'index de destination sur la liste réelle
         var newIndex = -1
         var newIsLoading = overrideIsLoading ?: currentState.isLoading
 
         // SCÉNARIO A : Tant que l'utilisateur n'a pas fait de VÉRITABLE swipe decision, 
         // on se "colle" à la toute première photo non traitée du nouvel ordre.
         if (!hasStartedSwiping || forceFirstUnprocessed || (currentState.currentIndex == 0 && currentState.assets.isEmpty())) {
-            val firstUnprocessed = workPileWithAds.indexOfFirst { it.type != "AD" && !decisions.containsKey(it.id) }
+            val firstUnprocessed = realAssets.indexOfFirst { !decisions.containsKey(it.id) }
             if (firstUnprocessed != -1) {
                 newIndex = firstUnprocessed
-                newIsLoading = overrideIsLoading ?: false // On a trouvé de quoi commencer !
-            } else if (workPileWithAds.isNotEmpty()) {
-                newIndex = workPileWithAds.size // Tout est trié
+                newIsLoading = overrideIsLoading ?: false
+            } else if (realAssets.isNotEmpty()) {
+                newIndex = realAssets.size
                 newIsLoading = overrideIsLoading ?: false
             }
         } 
         
         // SCÉNARIO B : L'utilisateur a commencé sa session de tri, on veut garder la photo actuelle
         if (newIndex == -1 && currentAssetId != null) {
-            val index = workPileWithAds.indexOfFirst { it.id == currentAssetId }
+            val index = realAssets.indexOfFirst { it.id == currentAssetId }
             if (index != -1) newIndex = index
         }
 
         // SCÉNARIO C : Sécurité / Fallback
         if (newIndex == -1) {
-            newIndex = currentState.currentIndex.coerceAtMost(workPileWithAds.size)
+            newIndex = currentState.currentIndex.coerceAtMost(realAssets.size)
+        }
+
+        // 5. Insertion dynamique de la publicité si nécessaire (session-based)
+        val adManager = AdManagerProvider.instance
+        val finalAssets = realAssets.toMutableList()
+        var finalIndex = newIndex
+        
+        val processedCount = decisions.size
+        val totalRealCount = realAssets.size
+
+        if (processedCount < totalRealCount) {
+            val adsToShow = (sessionDecisionsCount / 15) - sessionAdsSwipedCount
+            if (adsToShow > 0 && finalIndex < finalAssets.size) {
+                finalAssets.add(finalIndex, adManager.createAdPlaceholder("dynamic_${sessionDecisionsCount}"))
+                // finalIndex pointe maintenant sur la publicité insérée
+            }
+        } else {
+            // SCÉNARIO D : Tout est trié, on force l'index à la fin pour l'écran de célébration
+            if (finalAssets.isNotEmpty()) {
+                finalIndex = finalAssets.size
+            }
         }
 
         _uiState.value = currentState.copy(
-            assets = workPileWithAds,
-            currentIndex = newIndex,
+            assets = finalAssets,
+            currentIndex = finalIndex,
             decisions = decisions,
             assetSizes = assetSizes,
             isLoading = newIsLoading
@@ -593,6 +607,7 @@ class SwipeViewModel(
 
         // 0. Cas particulier des publicités : on avance juste l'index sans rien enregistrer
         if (currentAsset.type == "AD") {
+            sessionAdsSwipedCount++
             val nextIndex = if (currentState.currentIndex + 1 < currentState.assets.size) {
                 currentState.currentIndex + 1
             } else {
@@ -609,6 +624,8 @@ class SwipeViewModel(
         }
 
         hasStartedSwiping = true
+        sessionDecisionsCount++
+        val wasAlreadyProcessed = currentState.decisions.containsKey(currentAsset.id)
         val currentSize = currentState.assetSizes[currentAsset.id] ?: currentAsset.exifInfo?.fileSizeInBytes
 
         // 1. Sauvegarde en base locale (Room)
@@ -620,7 +637,7 @@ class SwipeViewModel(
                 userId = config.userId,
                 decision = decision.name,
                 fileSize = currentSize,
-                isSynced = false // Toujours false au départ, même pour SKIP
+                isSynced = false
             )
         }
 
@@ -640,7 +657,7 @@ class SwipeViewModel(
 
         // 1. Chercher d'abord la prochaine photo NON TRAITÉE après l'actuelle
         for (i in (currentState.currentIndex + 1) until assets.size) {
-            if (!newDecisions.containsKey(assets[i].id)) {
+            if (assets[i].type != "AD" && !newDecisions.containsKey(assets[i].id)) {
                 nextIndex = i
                 break
             }
@@ -649,7 +666,7 @@ class SwipeViewModel(
         // 2. Si rien trouvé après, chercher une photo NON TRAITÉE depuis le début (boucle)
         if (nextIndex == -1) {
             for (i in 0 until currentState.currentIndex) {
-                if (!newDecisions.containsKey(assets[i].id)) {
+                if (assets[i].type != "AD" && !newDecisions.containsKey(assets[i].id)) {
                     nextIndex = i
                     break
                 }
@@ -665,6 +682,12 @@ class SwipeViewModel(
             }
         }
 
+        // Gestion de la fin de tri : si on vient de finir le dernier asset, on force l'écran de fin
+        val totalRealCount = assets.count { it.type != "AD" }
+        if (!wasAlreadyProcessed && newDecisions.size >= totalRealCount) {
+            nextIndex = assets.size
+        }
+
         _uiState.value = currentState.copy(
             currentIndex = nextIndex,
             decisions = newDecisions,
@@ -674,9 +697,10 @@ class SwipeViewModel(
         
         updateSummaryStats()
 
-        // Anticipation : charge les détails du prochain
-        if (nextIndex < assets.size) {
-            loadAssetDetail(assets[nextIndex].id, nextIndex)
+        // Anticipation : charge les détails du prochain asset (si ce n'est pas une publicité)
+        val nextAsset = assets.getOrNull(nextIndex)
+        if (nextAsset != null && nextAsset.type != "AD") {
+            loadAssetDetail(nextAsset.id, nextIndex)
         }
     }
 

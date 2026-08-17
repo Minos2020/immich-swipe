@@ -96,7 +96,7 @@ data class SwipeUiState(
     }
 
     // Statistiques de tri
-    val totalCount: Int get() = assets.size
+    val totalCount: Int get() = assets.count { it.type != "AD" }
     val processedCount: Int get() = decisions.size
     val remainingCount: Int get() = totalCount - processedCount
 
@@ -118,7 +118,7 @@ data class SwipeUiState(
      * Taille restante : Somme des tailles connues + estimation (moyenne) pour les inconnues.
      */
     val remainingSize: Long get() {
-        val unprocessed = assets.filter { !decisions.containsKey(it.id) }
+        val unprocessed = assets.filter { it.type != "AD" && !decisions.containsKey(it.id) }
         val knownSizes = assetSizes.values.filter { it > 0 }
         val avg = if (knownSizes.isEmpty()) 0L else knownSizes.sum() / knownSizes.size
         
@@ -131,7 +131,7 @@ data class SwipeUiState(
     /**
      * Indique si la taille "Restant" contient des estimations.
      */
-    val isRemainingEstimated: Boolean get() = assets.any { !decisions.containsKey(it.id) && (assetSizes[it.id] ?: 0L) == 0L }
+    val isRemainingEstimated: Boolean get() = assets.any { it.type != "AD" && !decisions.containsKey(it.id) && (assetSizes[it.id] ?: 0L) == 0L }
 
     // Progression (0.0f à 1.0f)
     val progress: Float get() = if (totalCount > 0) processedCount.toFloat() / totalCount else 0f

@@ -221,6 +221,7 @@ fun HomeScreen(
                             if (isSwipe && swipeViewModel != null) {
                                 val swipeUiState by swipeViewModel.uiState.collectAsState()
                                 var showSortMenu by remember { mutableStateOf(false) }
+                                val isAdShowing = swipeUiState.currentAsset?.type == "AD"
 
                                 // Bouton Reset Session avec animation de rotation/échelle
                                 AnimatedVisibility(
@@ -232,23 +233,27 @@ fun HomeScreen(
                                         if (state == EnterExitState.Visible) 0f else -180f
                                     }
                                     IconButton(
-                                        onClick = { swipeViewModel.setShowResetConfirmation(true) },
+                                        onClick = { if (!isAdShowing) swipeViewModel.setShowResetConfirmation(true) },
+                                        enabled = !isAdShowing,
                                         modifier = Modifier.graphicsLayer { rotationZ = rotation }
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.RestartAlt,
                                             contentDescription = stringResource(R.string.swipe_reset_button),
-                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                            tint = if (isAdShowing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                                         )
                                     }
                                 }
 
                                 Box {
-                                    IconButton(onClick = { showSortMenu = true }) {
+                                    IconButton(
+                                        onClick = { showSortMenu = true },
+                                        enabled = !isAdShowing
+                                    ) {
                                         Icon(
                                             imageVector = Icons.Default.Sort,
                                             contentDescription = stringResource(R.string.swipe_sort_button),
-                                            tint = MaterialTheme.colorScheme.primary
+                                            tint = if (isAdShowing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
                                         )
                                     }
 
