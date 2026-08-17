@@ -421,6 +421,13 @@ fun SettingsScreen(
                                 text = stringResource(R.string.settings_sync_rotate_desc),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 4.dp)
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_sync_rotate_warning),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
                             )
                         }

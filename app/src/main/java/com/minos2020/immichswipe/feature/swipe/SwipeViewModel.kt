@@ -711,6 +711,9 @@ class SwipeViewModel(
         _uiState.value = _uiState.value.copy(isMuted = !_uiState.value.isMuted)
     }
 
+    // Liste des IDs d'assets dont nous avons initié l'édition pendant cette session
+    private val assetsEditedThisSession = mutableSetOf<String>()
+
     fun rotateCurrentAsset() {
         val asset = _uiState.value.currentAsset ?: return
         val currentRotation = _uiState.value.localRotations[asset.id] ?: 0
@@ -723,14 +726,24 @@ class SwipeViewModel(
         
         // 2. Synchronisation serveur si activée
         if (_uiState.value.syncRotate) {
-            viewModelScope.launch {
-                try {
-                    // On normalise la rotation pour le serveur (0, 90, 180, 270)
-                    assetRepository.updateAssetEdits(asset.id, newRotation % 360)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    AppLogger.e("Swipe", "Erreur synchro rotation", e)
+            // SECURITÉ : On ne synchronise QUE si l'image n'était pas déjà éditée sur Immich,
+            // OU si c'est nous qui avons créé l'édition pendant cette session.
+            // Cela évite d'écraser des crops/edits complexes faits sur le web.
+            val canSync = !asset.isEdited || assetsEditedThisSession.contains(asset.id)
+
+            if (canSync) {
+                assetsEditedThisSession.add(asset.id)
+                viewModelScope.launch {
+                    try {
+                        // On normalise la rotation pour le serveur (0, 90, 180, 270)
+                        assetRepository.updateAssetEdits(asset.id, newRotation % 360)
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        AppLogger.e("Swipe", "Erreur synchro rotation", e)
+                    }
                 }
+            } else {
+                AppLogger.d("Swipe", "Sync rotation ignorée pour protéger les edits existants de ${asset.id}")
             }
         }
     }

@@ -103,6 +103,11 @@
     <string name="settings_tri_favorite">Botón Favorito</string>
     <string name="settings_tri_archive">Botón Archivar</string>
     <string name="settings_tri_lock">Botón Carpeta Bloqueada</string>
+    <string name="settings_tri_share">Botón \"Compartir\"</string>
+    <string name="settings_card_rotate">Botón Rotación (fotos)</string>
+    <string name="settings_sync_rotate_label">Sincronizar rotación</string>
+    <string name="settings_sync_rotate_desc">Guardar la rotación en el servidor (edición no destructiva)</string>
+    <string name="settings_sync_rotate_warning">Nota: La rotación no se sincronizará para las fotos ya editadas (ej: recortadas) en el servidor, para evitar sobrescribir los cambios existentes.</string>
     <string name="settings_tri_keep_delete">Botones CONSERVAR y ELIMINAR</string>
     <string name="settings_auto_next_label">CONSERVAR automáticamente</string>
     <string name="settings_auto_next_desc">Pasar a la siguiente foto y marcar automáticamente como CONSERVAR después de marcar como favorito</string>

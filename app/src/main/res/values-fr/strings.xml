@@ -121,6 +121,7 @@
     <string name="settings_card_rotate">Bouton Rotation (photos)</string>
     <string name="settings_sync_rotate_label">Synchroniser la rotation</string>
     <string name="settings_sync_rotate_desc">Sauvegarder la rotation sur le serveur (édition non-destructive)</string>
+    <string name="settings_sync_rotate_warning">Note : La rotation ne sera pas synchronisée pour les photos déjà éditées (ex : recadrées) sur le serveur, afin d\'éviter d\'écraser vos modifications existantes.</string>
     <string name="settings_tri_keep_delete">Boutons \"KEEP\" et \"DELETE\"</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Marquer automatiquement comme KEEP après avoir marqué en favori, et passer à la photo suivante</string>

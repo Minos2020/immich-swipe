@@ -120,6 +120,7 @@
     <string name="settings_card_rotate">Rotate button (photos)</string>
     <string name="settings_sync_rotate_label">Sync rotation with Immich</string>
     <string name="settings_sync_rotate_desc">Save the rotation on the server (non-destructive edit)</string>
+    <string name="settings_sync_rotate_warning">Note: Rotation will not be synced for photos already edited (e.g., cropped) on the server to avoid overwriting your existing changes.</string>
     <string name="settings_tri_keep_delete">KEEP and DELETE buttons</string>
     <string name="settings_auto_next_label">Auto-KEEP</string>
     <string name="settings_auto_next_desc">Move to the next photo and automatically mark as KEEP after marking as favorite</string>

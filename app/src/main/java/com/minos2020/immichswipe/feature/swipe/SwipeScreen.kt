@@ -745,7 +745,7 @@ fun AssetTimeline(
                 val apiKey = SessionManager.getApiKey() ?: ""
                 val thumbnailRequest = remember(asset.id, baseUrl, apiKey) {
                     ImageRequest.Builder(context)
-                        .data("$baseUrl/api/assets/${asset.id}/thumbnail?format=WEBP")
+                        .data("$baseUrl/api/assets/${asset.id}/thumbnail?format=WEBP&edited=true")
                         .addHeader("x-api-key", apiKey)
                         .crossfade(true)
                         .precision(coil.size.Precision.INEXACT)
@@ -1089,7 +1089,7 @@ fun SwipeCard(
                         // Image de remplacement pendant que le player est utilisé en plein écran
                         val placeholderRequest = remember(asset.id, baseUrl, apiKey) {
                             ImageRequest.Builder(context)
-                                .data("$baseUrl/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview")
+                                .data("$baseUrl/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview&edited=true")
                                 .addHeader("x-api-key", apiKey)
                                 .crossfade(true)
                                 .precision(coil.size.Precision.INEXACT)
@@ -1111,7 +1111,7 @@ fun SwipeCard(
                         ImageRequest.Builder(context)
                             .data(
                                 if (isGif) "$baseUrl/api/assets/${asset.id}/original"
-                                else "$baseUrl/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview"
+                                else "$baseUrl/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview&edited=true"
                             )
                             .addHeader("x-api-key", apiKey)
                             .apply {
@@ -1444,8 +1444,8 @@ fun FullscreenViewer(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(
-                                if (isGif) "$baseUrlClean/api/assets/${asset.id}/original"
-                                else "$baseUrlClean/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview"
+                                if (isGif) "$baseUrlClean/api/assets/${asset.id}/original?edited=true"
+                                else "$baseUrlClean/api/assets/${asset.id}/thumbnail?format=JPEG&size=preview&edited=true"
                             )
                             .addHeader("x-api-key", SessionManager.getApiKey() ?: "")
                             .apply {
@@ -1880,7 +1880,7 @@ fun DeletedAssetThumbnail(
 
     val imageRequest = remember(asset.id, baseUrl, apiKey) {
         ImageRequest.Builder(context)
-            .data("$baseUrl/api/assets/${asset.id}/thumbnail?format=WEBP")
+            .data("$baseUrl/api/assets/${asset.id}/thumbnail?format=WEBP&edited=true")
             .addHeader("x-api-key", apiKey)
             .crossfade(true)
             .precision(coil.size.Precision.INEXACT)
