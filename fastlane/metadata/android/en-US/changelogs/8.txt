@@ -1,0 +1,35 @@
+Immich Swipe v3.0.0
+
+New features:
+
+- Added a new button in swipe screen, allowing to choose in which order and priority assets should appear
+- Added a new button in swipe screen to reset all unsynced decisions of that session (album)
+- Added support for GIF format
+- Added full support for asset descriptions
+  * asset descriptions can now be seen in the metadata panel, and even modified or created.
+  * descriptions are immediately synced with the server, just like favourites.
+- Added a new gesture in the home screen for albums when displayed as a list : swiping to the left reveals a couple of action buttons:
+  * Reset all decisions for the album
+  * Mark whole album as KEEP
+- Added a new button in swipe screen to add assets to other albums
+  * Upon clicking it shows a list of all albums you can add the asset to.
+- Added a new sharing button that downloads the original asset and opens android native sharing tool
+- Added a new rotate button, allowing to rotate pictures on-the-go directly on the swipe card
+  * rotations are synced immediately as "edits" with the server (can be disabled in the settings)
+- Huge speed improvement for sync with server for large albums / collections
+- Added in-app cache clearing tool
+
+- The connection status indicator now also acts as a loading indicator for homescreen's albums discovery task.
+- Added option to remove KEEP and DELETE buttons if wanted
+
+Enhancements and bug fixes:
+
+- Enhanced fullscreen experience by removing android status bar
+- Increased metadata panel opacity for better readability
+- Enhanced settings UI
+- Favourite are now treated immediately. This ensures that the state is the same on the server and in the app.
+- Errors in logs now include server error message when available to facilitate debugging
+
+- Fixed a bug with the last asset of the swipe pile was getting sound from another video asset
+- Fixed cache leaks when switching user (again...)
+- Many small fixes

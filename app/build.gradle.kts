@@ -16,8 +16,8 @@ android {
         applicationId = "com.minos2020.immichswipe"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "2.2.1"
+        versionCode = 8
+        versionName = "3.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
