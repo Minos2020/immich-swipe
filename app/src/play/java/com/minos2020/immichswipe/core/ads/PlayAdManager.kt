@@ -24,12 +24,7 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
-import com.google.android.ump.ConsentDebugSettings
-import com.google.android.ump.ConsentInformation
-import com.google.android.ump.ConsentRequestParameters
-import com.google.android.ump.UserMessagingPlatform
 import com.minos2020.immichswipe.R
-import com.minos2020.immichswipe.BuildConfig
 import com.minos2020.immichswipe.domain.model.Asset
 import android.view.LayoutInflater
 import android.view.View
@@ -59,58 +54,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
 class PlayAdManager : AdManager {
-    private var isMobileAdsInitializeCalled = java.util.concurrent.atomic.AtomicBoolean(false)
-
     override fun init(context: Context) {
-        val consentInformation = UserMessagingPlatform.getConsentInformation(context)
-        if (consentInformation.canRequestAds()) {
-            initializeMobileAds(context)
-        }
-    }
-
-    override fun requestConsent(activity: android.app.Activity, onConsentComplete: () -> Unit) {
-        // Paramètres de debug pour forcer le formulaire pendant le développement
-        val debugSettings = ConsentDebugSettings.Builder(activity)
-            .addTestDeviceHashedId("F8C82941F914386C628929DE0B6D9518")
-            .setDebugGeography(ConsentDebugSettings.DebugGeography.DEBUG_GEOGRAPHY_EEA)
-            .build()
-
-        val params = ConsentRequestParameters.Builder()
-            .setConsentDebugSettings(debugSettings)
-            .setTagForUnderAgeOfConsent(false)
-            .build()
-
-        val consentInformation = UserMessagingPlatform.getConsentInformation(activity)
-        consentInformation.requestConsentInfoUpdate(
-            activity,
-            params,
-            {
-                UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { formError ->
-                    if (consentInformation.canRequestAds()) {
-                        initializeMobileAds(activity)
-                    }
-                    onConsentComplete()
-                }
-            },
-            { requestConsentError ->
-                if (consentInformation.canRequestAds()) {
-                    initializeMobileAds(activity)
-                }
-                onConsentComplete()
-            }
-        )
-    }
-
-    override fun showPrivacyOptionsForm(activity: android.app.Activity, onComplete: () -> Unit) {
-        UserMessagingPlatform.showPrivacyOptionsForm(activity) { formError ->
-            onComplete()
-        }
-    }
-
-    private fun initializeMobileAds(context: Context) {
-        if (isMobileAdsInitializeCalled.getAndSet(true)) {
-            return
-        }
         MobileAds.initialize(context) {}
     }
 
@@ -146,11 +90,11 @@ class PlayAdManager : AdManager {
             label = "AdScaleAnimation"
         )
         
-        // Charger la publicité avec l'ID injecté
+        // Charger la publicité
         DisposableEffect(Unit) {
-            val adLoader = AdLoader.Builder(context, BuildConfig.ADMOB_NATIVE_AD_UNIT_ID)
+            val adLoader = AdLoader.Builder(context, "ca-app-pub-3940256099942544/2247696110")
                 .forNativeAd { ad -> 
-                    nativeAd = ad
+                    nativeAd = ad 
                 }
                 .build()
             

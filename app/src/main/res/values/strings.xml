@@ -254,9 +254,4 @@
     <string name="settings_logs_copied_toast">Logs copied to clipboard</string>
     <string name="settings_logs_confirm_clear_title">Clear logs</string>
     <string name="settings_logs_confirm_clear_msg">Are you sure you want to clear all app logs?\nThis action is irreversible.</string>
-
-    <!-- Ad Privacy -->
-    <string name="settings_section_privacy">Privacy</string>
-    <string name="settings_ad_privacy_label">Ad preferences</string>
-    <string name="settings_ad_privacy_desc">Manage your choices regarding GDPR consent</string>
 </resources>

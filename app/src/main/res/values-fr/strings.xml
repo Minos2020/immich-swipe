@@ -255,9 +255,4 @@
     <string name="settings_logs_copied_toast">Logs copiés dans le presse-papier</string>
     <string name="settings_logs_confirm_clear_title">Effacer les journaux</string>
     <string name="settings_logs_confirm_clear_msg">Êtes-vous certain de vouloir effacer les journaux de l\'application ?\nCette action est irréversible.</string>
-
-    <!-- Confidentialité des pubs -->
-    <string name="settings_section_privacy">Confidentialité</string>
-    <string name="settings_ad_privacy_label">Préférences publicitaires</string>
-    <string name="settings_ad_privacy_desc">Gérer vos choix concernant le consentement RGPD</string>
 </resources>

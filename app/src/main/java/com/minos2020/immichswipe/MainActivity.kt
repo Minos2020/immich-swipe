@@ -33,7 +33,6 @@ import com.minos2020.immichswipe.feature.auth.AuthScreen
 import com.minos2020.immichswipe.feature.auth.AuthViewModelFactory
 import com.minos2020.immichswipe.feature.common.LoadingScreen
 import com.minos2020.immichswipe.feature.home.HomeViewModelFactory
-import com.minos2020.immichswipe.core.ads.AdManagerProvider
 
 class MainActivity : ComponentActivity() {
 
@@ -41,12 +40,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         AppLogger.init(applicationContext)
         AppLogger.i("MainActivity", "Application démarrée")
-        
-        // Demande de consentement RGPD (Publicités)
-        AdManagerProvider.instance.requestConsent(this) {
-            AppLogger.d("MainActivity", "Flux de consentement terminé")
-        }
-
         enableEdgeToEdge()
         
         // On verrouille l'application en mode Portrait par défaut.
