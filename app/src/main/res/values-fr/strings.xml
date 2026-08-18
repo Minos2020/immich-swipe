@@ -59,6 +59,7 @@
     <string name="profile_connected_label">Connecté au serveur Immich</string>
     <string name="profile_logout_button">Se déconnecter</string>
     <string name="profile_source_code">Code source</string>
+    <string name="profile_donate">Soutenir le projet</string>
     <string name="diag_online">Serveur opérationnel</string>
     <string name="diag_issues">Connexion perturbée</string>
     <string name="diag_offline">Serveur injoignable</string>

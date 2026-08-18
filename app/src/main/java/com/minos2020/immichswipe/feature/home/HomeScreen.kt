@@ -79,6 +79,7 @@ import com.minos2020.immichswipe.ui.theme.VirtualGold
 import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.core.SwipeSortPriority
 import com.minos2020.immichswipe.data.repository.AlbumRepository
+import com.minos2020.immichswipe.BuildConfig
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -1040,6 +1041,47 @@ fun ProfilePopup(
                             onClick = onLogout,
                             color = MaterialTheme.colorScheme.error
                         )
+                    }
+                }
+
+                // Carte de donation Ko-fi (FOSS uniquement)
+                if (BuildConfig.FLAVOR == "foss") {
+                    Spacer(Modifier.height(24.dp))
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://ko-fi.com/minos2020".toUri()
+                                )
+                                context.startActivity(intent)
+                            },
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VolunteerActivism,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = stringResource(R.string.profile_donate),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
 
