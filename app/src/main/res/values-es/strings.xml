@@ -39,6 +39,7 @@
     <string name="home_select_album">¡Selecciona un álbum para empezar!</string>
     <string name="home_session_title">Sesión de ordenación: %1$s</string>
     <string name="home_photos_to_discover">%1$d fotos por descubrir</string>
+    <string name="home_stats_button">Estadísticas</string>
     <string name="home_new_badge">NUEVO</string>
     <string name="home_unsynced_badge">SIN SINCRONIZAR</string>
     <string name="home_virtual_skipped_synced">SKIPs</string>
@@ -135,6 +136,10 @@
     <string name="swipe_favorite">Favoritos</string>
     <string name="swipe_archive">Archivar</string>
     <string name="swipe_locked">Bloquear</string>
+    <string name="swipe_add_to_album">Añadir a un álbum</string>
+    <string name="swipe_add_to_album_placeholder">Buscar un álbum…</string>
+    <string name="swipe_media_count">%1$d elementos</string>
+    <string name="swipe_share_content_desc">Compartir medio</string>
     <string name="swipe_summary_title">Resumen de ordenación</string>
     <string name="swipe_sync_success">¡Sincronizado!</string>
     <string name="swipe_sync_success_desc">Tus cambios están en Immich</string>
@@ -205,6 +210,7 @@
     <string name="settings_db_export_desc">Guardar sus datos en un archivo JSON.</string>
     <string name="settings_db_import_label">Importar base de datos</string>
     <string name="settings_db_import_desc">Restaurar datos desde un archivo JSON.</string>
+    <string name="settings_db_scope_label">Alcance de la operación:</string>
     <string name="settings_db_scope_user">Solo mi cuenta (%1$s)</string>
     <string name="settings_db_scope_all">Todas las cuentas (Total)</string>
     <string name="settings_db_confirm_delete_title">⚠️ ELIMINACIÓN PERMANENTE</string>

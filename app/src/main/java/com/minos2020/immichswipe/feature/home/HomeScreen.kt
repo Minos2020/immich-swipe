@@ -206,7 +206,7 @@ fun HomeScreen(
                                 IconButton(onClick = { viewModel.toggleStatsPopup(true) }) {
                                     Icon(
                                         imageVector = Icons.Default.BarChart,
-                                        contentDescription = "Statistiques"
+                                        contentDescription = stringResource(R.string.home_stats_button)
                                     )
                                 }
 

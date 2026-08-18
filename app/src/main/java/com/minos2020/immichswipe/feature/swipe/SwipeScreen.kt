@@ -365,7 +365,7 @@ fun SwipeScreen(
             }
 
             // AJOUTER À UN ALBUM
-            if (uiState.showAddToAlbumButton) {
+                if (uiState.showAddToAlbumButton) {
                 IconButton(
                     onClick = { viewModel.toggleAlbumSelection(true, availableAlbums) },
                     enabled = !isAdShowing,
@@ -373,7 +373,7 @@ fun SwipeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.LibraryAdd,
-                        contentDescription = "Ajouter à un album",
+                        contentDescription = stringResource(R.string.swipe_add_to_album),
                         tint = if (isAdShowing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.secondary
                     )
                 }
@@ -1289,7 +1289,7 @@ fun SwipeCard(
                             if (shareButtonPosition == position && showShareButton) {
                                 SwipeActionIconButton(
                                     icon = Icons.Default.Share,
-                                    contentDescription = "Partager le média",
+                                    contentDescription = stringResource(R.string.swipe_share_content_desc),
                                     onClick = onShare
                                 )
                             }
@@ -2343,7 +2343,7 @@ fun AlbumSelectionPopup(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Ajouter à un album",
+                        text = stringResource(R.string.swipe_add_to_album),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -2353,7 +2353,7 @@ fun AlbumSelectionPopup(
                         value = searchQuery,
                         onValueChange = onSearchQueryChange,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Rechercher un album...", fontSize = 14.sp) },
+                        placeholder = { Text(stringResource(R.string.swipe_add_to_album_placeholder), fontSize = 14.sp) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
@@ -2462,7 +2462,7 @@ fun AlbumSelectionItem(
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${album.assetCount} médias",
+                    text = stringResource(R.string.swipe_media_count, album.assetCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

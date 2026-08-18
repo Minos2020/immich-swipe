@@ -40,14 +40,15 @@
     <string name="home_select_album">Select an album to start!</string>
     <string name="home_session_title">Sorting session: %1$s</string>
     <string name="home_photos_to_discover">%1$d photos to discover</string>
+    <string name="home_stats_button">Statistics</string>
     <string name="home_new_badge">NEW</string>
     <string name="home_unsynced_badge">NOT SYNCED</string>
     <string name="home_virtual_skipped_synced">SKIPs</string>
     <string name="home_virtual_skipped_synced_desc">Collection of all assets previously skipped and synced</string>
     <string name="home_virtual_all_assets">All Assets</string>
-    <string name="home_virtual_all_assets_desc">Collection of all assets in your library (depending on your access rights)</string>
+    <string name="home_virtual_all_assets_desc">All assets in your library (depending on your access rights)</string>
     <string name="home_virtual_orphans">Orphans</string>
-    <string name="home_virtual_orphans_desc">Collection of assets that are not in any album</string>
+    <string name="home_virtual_orphans_desc">Assets that are not in any album</string>
     <string name="home_user_fallback">User</string>
     <string name="home_album_reset_title">Reset decisions?</string>
     <string name="home_album_reset_msg">This will delete all your local swipe choices for the album %1$s.\nNote: actions already synced (deletions, archives) will not be undone on Immich.</string>
@@ -151,6 +152,10 @@
     <string name="swipe_favorite">Favorites</string>
     <string name="swipe_archive">Archive</string>
     <string name="swipe_locked">Lock</string>
+    <string name="swipe_add_to_album">Add to album</string>
+    <string name="swipe_add_to_album_placeholder">Search an album…</string>
+    <string name="swipe_media_count">%1$d items</string>
+    <string name="swipe_share_content_desc">Share media</string>
     <string name="swipe_summary_title">Sorting summary</string>
     <string name="swipe_sync_success">Synced!</string>
     <string name="swipe_sync_success_desc">Your changes are on Immich</string>
@@ -225,6 +230,7 @@
     <string name="settings_db_export_desc">Save your data to a JSON file.</string>
     <string name="settings_db_import_label">Import database</string>
     <string name="settings_db_import_desc">Restore data from a JSON file.</string>
+    <string name="settings_db_scope_label">Operation scope:</string>
     <string name="settings_db_scope_user">Only my account (%1$s)</string>
     <string name="settings_db_scope_all">All accounts (Total)</string>
     <string name="settings_db_confirm_delete_title">⚠️ PERMANENT DELETION</string>

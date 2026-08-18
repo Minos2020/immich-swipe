@@ -41,14 +41,15 @@
     <string name="home_select_album">Sélectionnez un album pour commencer !</string>
     <string name="home_session_title">Session de tri : %1$s</string>
     <string name="home_photos_to_discover">%1$d photos à découvrir</string>
+    <string name="home_stats_button">Statistiques</string>
     <string name="home_new_badge">NOUVEAU</string>
     <string name="home_unsynced_badge">NON SYNCHRONISÉ</string>
     <string name="home_virtual_skipped_synced">SKIPs</string>
     <string name="home_virtual_skipped_synced_desc">Collection de tous les assets marqués SKIP et synchronisés</string>
     <string name="home_virtual_all_assets">Tous les médias</string>
-    <string name="home_virtual_all_assets_desc">Collection de l\'ensemble de votre bibliothèque (dépendant de vos droits d\'accès)</string>
+    <string name="home_virtual_all_assets_desc">L\'ensemble de votre bibliothèque (selon vos droits d\'accès)</string>
     <string name="home_virtual_orphans">Orphelins</string>
-    <string name="home_virtual_orphans_desc">Collection des médias qui ne sont dans aucun album</string>
+    <string name="home_virtual_orphans_desc">Médias qui n\'appartiennent à aucun album</string>
     <string name="home_user_fallback">Utilisateur</string>
     <string name="home_album_reset_title">Réinitialiser les choix ?</string>
     <string name="home_album_reset_msg">Cela supprimera tous vos choix de tri pour l\'album %1$s de votre téléphone.\nNote : les actions déjà synchronisées (suppressions, archives) ne seront pas annulées sur Immich.</string>
@@ -152,6 +153,10 @@
     <string name="swipe_favorite">Favoris</string>
     <string name="swipe_archive">Archiver</string>
     <string name="swipe_locked">Verrouiller</string>
+    <string name="swipe_add_to_album">Ajouter à un album</string>
+    <string name="swipe_add_to_album_placeholder">Rechercher un album…</string>
+    <string name="swipe_media_count">%1$d médias</string>
+    <string name="swipe_share_content_desc">Partager le média</string>
     <string name="swipe_summary_title">Résumé du tri</string>
     <string name="swipe_sync_success">Synchronisé !</string>
     <string name="swipe_sync_success_desc">Vos changements sont sur Immich</string>
@@ -226,6 +231,7 @@
     <string name="settings_db_export_desc">Sauvegarder vos données dans un fichier JSON.</string>
     <string name="settings_db_import_label">Importer une base</string>
     <string name="settings_db_import_desc">Restaurer des données depuis un fichier JSON.</string>
+    <string name="settings_db_scope_label">Portée de l\'opération :</string>
     <string name="settings_db_scope_user">Uniquement mon compte (%1$s)</string>
     <string name="settings_db_scope_all">Tous les comptes (Total)</string>
     <string name="settings_db_confirm_delete_title">⚠️ SUPPRESSION DÉFINITIVE</string>

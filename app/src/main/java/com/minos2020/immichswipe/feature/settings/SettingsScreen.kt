@@ -763,7 +763,7 @@ fun SettingsScreen(
                     if (action != DatabaseAction.IMPORT && action != DatabaseAction.CLEAR_CACHE) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Portée de l'opération :",
+                            text = stringResource(R.string.settings_db_scope_label),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
