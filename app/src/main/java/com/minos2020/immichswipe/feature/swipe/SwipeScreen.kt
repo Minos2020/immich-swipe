@@ -99,7 +99,6 @@ import com.minos2020.immichswipe.domain.model.Asset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-import com.minos2020.immichswipe.core.ads.AdManagerProvider
 
 private val MaterialGreen = Color(0xFF2E7D32) // Un vert plus profond (Green 800)
 private val MaterialRed = Color(0xFFC62828)   // Un rouge plus marqué (Red 800)
@@ -170,35 +169,14 @@ fun SwipeScreen(
         )
 
         // 1. Timeline (Barre du haut avec vignettes)
-        val realAssets = remember(uiState.assets) { uiState.assets.filter { it.type != "AD" } }
-        val timelineIndex = remember(uiState.currentIndex, uiState.assets) {
-            val current = uiState.assets.getOrNull(uiState.currentIndex)
-            if (current == null) 0
-            else if (current.type == "AD") {
-                // Si on est sur une pub, on cherche l'asset réel le plus proche
-                val nextReal = uiState.assets.drop(uiState.currentIndex).firstOrNull { it.type != "AD" }
-                if (nextReal != null) realAssets.indexOf(nextReal)
-                else {
-                    val prevReal = uiState.assets.take(uiState.currentIndex).lastOrNull { it.type != "AD" }
-                    if (prevReal != null) realAssets.indexOf(prevReal) else 0
-                }
-            } else {
-                realAssets.indexOf(current).coerceAtLeast(0)
-            }
-        }
-
         AssetTimeline(
-            assets = realAssets,
+            assets = uiState.assets,
             decisions = uiState.decisions,
-            currentIndex = timelineIndex,
+            currentIndex = uiState.currentIndex,
             isFavorite = { uiState.isFavorite(it) },
             isArchived = { uiState.isArchived(it) },
             isLocked = { uiState.isLocked(it) },
-            onAssetClick = { realIndex ->
-                val targetAsset = realAssets.getOrNull(realIndex)
-                val globalIndex = uiState.assets.indexOfFirst { it.id == targetAsset?.id }
-                if (globalIndex != -1) viewModel.onMoveToAsset(globalIndex)
-            }
+            onAssetClick = { viewModel.onMoveToAsset(it) }
         )
 
         // 2. Zone centrale : La pile de cartes
@@ -241,40 +219,33 @@ fun SwipeScreen(
                     val asset = assets[index]
                     val isNextCard = index != currentIndex
                     key(asset.id) {
-                        if (asset.type == "AD") {
-                            AdManagerProvider.instance.AdCard(
-                                isNext = isNextCard,
-                                onAdSwiped = { viewModel.onSwipe(SwipeDecision.KEEP) }
-                            )
-                        } else {
-                            SwipeCard(
-                                asset = asset,
-                                onSwipe = { viewModel.onSwipe(it) },
-                                isNext = isNextCard,
-                                playbackBehavior = uiState.playbackBehavior,
-                                isSwipeInverted = uiState.isSwipeInverted,
-                                fullscreenButtonPosition = uiState.fullscreenButtonPosition,
-                                immichButtonPosition = uiState.immichButtonPosition,
-                                cardDisplayButtonPosition = uiState.cardDisplayButtonPosition,
-                                muteButtonPosition = uiState.muteButtonPosition,
-                                shareButtonPosition = uiState.shareButtonPosition,
-                                rotateButtonPosition = uiState.rotateButtonPosition,
-                                isMuted = uiState.isMuted,
-                                cardDisplayMode = uiState.cardDisplayMode,
-                                showShareButton = uiState.showShareButton,
-                                showFullscreenButton = uiState.showFullscreenButton,
-                                showImmichButton = uiState.showImmichButton,
-                                showCardDisplayButton = uiState.showCardDisplayButton,
-                                showMuteButton = uiState.showMuteButton,
-                                showRotateButton = uiState.showRotateButton,
-                                localRotation = uiState.localRotations[asset.id] ?: 0,
-                                onToggleDisplayMode = { viewModel.toggleDisplayMode() },
-                                onToggleMute = { viewModel.toggleMute() },
-                                onShare = { viewModel.shareCurrentAsset(localContext) },
-                                onRotate = { viewModel.rotateCurrentAsset() },
-                                onUpdateDescription = { id, desc -> viewModel.updateAssetDescription(id, desc) }
-                            )
-                        }
+                        SwipeCard(
+                            asset = asset,
+                            onSwipe = { viewModel.onSwipe(it) },
+                            isNext = isNextCard,
+                            playbackBehavior = uiState.playbackBehavior,
+                            isSwipeInverted = uiState.isSwipeInverted,
+                            fullscreenButtonPosition = uiState.fullscreenButtonPosition,
+                            immichButtonPosition = uiState.immichButtonPosition,
+                            cardDisplayButtonPosition = uiState.cardDisplayButtonPosition,
+                            muteButtonPosition = uiState.muteButtonPosition,
+                            shareButtonPosition = uiState.shareButtonPosition,
+                            rotateButtonPosition = uiState.rotateButtonPosition,
+                            isMuted = uiState.isMuted,
+                            cardDisplayMode = uiState.cardDisplayMode,
+                            showShareButton = uiState.showShareButton,
+                            showFullscreenButton = uiState.showFullscreenButton,
+                            showImmichButton = uiState.showImmichButton,
+                            showCardDisplayButton = uiState.showCardDisplayButton,
+                            showMuteButton = uiState.showMuteButton,
+                            showRotateButton = uiState.showRotateButton,
+                            localRotation = uiState.localRotations[asset.id] ?: 0,
+                            onToggleDisplayMode = { viewModel.toggleDisplayMode() },
+                            onToggleMute = { viewModel.toggleMute() },
+                            onShare = { viewModel.shareCurrentAsset(localContext) },
+                            onRotate = { viewModel.rotateCurrentAsset() },
+                            onUpdateDescription = { id, desc -> viewModel.updateAssetDescription(id, desc) }
+                        )
                     }
                 }
             } else {

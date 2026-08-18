@@ -2,7 +2,6 @@ package com.minos2020.immichswipe.feature.swipe
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.minos2020.immichswipe.core.ads.AdManagerProvider
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.CardDisplayMode
@@ -334,12 +333,11 @@ class SwipeViewModel(
                     // 3. Filtrage de la pile de travail
                     val isVirtualSkipped = album.id == Album.VIRTUAL_SKIPPED_ID
                     val syncedIds = if (isVirtualSkipped) emptySet() else initialSyncedDecisions.keys
-                    
-                    val filteredAssets = allAssetsFound.filter { !syncedIds.contains(it.id) }
-                    val workPileIds = filteredAssets.map { it.id }.toSet()
+                    val workPile = allAssetsFound.filter { !syncedIds.contains(it.id) }
+                    val workPileIds = workPile.map { it.id }.toSet()
 
-                    // On met à jour la liste maître (non triée, sans pubs)
-                    masterWorkPile = filteredAssets
+                    // On met à jour la liste maître (non triée)
+                    masterWorkPile = workPile
 
                     // 4. Fusion avec les décisions de la session actuelle
                     val mergedDecisions = currentState.decisions.toMutableMap()
@@ -500,49 +498,36 @@ class SwipeViewModel(
             sorted
         }
 
-        // 3. Insertion des publicités (sur la liste triée)
-        val adManager = AdManagerProvider.instance
-        val finalWorkPile = mutableListOf<Asset>()
-        var assetCount = 0
-        sorted.forEach { asset ->
-            if (adManager.shouldInsertAdAt(assetCount)) {
-                finalWorkPile.add(adManager.createAdPlaceholder(asset.id))
-            }
-            finalWorkPile.add(asset)
-            assetCount++
-        }
-        val workPileWithAds = finalWorkPile
-
-        // 4. Calcul de l'index de destination
+        // 3. Calcul de l'index de destination
         var newIndex = -1
         var newIsLoading = overrideIsLoading ?: currentState.isLoading
 
         // SCÉNARIO A : Tant que l'utilisateur n'a pas fait de VÉRITABLE swipe decision, 
         // on se "colle" à la toute première photo non traitée du nouvel ordre.
         if (!hasStartedSwiping || forceFirstUnprocessed || (currentState.currentIndex == 0 && currentState.assets.isEmpty())) {
-            val firstUnprocessed = workPileWithAds.indexOfFirst { it.type != "AD" && !decisions.containsKey(it.id) }
+            val firstUnprocessed = sorted.indexOfFirst { !decisions.containsKey(it.id) }
             if (firstUnprocessed != -1) {
                 newIndex = firstUnprocessed
                 newIsLoading = overrideIsLoading ?: false // On a trouvé de quoi commencer !
-            } else if (workPileWithAds.isNotEmpty()) {
-                newIndex = workPileWithAds.size // Tout est trié
+            } else if (sorted.isNotEmpty()) {
+                newIndex = sorted.size // Tout est trié
                 newIsLoading = overrideIsLoading ?: false
             }
         } 
         
         // SCÉNARIO B : L'utilisateur a commencé sa session de tri, on veut garder la photo actuelle
         if (newIndex == -1 && currentAssetId != null) {
-            val index = workPileWithAds.indexOfFirst { it.id == currentAssetId }
+            val index = sorted.indexOfFirst { it.id == currentAssetId }
             if (index != -1) newIndex = index
         }
 
         // SCÉNARIO C : Sécurité / Fallback
         if (newIndex == -1) {
-            newIndex = currentState.currentIndex.coerceAtMost(workPileWithAds.size)
+            newIndex = currentState.currentIndex.coerceAtMost(sorted.size)
         }
 
         _uiState.value = currentState.copy(
-            assets = workPileWithAds,
+            assets = sorted,
             currentIndex = newIndex,
             decisions = decisions,
             assetSizes = assetSizes,
@@ -562,7 +547,6 @@ class SwipeViewModel(
     }
 
     private fun loadAssetDetail(assetId: String, index: Int) {
-        if (assetId.startsWith("ad_")) return
         viewModelScope.launch {
             try {
                 val detail = assetRepository.getAssetDetail(assetId)
@@ -588,27 +572,9 @@ class SwipeViewModel(
     }
 
     fun onSwipe(decision: SwipeDecision) {
+        hasStartedSwiping = true
         val currentState = _uiState.value
         val currentAsset = currentState.currentAsset ?: return
-
-        // 0. Cas particulier des publicités : on avance juste l'index sans rien enregistrer
-        if (currentAsset.type == "AD") {
-            val nextIndex = if (currentState.currentIndex + 1 < currentState.assets.size) {
-                currentState.currentIndex + 1
-            } else {
-                currentState.assets.size
-            }
-            _uiState.value = currentState.copy(currentIndex = nextIndex)
-            
-            // On ne tente pas de charger de détails pour une pub ou si le suivant n'existe pas
-            val nextAsset = currentState.assets.getOrNull(nextIndex)
-            if (nextAsset != null && nextAsset.type != "AD") {
-                loadAssetDetail(nextAsset.id, nextIndex)
-            }
-            return
-        }
-
-        hasStartedSwiping = true
         val currentSize = currentState.assetSizes[currentAsset.id] ?: currentAsset.exifInfo?.fileSizeInBytes
 
         // 1. Sauvegarde en base locale (Room)
