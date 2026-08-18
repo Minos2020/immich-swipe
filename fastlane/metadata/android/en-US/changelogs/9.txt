@@ -1,0 +1,11 @@
+Immich Swipe v3.0.1
+
+New features:
+
+- link for donations (ko-fi) in profil popup
+
+Enhancements and bug fixes:
+
+- added missing translations (EN)
+- added confirmation popup to logout
+- started preparing a future playstore app flavor
