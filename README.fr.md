@@ -20,12 +20,12 @@ Inspirée par l'application [Sponge](https://play.google.com/store/apps/details?
 |                                         Écran d'accueil                                         |                                     La pile de tri                                      |                                        Mode Revue                                        |                               Statistiques d'utilisation                                |
 |:-----------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|
 | <img src="metadata/en-US/images/phoneScreenshots/01_Light_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/02_Light_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/03_Light_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/09_Light_StatsScreen.png" width="200"> |
-|                                     *Parcourez vos albums*                                      |                                  *Swipez pour décider*                                  |                              *Vérifiez avant de supprimer*                               |                          *Voyez de ce que vous avez accompli*                           |
+|                                     *Parcourez vos albums*                                      |                                  *Swipez pour décider*                                  |                              *Vérifiez avant de supprimer*                               |                          *Voyez ce que vous avez accompli*                            |
 
 <details>
 <summary>🌙 <b>Voir la galerie en Mode Sombre</b></summary>
 
-|                                        Écran d'accueil                                         |                                     La pile de tri                                     |                                       Mode Revue                                        |                                      Statistiques                                      |
+|                                        Écran d'accueil (Sombre)                                |                                     La pile de tri (Sombre)                            |                                       Mode Revue (Sombre)                               |                                      Statistiques (Sombre)                             |
 |:----------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------:|
 | <img src="metadata/en-US/images/phoneScreenshots/05_Dark_HomeScreen_GridView.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/07_Dark_SwipeScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/08_Dark_ReviewScreen.png" width="200"> | <img src="metadata/en-US/images/phoneScreenshots/10_Dark_StatsScreen.png" width="200"> |
 
@@ -33,14 +33,21 @@ Inspirée par l'application [Sponge](https://play.google.com/store/apps/details?
 
 ## ✨ Fonctionnalités
 
-- **🚀 Pile de tri Rapide** : Swipez à droite pour garder, à gauche pour supprimer. Les médias triés disparaissent de la timeline en temps réel pour une expérience fluide.
-- **🕒 Snooze (SKIP)** : Un doute ? Passez-le (SKIP). Les médias réapparaissent automatiquement après un délai configurable (1 jour, 1 mois, ou jamais).
-- **📁 Collections (Albums Virtuels)** : Accédez à des groupes spéciaux comme la **Collection SKIPs** pour revoir tous vos médias passés au même endroit.
+#### Écran de tri (Swipe)
+- **Pile de tri Rapide** : Swipez à droite pour garder, à gauche pour supprimer. Vous pouvez également archiver, verrouiller ou PASSER (SKIP).
+- **Snooze (SKIP)** : Un doute ? Passez le média (SKIP). Il réapparaîtra automatiquement après un délai configurable dans les paramètres (1 jour, 1 mois, ou jamais).
+- **Collections (Albums Virtuels)** : Accédez à des groupes spéciaux comme **Tous les médias**, **Orphelins** ou la **Collection SKIPs**.
+- **Mode Revue** : Vérifiez toutes vos décisions avant la synchronisation et visualisez l'estimation de l'espace libéré.
+- **Descriptions des Médias** : Consultez, créez ou modifiez les descriptions directement depuis le panneau d'informations, synchronisées en temps réel avec le serveur.
+- **Rotation des Photos** : Pivotez vos photos à la volée directement depuis la carte de tri, avec synchronisation optionnelle sur le serveur.
+
+#### Écran d'accueil
+- **Actions Rapides sur Albums** : Swipez vers la gauche sur un album dans la liste pour réinitialiser rapidement ses décisions ou tout marquer comme "KEEP".
+
 - **📊 Statistiques Globales** : Visualisez votre progression avec des statistiques détaillées et une répartition de vos actions de tri.
-- **🛡️ Mode Revue Avancé** : Vérifiez toutes vos décisions (supprimer, garder, archiver, verrouiller) et estimez l'espace libéré avant la synchronisation avec Immich.
-- **🔄 Support Multi-Comptes** : Déconnectez-vous et changez d'utilisateur facilement ; vos décisions locales et votre progression sont conservées pour chaque compte.
-- **🗃️ Gestion de la Base de Données** : Exportez, importez ou videz votre base locale (globalement ou par utilisateur) pour sauvegarder vos données.
-- **🚦 Diagnostic de Connexion** : Indicateur en temps réel, support HTTP et IP directes, et accès aux journaux (logs) pour faciliter le dépannage.
+- **Support Multi-Comptes** : Basculez entre différents utilisateurs en toute transparence ; vos décisions locales et votre progression sont conservées pour chaque compte.
+- **Gestion de la Base de Données** : Exportez, importez ou videz votre base locale (globalement ou par utilisateur) pour sauvegarder vos données de tri.
+- **🚦 Diagnostic de Connexion** : État de la connexion en temps réel et indicateur de chargement en arrière-plan, support HTTP/IP directe, et journaux intégrés pour un dépannage facile.
 - **🎨 Interface Moderne** : Développée avec Jetpack Compose et Material Design 3, disponible en Français, Anglais et Espagnol.
 
 ## ⚙️ Configuration
@@ -52,17 +59,20 @@ Inspirée par l'application [Sponge](https://play.google.com/store/apps/details?
      - `album.read`
      - `asset.read`
      - `asset.view`
-     - `asset.statistics`
      - `asset.delete`
+     - `asset.statistics`
      - `asset.update` (Optionnel --> si vous souhaitez pouvoir archiver des assets, les ajouter aux favoris ou encore les envoyer dans le dossier verrouillé)
+     - `albumAsset.create` (Optionnel --> si vous souhaitez ajouter des médias à d'autres albums)
+     - `asset.download` (Optionnel --> si vous souhaitez partager vos médias)
+     - `asset.edit.create` (Optionnel --> si vous souhaitez synchroniser la rotation des photos)
      - `userProfileImage.read` (Optionnel --> permet d'afficher l'image du profil utilisateur)
 3. Sélectionnez un album et commencez à trier !
 
 ## 📦 Installation
 
-  |                                                                                                                       **Obtainium**                                                                                                                        |   **Téléchargement Direct**   |  **IzzyOnDroid / F-Droid**    |
-  |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------------:|:----------------------------:|
-  | [<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png"  alt="Get it on Obtainium" height="50">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.minos2020.immichswipe%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FMinos2020%2Fimmich-swipe%22%2C%22author%22%3A%22Minos2020%22%2C%22name%22%3A%22Immich%20Swipe%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Atrue%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22filterReleaseNotesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22verifyLatestTag%5C%22%3Atrue%2C%5C%22sortMethodChoice%5C%22%3A%5C%22date%5C%22%2C%5C%22useLatestAssetDateAsReleaseDate%5C%22%3Afalse%2C%5C%22releaseTitleAsVersion%5C%22%3Afalse%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%22%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22releaseDateAsVersion%5C%22%3Afalse%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%2C%5C%22includeZips%5C%22%3Afalse%2C%5C%22zippedApkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22github-creds%5C%22%3A%5C%22%5C%22%2C%5C%22GHReqPrefix%5C%22%3A%5C%22%5C%22%7D%22%2C%22overrideSource%22%3A%22GitHub%22%7D) | Récupérez le dernier APK dans la section [Releases](https://github.com/minos2020/immich-swipe/releases)    |  Prochainement disponible
+|                                                                                                                       **Obtainium**                                                                                                                        |   **Téléchargement Direct**   |  **IzzyOnDroid / F-Droid**    |
+|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------------:|:----------------------------:|
+| [<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png"  alt="Get it on Obtainium" height="50">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.minos2020.immichswipe%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FMinos2020%2Fimmich-swipe%22%2C%22author%22%3A%22Minos2020%22%2C%22name%22%3A%22Immich%20Swipe%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Atrue%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22filterReleaseNotesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22verifyLatestTag%5C%22%3Atrue%2C%5C%22sortMethodChoice%5C%22%3A%5C%22date%5C%22%2C%5C%22useLatestAssetDateAsReleaseDate%5C%22%3Afalse%2C%5C%22releaseTitleAsVersion%5C%22%3Afalse%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%22%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22releaseDateAsVersion%5C%22%3Afalse%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%2C%5C%22includeZips%5C%22%3Afalse%2C%5C%22zippedApkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22github-creds%5C%22%3A%5C%22%5C%22%2C%5C%22GHReqPrefix%5C%22%3A%5C%22%5C%22%7D%22%2C%22overrideSource%22%3A%22GitHub%22%7D) | Récupérez le dernier APK dans la section [Releases](https://github.com/minos2020/immich-swipe/releases) |  Prochainement disponible
 
 
 ## 🛠️ Build
@@ -77,7 +87,7 @@ Si vous souhaitez compiler l'application vous-même :
 
 ## 📄 Licence
 
-Ce projet est sous licence GNU GPL v3. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+Ce projet est sous licence GNU GPL v3. Voir le fichier [LICENSE](LICENSE) file pour plus de détails.
 
 ## ⚖️ Responsabilité
 
