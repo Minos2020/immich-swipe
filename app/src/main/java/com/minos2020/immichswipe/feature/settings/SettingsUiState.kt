@@ -49,6 +49,7 @@ data class SettingsUiState(
     val defaultCardDisplayMode: CardDisplayMode = CardDisplayMode.FILL,
     val shareButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     val rotateButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
+    val showLogoutConfirmation: Boolean = false,
     
     // Database actions
     val pendingDatabaseAction: DatabaseAction? = null,

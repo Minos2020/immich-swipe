@@ -562,7 +562,33 @@ fun HomeScreen(
             connectionStatus = uiState.connectionStatus,
             onClose = { viewModel.toggleProfilePopup(false) },
             onSettingsClick = { viewModel.onTabSelected(HomeTab.SETTINGS) },
-            onLogout = { viewModel.logout() }
+            onLogout = { viewModel.setShowLogoutConfirmation(true) }
+        )
+    }
+
+    // Dialogue de confirmation de déconnexion
+    if (uiState.showLogoutConfirmation) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowLogoutConfirmation(false) },
+            title = { Text(stringResource(R.string.profile_logout_confirm_title)) },
+            text = { Text(stringResource(R.string.profile_logout_confirm_msg)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setShowLogoutConfirmation(false)
+                        viewModel.logout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.profile_logout_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowLogoutConfirmation(false) }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
         )
     }
 
@@ -1105,7 +1131,7 @@ fun ProfilePopup(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            painter = rememberVectorPainter(Icons.Default.Code),
+                            imageVector = Icons.Default.Code,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.primary

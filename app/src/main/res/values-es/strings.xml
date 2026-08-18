@@ -51,6 +51,8 @@
     <!-- Ventana de perfil y diagnóstico -->
     <string name="profile_connected_label">Conectado al servidor Immich</string>
     <string name="profile_logout_button">Cerrar sesión</string>
+    <string name="profile_logout_confirm_title">¿Cerrar sesión?</string>
+    <string name="profile_logout_confirm_msg">Tus decisiones de deslizamiento y estadísticas se guardan localmente y se conservarán. La aplicación admite varias cuentas, por lo que puedes volver a conectarte fácilmente.</string>
     <string name="profile_source_code">Código fuente</string>
     <string name="profile_donate">Apoyar el proyecto</string>
     <string name="diag_online">Servidor en línea</string>

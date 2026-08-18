@@ -324,6 +324,10 @@ class HomeViewModel(
         sessionRepository.saveThemeMode(theme)
     }
 
+    fun setShowLogoutConfirmation(visible: Boolean) {
+        _uiState.update { it.copy(showLogoutConfirmation = visible) }
+    }
+
     fun logout() = viewModelScope.launch {
         discoveryJob?.cancel()
         _uiState.value = HomeUiState() // Reset COMPLET de l'état

@@ -576,12 +576,11 @@ fun SettingsScreen(
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text(text = uiState.userName, style = MaterialTheme.typography.titleMedium)
-                            Text(text = stringResource(R.string.profile_connected_label), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                         }
                     }
                     Spacer(Modifier.height(24.dp))
                     Button(
-                        onClick = { viewModel.logout() },
+                        onClick = { viewModel.setShowLogoutConfirmation(true) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -853,6 +852,32 @@ fun SettingsScreen(
                     Text(stringResource(R.string.common_cancel))
                 }
             }
+        )
+    }
+
+    // Dialogue de confirmation de déconnexion
+    if (uiState.showLogoutConfirmation) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowLogoutConfirmation(false) },
+            title = { Text(stringResource(R.string.profile_logout_confirm_title)) },
+            text = { Text(stringResource(R.string.profile_logout_confirm_msg)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setShowLogoutConfirmation(false)
+                        viewModel.logout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.profile_logout_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowLogoutConfirmation(false) }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
         )
     }
 }

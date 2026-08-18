@@ -45,6 +45,7 @@ data class HomeUiState(
     val stats: StatsUiData = StatsUiData(), // Données des stats
     val collapsedCategories: Set<AlbumStatus> = emptySet(), // Catégories réduites
     val isDiscovering: Boolean = false, // État de la tâche de découverte en arrière-plan
+    val showLogoutConfirmation: Boolean = false, // Visibilité de la confirmation de déconnexion
     
     // Actions rapides sur albums
     val pendingAlbumAction: AlbumAction? = null,
