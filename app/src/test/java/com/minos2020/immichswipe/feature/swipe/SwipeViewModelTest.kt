@@ -58,11 +58,11 @@ class SwipeViewModelTest {
         mockkStatic(Log::class)
         every { Log.d(any(), any()) } answers { println("DEBUG: ${it.invocation.args[0]}: ${it.invocation.args[1]}"); 0 }
         every { Log.i(any(), any()) } answers { println("INFO: ${it.invocation.args[0]}: ${it.invocation.args[1]}"); 0 }
-        every { Log.w(any(), any(), any()) } answers { println("WARN: ${it.invocation.args[0]}: ${it.invocation.args[1]}"); 0 }
+        every { Log.w(any<String>(), any<String>()) } answers { println("WARN: ${it.invocation.args[0]}: ${it.invocation.args[1]}"); 0 }
+        every { Log.w(any<String>(), any<String>(), any<Throwable>()) } answers { println("WARN: ${it.invocation.args[0]}: ${it.invocation.args[1]}"); 0 }
         every { Log.e(any(), any(), any()) } answers { 
             val t = it.invocation.args[2] as? Throwable
             println("ERROR: ${it.invocation.args[0]}: ${it.invocation.args[1]} - ${t?.message}")
-            t?.printStackTrace()
             0 
         }
         every { Log.e(any(), any()) } answers { println("ERROR: ${it.invocation.args[0]}: ${it.invocation.args[1]}"); 0 }
@@ -195,5 +195,26 @@ class SwipeViewModelTest {
 
         // THEN
         assertEquals(0.0f, viewModel.uiState.value.progress)
+    }
+
+    @Test
+    fun `SwipeViewModel must purge assets immediately when userId changes`() = runTest {
+        // GIVEN: Le ViewModel est chargé avec Alice
+        assetsFlow.value = listOf(createAsset("photo_alice"))
+        val viewModel = SwipeViewModel(assetRepository, sessionRepository, swipeDecisionRepository, albumRepository, testAlbum)
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.assets.size)
+
+        // WHEN: On change l'utilisateur dans la session
+        sessionConfigFlow.value = SessionConfig("http://url", "key", "user_bob")
+        
+        // On déclenche manuellement une émission sur les autres flux pour forcer le combine
+        decisionsFlow.value = emptyList()
+
+        testScheduler.advanceUntilIdle()
+
+        // THEN: Le ViewModel doit avoir détecté la fuite potentielle et vidé sa liste
+        assertTrue("La liste d'assets doit être vidée lors du changement d'utilisateur", 
+            viewModel.uiState.value.assets.isEmpty())
     }
 }
