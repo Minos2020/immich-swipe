@@ -6,17 +6,25 @@ import com.minos2020.immichswipe.data.repository.AlbumRepository
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
+import com.minos2020.immichswipe.data.repository.UserRepository
 
 class HomeViewModelFactory(
     private val sessionRepository: SessionRepository,
     private val albumRepository: AlbumRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository,
-    private val assetRepository: AssetRepository
+    private val assetRepository: AssetRepository,
+    private val userRepository: UserRepository
 ) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            return HomeViewModel(sessionRepository, albumRepository, swipeDecisionRepository, assetRepository) as T
+            return HomeViewModel(
+                sessionRepository,
+                albumRepository,
+                swipeDecisionRepository,
+                assetRepository,
+                userRepository
+            ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

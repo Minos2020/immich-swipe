@@ -42,6 +42,13 @@ class SwipeViewModel(
     private var randomSeed: Long = System.currentTimeMillis()
     private var hasStartedSwiping: Boolean = false
 
+    // On garde en mémoire les décisions qui étaient déjà synchronisées au début de la session
+    private var initialSyncedDecisions = mapOf<String, SwipeDecision>()
+    private var lastLoadedUserId: String? = null
+    private var assetsJob: kotlinx.coroutines.Job? = null
+    private val allAssetsFoundFlow = MutableStateFlow<List<Asset>>(emptyList())
+    private val isAssetsLoadingFlow = MutableStateFlow(false)
+
     init {
         loadAssetsAndDecisions()
         observePlaybackBehavior()
@@ -248,13 +255,6 @@ class SwipeViewModel(
         }
     }
 
-    // On garde en mémoire les décisions qui étaient déjà synchronisées au début de la session
-    private var initialSyncedDecisions = mapOf<String, SwipeDecision>()
-    private var lastLoadedUserId: String? = null
-    private var assetsJob: kotlinx.coroutines.Job? = null
-    private val allAssetsFoundFlow = MutableStateFlow<List<Asset>>(emptyList())
-    private val isAssetsLoadingFlow = MutableStateFlow(false)
-
     private fun loadAssetsAndDecisions() {
         assetsJob?.cancel()
         assetsJob = viewModelScope.launch {
@@ -307,6 +307,7 @@ class SwipeViewModel(
                     allAssetsFoundFlow,
                     isAssetsLoadingFlow
                 ) { localDecisions, allAssetsFound, isFetching ->
+                    android.util.Log.d("SWIPE_VM_TEST", "Combine emit: decisions=${localDecisions.size}, assets=${allAssetsFound.size}, loading=$isFetching")
                     Triple(localDecisions, allAssetsFound, isFetching)
                 }.collect { (localDecisions, allAssetsFound, isFetching) ->
                     val currentState = _uiState.value

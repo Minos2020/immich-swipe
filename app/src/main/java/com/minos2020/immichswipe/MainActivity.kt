@@ -28,6 +28,7 @@ import com.minos2020.immichswipe.data.repository.AuthRepository
 import com.minos2020.immichswipe.data.repository.AlbumRepository
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
+import com.minos2020.immichswipe.data.repository.UserRepository
 import com.minos2020.immichswipe.data.local.AppDatabase
 import com.minos2020.immichswipe.feature.auth.AuthScreen
 import com.minos2020.immichswipe.feature.auth.AuthViewModelFactory
@@ -111,6 +112,9 @@ class MainActivity : ComponentActivity() {
                                             database.albumAssetDao()
                                         ) 
                                     }
+                                    val userRepository = remember(sessionKey) {
+                                        UserRepository(api)
+                                    }
 
                                     HomeScreen(
                                         viewModel = viewModel(
@@ -119,7 +123,8 @@ class MainActivity : ComponentActivity() {
                                                 sessionRepository, 
                                                 albumRepository, 
                                                 swipeDecisionRepository,
-                                                assetRepository
+                                                assetRepository,
+                                                userRepository
                                             )
                                         ),
                                         assetRepository = assetRepository,

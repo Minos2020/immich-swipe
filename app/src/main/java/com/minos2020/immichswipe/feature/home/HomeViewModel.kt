@@ -34,14 +34,9 @@ class HomeViewModel(
     private val sessionRepository: SessionRepository,
     private val albumRepository: AlbumRepository,
     private val swipeDecisionRepository: SwipeDecisionRepository,
-    private val assetRepository: AssetRepository
+    private val assetRepository: AssetRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
-    
-    private fun getUserRepository(): UserRepository {
-        return UserRepository(
-            SessionManager.api ?: throw IllegalStateException("Session not initialized")
-        )
-    }
     
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -180,7 +175,7 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 AppLogger.d("Home", "Chargement des données utilisateur et albums")
-                val user = getUserRepository().getCurrentUser()
+                val user = userRepository.getCurrentUser()
                 // SOLUTION : Migration des anciennes données (v3 -> v4) vers l'ID utilisateur réel
                 swipeDecisionRepository.migrateLegacyDecisions(user.id)
 
