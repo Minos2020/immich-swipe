@@ -1,6 +1,9 @@
 package com.minos2020.immichswipe.core
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.minos2020.immichswipe.R
 
 /**
  * Retourne la couleur Compose correspondant au nom de couleur Immich.
@@ -22,5 +25,21 @@ fun getAvatarColor(colorName: String?): Color {
         "lime" -> Color(0xFFCDDC39)
         "teal" -> Color(0xFF009688)
         else -> Color(0xFF9C27B0) // Valeur par défaut (violet)
+    }
+}
+
+/**
+ * Formate une taille en octets en une chaîne lisible (KB, MB, GB).
+ */
+@Composable
+fun formatSize(bytes: Long): String {
+    val kb = bytes / 1024.0
+    val mb = kb / 1024.0
+    val gb = mb / 1024.0
+    
+    return when {
+        gb >= 1.0 -> stringResource(R.string.size_unit_gb, gb)
+        mb >= 1.0 -> stringResource(R.string.size_unit_mb, mb)
+        else -> stringResource(R.string.size_unit_kb, kb)
     }
 }

@@ -1649,18 +1649,6 @@ fun MetadataRow(icon: ImageVector, label: String, value: String) {
  * Formate une taille en bytes vers une chaîne lisible (Go, Mo).
  */
 @Composable
-fun formatSize(bytes: Long): String {
-    val kb = bytes / 1024.0
-    val mb = kb / 1024.0
-    val gb = mb / 1024.0
-    return when {
-        gb >= 1.0 -> stringResource(R.string.size_unit_gb, gb)
-        mb >= 1.0 -> stringResource(R.string.size_unit_mb, mb)
-        else -> stringResource(R.string.size_unit_kb, kb)
-    }
-}
-
-@Composable
 fun SummaryDialog(
     uiState: SwipeUiState,
     onDismiss: () -> Unit,

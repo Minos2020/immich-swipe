@@ -65,6 +65,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.minos2020.immichswipe.R
 import com.minos2020.immichswipe.core.SessionManager
+import com.minos2020.immichswipe.core.formatSize
 import com.minos2020.immichswipe.core.getAvatarColor
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
@@ -856,19 +857,6 @@ fun DistributionBar(label: String, percentValue: Float, color: Color) {
             color = color,
             trackColor = color.copy(alpha = 0.1f)
         )
-    }
-}
-
-@Composable
-fun formatSize(bytes: Long): String {
-    val kb = bytes / 1024.0
-    val mb = kb / 1024.0
-    val gb = mb / 1024.0
-    
-    return when {
-        gb >= 1.0 -> stringResource(R.string.size_unit_gb, gb)
-        mb >= 1.0 -> stringResource(R.string.size_unit_mb, mb)
-        else -> stringResource(R.string.size_unit_kb, kb)
     }
 }
 
