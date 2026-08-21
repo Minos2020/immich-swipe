@@ -305,11 +305,24 @@ class SwipeViewModel(
                 combine(
                     swipeDecisionRepository.getDecisionsForAlbum(album.id, config.userId),
                     allAssetsFoundFlow,
-                    isAssetsLoadingFlow
-                ) { localDecisions, allAssetsFound, isFetching ->
-                    android.util.Log.d("SWIPE_VM_TEST", "Combine emit: decisions=${localDecisions.size}, assets=${allAssetsFound.size}, loading=$isFetching")
+                    isAssetsLoadingFlow,
+                    sessionRepository.sessionConfig // On ajoute la config ici pour être réactif au changement d'utilisateur
+                ) { localDecisions, allAssetsFound, isFetching, currentConfig ->
+                    // SECURITÉ ANTI-FUITE : Si l'utilisateur a changé, on vide tout
+                    if (currentConfig != null && lastLoadedUserId != null && lastLoadedUserId != currentConfig.userId) {
+                         android.util.Log.w("Swipe", "Fuite détectée (UserId différent), purge forcée")
+                         return@combine Triple(emptyList<SwipeDecisionEntity>(), emptyList<Asset>(), isFetching)
+                    }
                     Triple(localDecisions, allAssetsFound, isFetching)
                 }.collect { (localDecisions, allAssetsFound, isFetching) ->
+                    // Re-vérification après le collect pour être absolument certain avant de mettre à jour le State
+                    val currentConfig = sessionRepository.sessionConfig.first()
+                    if (currentConfig != null && lastLoadedUserId != null && lastLoadedUserId != currentConfig.userId) {
+                        android.util.Log.w("Swipe", "Purge finale déclenchée")
+                        masterWorkPile = emptyList()
+                        _uiState.value = SwipeUiState(albumName = album.albumName)
+                        return@collect
+                    }
                     val currentState = _uiState.value
                     
                     // 1. Mise à jour des décisions synchronisées
@@ -320,6 +333,9 @@ class SwipeViewModel(
                                           else try { SwipeDecision.valueOf(entity.decision) } catch (_: Exception) { SwipeDecision.SKIP }
                             entity.assetId to decision
                         }
+
+                    // On met à jour l'ID de l'utilisateur chargé pour le prochain collect
+                    lastLoadedUserId = currentConfig?.userId ?: lastLoadedUserId
 
                     // 2. Préparation des décisions locales et des tailles
                     val allLocalDecisions = mutableMapOf<String, SwipeDecision>()
