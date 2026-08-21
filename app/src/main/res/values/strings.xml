@@ -60,6 +60,8 @@
     <string name="profile_logout_button">Logout</string>
     <string name="profile_logout_confirm_title">Log out?</string>
     <string name="profile_logout_confirm_msg">Your swipe decisions and statistics are saved locally and will be preserved. This application supports multiple accounts, so you can reconnect easily.</string>
+    <string name="profile_storage_usage">Storage usage</string>
+    <string name="profile_storage_unlimited">Unlimited</string>
     <string name="profile_source_code">Source code</string>
     <string name="profile_donate">Support the project</string>
     <string name="diag_online">Server online</string>

@@ -61,6 +61,8 @@
     <string name="profile_logout_button">Se déconnecter</string>
     <string name="profile_logout_confirm_title">Se déconnecter ?</string>
     <string name="profile_logout_confirm_msg">Vos décisions de tri et vos statistiques sont conservées localement. L\'application gère le multi-compte, vous pourrez donc vous reconnecter facilement.</string>
+    <string name="profile_storage_usage">Utilisation du stockage</string>
+    <string name="profile_storage_unlimited">Illimité</string>
     <string name="profile_source_code">Code source</string>
     <string name="profile_donate">Soutenir le projet</string>
     <string name="diag_online">Serveur opérationnel</string>

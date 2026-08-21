@@ -5,5 +5,7 @@ data class User(
     val email: String,
     val name: String?,
     val profileImagePath: String? = null,
-    val avatarColor: String? = null
+    val avatarColor: String? = null,
+    val quotaSizeInBytes: Long? = null,
+    val quotaUsageInBytes: Long? = null
 )

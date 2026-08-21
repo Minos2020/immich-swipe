@@ -64,6 +64,7 @@ import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.minos2020.immichswipe.R
+import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.formatSize
 import com.minos2020.immichswipe.core.getAvatarColor
@@ -916,8 +917,8 @@ fun ProfilePopup(
                 // Photo de profil grande
                 val avatarColor = getAvatarColor(user?.avatarColor)
                 val profileModifier = Modifier
-                    .size(100.dp)
-                    .border(3.dp, avatarColor, CircleShape)
+                    .size(80.dp)
+                    .border(2.dp, avatarColor, CircleShape)
                     .padding(4.dp)
                     .clip(CircleShape)
 
@@ -943,18 +944,81 @@ fun ProfilePopup(
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Text(
                     text = user?.name ?: stringResource(R.string.home_user_fallback),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = user?.email ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
+                Spacer(Modifier.height(12.dp))
+
+                if (user != null && user.quotaUsageInBytes != null) {
+                    val quotaSize = user.quotaSizeInBytes
+                    val usage = user.quotaUsageInBytes
+                    
+                    // Si quotaSize est null, c'est illimité. S'il est 0, on traite comme saturé (erreur).
+                    val isUnlimited = quotaSize == null
+                    val isQuotaError = quotaSize != null && quotaSize <= 0
+                    
+                    val usagePercent = when {
+                        isUnlimited -> 0f
+                        isQuotaError -> 1.1f // Pour forcer le rouge
+                        else -> (usage.toDouble() / quotaSize.toDouble()).toFloat().coerceIn(0f, 1.1f)
+                    }
+                    
+                    val usageColor = when {
+                        usagePercent > 0.9f -> Color(0xFFF44336) // Red
+                        usagePercent > 0.7f -> Color(0xFFFF9800) // Orange
+                        else -> Color(0xFF4CAF50) // Green
+                    }
+
+                    val totalText = if (quotaSize == null) stringResource(R.string.profile_storage_unlimited) else formatSize(quotaSize)
+                    val usageText = "${formatSize(usage)} / $totalText"
+
+                    Spacer(Modifier.height(24.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.profile_storage_usage),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                            Text(
+                                text = usageText,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        
+                        // On n'affiche la barre que si on a un quota défini
+                        if (!isUnlimited) {
+                            Spacer(Modifier.height(4.dp))
+                            LinearProgressIndicator(
+                                progress = { usagePercent.coerceAtMost(1f) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(CircleShape),
+                                color = usageColor,
+                                trackColor = usageColor.copy(alpha = 0.1f)
+                            )
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(24.dp))
 

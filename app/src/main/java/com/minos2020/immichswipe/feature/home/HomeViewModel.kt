@@ -183,7 +183,7 @@ class HomeViewModel(
                 val allCount = assetRepository.getTotalAssetCount(_uiState.value.includeArchived)
                 val orphansCount = assetRepository.getOrphansCount(_uiState.value.includeArchived)
 
-                AppLogger.i("Home", "Utilisateur chargé: ${user.name}, ${albums.size} albums trouvés")
+                AppLogger.i("Home", "Utilisateur chargé: ${user.name} (Quota: ${user.quotaUsageInBytes}/${user.quotaSizeInBytes}), ${albums.size} albums trouvés")
                 
                 // Nettoyage des SKIP expirés dès le démarrage
                 val lifespan = sessionRepository.skipLifespanDays.first()
