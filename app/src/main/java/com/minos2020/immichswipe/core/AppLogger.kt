@@ -17,7 +17,7 @@ object AppLogger {
     private const val TAG = "AppLogger"
     private const val CURRENT_LOG_FILE = "current_logs.txt"
     private const val PREVIOUS_LOG_FILE = "previous_logs.txt"
-    private const val MAX_FILE_SIZE = 1024 * 1024 // 1 MB
+    private const val MAX_FILE_SIZE = 512 * 1024 // 512 KB pour garder l'UI fluide
     
     private var logsDir: File? = null
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())

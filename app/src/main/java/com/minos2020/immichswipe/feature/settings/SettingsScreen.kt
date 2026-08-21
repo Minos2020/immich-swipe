@@ -594,29 +594,12 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             text = {
                 val rawLogs = remember { viewModel.getLogs() }
+                val logLines = remember(rawLogs) { rawLogs.lines() }
+                
                 val errorColor = MaterialTheme.colorScheme.error
                 val warningColor = Color(0xFFFFA500) // Orange
                 val infoColor = Color(0xFF00B0FF)    // Bleu clair
                 val debugColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
-
-                val annotatedLogs = remember(rawLogs, errorColor, warningColor, infoColor, debugColor) {
-                    buildAnnotatedString {
-                        if (rawLogs.isNotEmpty()) {
-                            rawLogs.lineSequence().forEach { line ->
-                                val color = when {
-                                    line.contains(" E/") -> errorColor
-                                    line.contains(" W/") -> warningColor
-                                    line.contains(" I/") -> infoColor
-                                    line.contains(" D/") -> debugColor
-                                    else -> Color.Unspecified
-                                }
-                                withStyle(style = SpanStyle(color = color)) {
-                                    append(line + "\n")
-                                }
-                            }
-                        }
-                    }
-                }
 
                 BoxWithConstraints(
                     modifier = Modifier
@@ -624,51 +607,99 @@ fun SettingsScreen(
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                         .padding(8.dp)
                 ) {
-                    val scroll = rememberScrollState()
-                    SelectionContainer {
+                    if (rawLogs.isEmpty()) {
                         Text(
-                            text = if (rawLogs.isEmpty()) androidx.compose.ui.text.AnnotatedString(stringResource(R.string.settings_logs_empty)) else annotatedLogs,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                lineHeight = 16.sp,
-                                letterSpacing = 0.5.sp
-                            ),
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            modifier = Modifier
-                                .verticalScroll(scroll)
-                                .padding(end = 16.dp) // Évite que le texte ne morde sur la barre de défilement (14dp)
+                            text = stringResource(R.string.settings_logs_empty),
+                            style = MaterialTheme.typography.labelSmall
                         )
-                    }
-
-                    // Barre de défilement interactive (Scrollbar)
-                    if (rawLogs.isNotEmpty() && scroll.maxValue > 0) {
-                        val indicatorHeightFraction = 0.15f
-                        val trackHeightPx = with(LocalDensity.current) { this@BoxWithConstraints.maxHeight.toPx() }
+                    } else {
+                        val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
                         
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .fillMaxHeight()
-                                .width(14.dp) // Plus large pour le confort tactile
-                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                                .pointerInput(scroll.maxValue) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        val scrollRange = scroll.maxValue
-                                        val dragFactor = scrollRange / (trackHeightPx * (1f - indicatorHeightFraction))
-                                        scope.launch {
-                                            scroll.scrollTo((scroll.value + dragAmount.y * dragFactor).toInt().coerceIn(0, scroll.maxValue))
-                                        }
+                        SelectionContainer {
+                            androidx.compose.foundation.lazy.LazyColumn(
+                                state = lazyListState,
+                                modifier = Modifier.fillMaxSize().padding(end = 16.dp)
+                            ) {
+                                items(logLines.size) { index ->
+                                    val line = logLines[index]
+                                    val color = when {
+                                        line.contains(" E/") -> errorColor
+                                        line.contains(" W/") -> warningColor
+                                        line.contains(" I/") -> infoColor
+                                        line.contains(" D/") -> debugColor
+                                        else -> Color.Unspecified
                                     }
+                                    Text(
+                                        text = line,
+                                        color = color,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            lineHeight = 16.sp,
+                                            letterSpacing = 0.5.sp
+                                        ),
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                    )
                                 }
-                        ) {
-                            val scrollFraction = scroll.value.toFloat() / scroll.maxValue
+                            }
+                        }
+
+                        // TA SCROLLBAR INTERACTIVE (Optimisation ultra-fluide)
+                        val totalItems = logLines.size
+                        if (totalItems > 0) {
+                            val indicatorHeightFraction = 0.15f
+                            val trackHeightPx = with(LocalDensity.current) { this@BoxWithConstraints.maxHeight.toPx() }
+                            
+                            val layoutInfo = lazyListState.layoutInfo
+                            val visibleItems = layoutInfo.visibleItemsInfo
+                            val avgItemSize = if (visibleItems.isNotEmpty()) visibleItems.sumOf { it.size }.toFloat() / visibleItems.size else 1f
+                            val maxScrollIndex = (totalItems - visibleItems.size).coerceAtLeast(1)
+
                             Box(
                                 modifier = Modifier
-                                    .fillMaxHeight(indicatorHeightFraction)
-                                    .fillMaxWidth()
-                                    .offset(y = this@BoxWithConstraints.maxHeight * (scrollFraction * (1f - indicatorHeightFraction)))
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                            )
+                                    .align(Alignment.CenterEnd)
+                                    .fillMaxHeight()
+                                    .width(14.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                    .pointerInput(totalItems) {
+                                        var preciseItemIndex = lazyListState.firstVisibleItemIndex.toFloat()
+                                        detectDragGestures(
+                                            onDragStart = { preciseItemIndex = lazyListState.firstVisibleItemIndex.toFloat() },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                
+                                                val scrollableTrackHeight = trackHeightPx * (1f - indicatorHeightFraction)
+                                                val itemsPerPixel = totalItems.toFloat() / scrollableTrackHeight
+                                                
+                                                preciseItemIndex = (preciseItemIndex + dragAmount.y * itemsPerPixel)
+                                                    .coerceIn(0f, totalItems.toFloat() - 1f)
+                                                
+                                                val targetIndex = preciseItemIndex.toInt()
+                                                val targetOffset = ((preciseItemIndex - targetIndex) * avgItemSize).toInt()
+                                                
+                                                scope.launch {
+                                                    // On défile à l'index précis ET avec l'offset de pixel
+                                                    lazyListState.scrollToItem(targetIndex, targetOffset)
+                                                }
+                                            }
+                                        )
+                                    }
+                            ) {
+                                // Calcul de la position avec prise en compte de l'offset pour un mouvement continu
+                                val firstVisible = lazyListState.firstVisibleItemIndex
+                                val firstVisibleOffset = lazyListState.firstVisibleItemScrollOffset
+                                
+                                // On convertit l'offset de pixels en fraction d'item
+                                val continuousIndex = firstVisible + (firstVisibleOffset / avgItemSize)
+                                val scrollFraction = if (!lazyListState.canScrollForward) 1f 
+                                                     else (continuousIndex / maxScrollIndex).coerceIn(0f, 1f)
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight(indicatorHeightFraction)
+                                        .fillMaxWidth()
+                                        .offset(y = this@BoxWithConstraints.maxHeight * (scrollFraction * (1f - indicatorHeightFraction)))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                                )
+                            }
                         }
                     }
                 }
