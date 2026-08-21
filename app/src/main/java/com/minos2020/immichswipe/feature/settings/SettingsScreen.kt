@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -26,10 +27,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
@@ -39,10 +44,14 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.minos2020.immichswipe.R
 import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
+import com.minos2020.immichswipe.core.SessionManager
+import com.minos2020.immichswipe.core.getAvatarColor
 
 @Composable
 fun SettingsScreen(
@@ -52,7 +61,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val clipboard = androidx.compose.ui.platform.LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -533,12 +542,35 @@ fun SettingsScreen(
             SettingsSection(title = stringResource(R.string.settings_section_account), icon = Icons.Default.Person) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.AccountCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(40.dp)
-                        )
+                        val avatarColor = getAvatarColor(uiState.userAvatarColor)
+                        val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/")
+                        val apiKey = SessionManager.getApiKey() ?: ""
+
+                        if (uiState.userId.isNotEmpty() && baseUrl != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data("$baseUrl/api/users/${uiState.userId}/profile-image")
+                                    .addHeader("x-api-key", apiKey)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                placeholder = rememberVectorPainter(Icons.Default.AccountCircle),
+                                error = rememberVectorPainter(Icons.Default.AccountCircle),
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .border(2.dp, avatarColor, CircleShape)
+                                    .padding(2.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text(text = uiState.userName, style = MaterialTheme.typography.titleMedium)

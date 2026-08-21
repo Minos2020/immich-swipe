@@ -49,7 +49,11 @@ class SettingsViewModel(
             try {
                 val userRepo = getUserRepository() ?: throw IllegalStateException("Session not initialized after wait")
                 val user = userRepo.getCurrentUser()
-                _uiState.update { it.copy(userName = user.name ?: "") }
+                _uiState.update { it.copy(
+                    userName = user.name ?: "",
+                    userId = user.id,
+                    userAvatarColor = user.avatarColor
+                ) }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 android.util.Log.e("SettingsVM", "Erreur chargement user: ${e.message}")

@@ -19,6 +19,8 @@ enum class DatabaseAction {
 data class SettingsUiState(
     val isLoading: Boolean = false,
     val userName: String = "",
+    val userId: String = "",
+    val userAvatarColor: String? = null,
     val playbackBehavior: PlaybackBehavior = PlaybackBehavior.PAUSE_OTHERS,
     val themeMode: AppTheme = AppTheme.SYSTEM,
     val isSwipeInverted: Boolean = false,
