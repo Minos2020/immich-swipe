@@ -7,6 +7,7 @@ import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.core.SwipeSortPriority
+import com.minos2020.immichswipe.core.ImmichOpenMode
 
 /**
  * Les différentes décisions possibles pour un asset.
@@ -60,6 +61,8 @@ data class SwipeUiState(
     val sortPriority: SwipeSortPriority = SwipeSortPriority.NONE,
     val shareButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     val rotateButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
+    val immichOpenMode: ImmichOpenMode = ImmichOpenMode.APP,
+    val immichLongPressWeb: Boolean = false,
 
     // États pour l'ajout à un album
     val showAlbumSelection: Boolean = false,

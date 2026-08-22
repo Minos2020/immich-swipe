@@ -110,6 +110,10 @@
     <string name="settings_swipe_invert_desc">A gauche pour garder, à droite pour supprimer</string>
     <string name="settings_fullscreen_pos_label">Position du bouton Plein Écran</string>
     <string name="settings_immich_pos_label">Position du bouton Ouvrir dans Immich</string>
+    <string name="settings_immich_open_mode_label">Mode d\'ouverture</string>
+    <string name="settings_immich_open_mode_app">Application</string>
+    <string name="settings_immich_open_mode_web">Navigateur</string>
+    <string name="settings_immich_long_press_web">Appui long pour ouvrir sur le web</string>
     <string name="settings_video_behavior_label">Comportement vidéo</string>
     <string name="settings_video_behavior_desc">Gérer l\'interaction avec les autres sons de l\'appareil lors de la lecture d\'une vidéo</string>
     <string name="settings_video_pause">Couper tous les autres sons</string>

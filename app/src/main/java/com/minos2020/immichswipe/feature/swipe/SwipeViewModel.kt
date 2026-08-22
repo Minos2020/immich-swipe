@@ -8,6 +8,7 @@ import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.core.SwipeSortPriority
+import com.minos2020.immichswipe.core.ImmichOpenMode
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
 import com.minos2020.immichswipe.data.local.entity.SwipeDecisionEntity
@@ -166,6 +167,16 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.syncRotate.collect { sync ->
                 _uiState.value = _uiState.value.copy(syncRotate = sync)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.immichOpenMode.collect { mode ->
+                _uiState.value = _uiState.value.copy(immichOpenMode = mode)
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.immichLongPressWeb.collect { enabled ->
+                _uiState.value = _uiState.value.copy(immichLongPressWeb = enabled)
             }
         }
     }

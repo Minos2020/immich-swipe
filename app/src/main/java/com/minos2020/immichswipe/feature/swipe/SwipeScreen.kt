@@ -9,9 +9,11 @@ import android.view.LayoutInflater
 import androidx.annotation.OptIn
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.*
@@ -239,6 +241,8 @@ fun SwipeScreen(
                             showCardDisplayButton = uiState.showCardDisplayButton,
                             showMuteButton = uiState.showMuteButton,
                             showRotateButton = uiState.showRotateButton,
+                            immichOpenMode = uiState.immichOpenMode,
+                            immichLongPressWeb = uiState.immichLongPressWeb,
                             localRotation = uiState.localRotations[asset.id] ?: 0,
                             onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                             onToggleMute = { viewModel.toggleMute() },
@@ -868,6 +872,8 @@ fun SwipeCard(
     showCardDisplayButton: Boolean,
     showMuteButton: Boolean,
     showRotateButton: Boolean,
+    immichOpenMode: ImmichOpenMode = ImmichOpenMode.APP,
+    immichLongPressWeb: Boolean = false,
     localRotation: Int,
     onToggleDisplayMode: () -> Unit,
     onToggleMute: () -> Unit,
@@ -880,6 +886,33 @@ fun SwipeCard(
     val baseUrl = SessionManager.getBaseUrl()?.removeSuffix("/")
     val apiKey = SessionManager.getApiKey() ?: ""
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    val openInWeb = {
+        val webUri = "$baseUrl/photos/${asset.id}".toUri()
+        context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+    }
+
+    val openInApp = {
+        val webUri = "$baseUrl/photos/${asset.id}".toUri()
+        val customUri = "immich://asset?id=${asset.id}".toUri()
+        val appIntent = Intent(Intent.ACTION_VIEW, customUri).apply {
+            setPackage("app.alextran.immich")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(appIntent)
+        } catch (e: Exception) {
+            try {
+                val appWebIntent = Intent(Intent.ACTION_VIEW, webUri).apply {
+                    setPackage("app.alextran.immich")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(appWebIntent)
+            } catch (e2: Exception) {
+                openInWeb()
+            }
+        }
+    }
 
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
@@ -1260,30 +1293,11 @@ fun SwipeCard(
                                     icon = Icons.AutoMirrored.Filled.OpenInNew,
                                     contentDescription = stringResource(R.string.settings_immich_pos_label),
                                     onClick = {
-                                        val webUri = "$baseUrl/photos/${asset.id}".toUri()
-                                        // On utilise le format exact avec le paramètre de requête ?id= identifié dans les PR d'Immich
-                                        val customUri = "immich://asset?id=${asset.id}".toUri()
-                                        
-                                        val appIntent = Intent(Intent.ACTION_VIEW, customUri).apply {
-                                            setPackage("app.alextran.immich")
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                        
-                                        try {
-                                            context.startActivity(appIntent)
-                                        } catch (e: Exception) {
-                                            // Fallback sur l'URL web classique si le schéma custom échoue
-                                            try {
-                                                val appWebIntent = Intent(Intent.ACTION_VIEW, webUri).apply {
-                                                    setPackage("app.alextran.immich")
-                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                }
-                                                context.startActivity(appWebIntent)
-                                            } catch (e2: Exception) {
-                                                context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
-                                            }
-                                        }
-                                    }
+                                        if (immichOpenMode == ImmichOpenMode.APP) openInApp() else openInWeb()
+                                    },
+                                    onLongClick = if (immichOpenMode == ImmichOpenMode.APP && immichLongPressWeb) {
+                                        { openInWeb() }
+                                    } else null
                                 )
                             }
                         }
@@ -1983,18 +1997,27 @@ private fun IconPosition.toHorizontalAlignment(): Alignment.Horizontal = when (t
     else -> Alignment.End
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SwipeActionIconButton(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
+    Box(
+        modifier = modifier
+            .size(40.dp) // On garde la taille standard des IconButton de l'app
+            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+            .clip(CircleShape)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription, tint = Color.White)
+        Icon(icon, contentDescription, tint = Color.White, modifier = Modifier.size(24.dp))
     }
 }
 

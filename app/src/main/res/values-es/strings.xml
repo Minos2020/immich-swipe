@@ -101,6 +101,10 @@
     <string name="settings_swipe_invert_desc">Izquierda para conservar, derecha para eliminar</string>
     <string name="settings_fullscreen_pos_label">Posición del botón de pantalla completa</string>
     <string name="settings_immich_pos_label">Posición del botón Abrir en Immich</string>
+    <string name="settings_immich_open_mode_label">Modo de apertura</string>
+    <string name="settings_immich_open_mode_app">Aplicación</string>
+    <string name="settings_immich_open_mode_web">Navegador</string>
+    <string name="settings_immich_long_press_web">Pulsación larga para abrir en el navegador</string>
     <string name="settings_video_behavior_label">Comportamiento del vídeo</string>
     <string name="settings_video_behavior_desc">Gestiona la interacción con otros sonidos del dispositivo al reproducir un vídeo</string>
     <string name="settings_video_pause">Pausar otros sonidos</string>

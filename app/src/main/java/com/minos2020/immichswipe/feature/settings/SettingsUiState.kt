@@ -4,6 +4,7 @@ import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
+import com.minos2020.immichswipe.core.ImmichOpenMode
 
 enum class DatabaseScope {
     ALL, USER
@@ -52,6 +53,8 @@ data class SettingsUiState(
     val shareButtonPosition: IconPosition = IconPosition.TOP_LEFT,
     val rotateButtonPosition: IconPosition = IconPosition.BOTTOM_RIGHT,
     val showLogoutConfirmation: Boolean = false,
+    val immichOpenMode: ImmichOpenMode = ImmichOpenMode.APP,
+    val immichLongPressWeb: Boolean = false,
     
     // Database actions
     val pendingDatabaseAction: DatabaseAction? = null,

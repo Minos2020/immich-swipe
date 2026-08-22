@@ -50,6 +50,7 @@ import com.minos2020.immichswipe.R
 import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
+import com.minos2020.immichswipe.core.ImmichOpenMode
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.getAvatarColor
 
@@ -226,10 +227,10 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(16.dp))
-                    
+
                     // État local pour le slider pour une réponse fluide
-                    var localSliderValue by remember(uiState.skipLifespanDays) { 
-                        mutableStateOf(mapDaysToSlider(uiState.skipLifespanDays)) 
+                    var localSliderValue by remember(uiState.skipLifespanDays) {
+                        mutableStateOf(mapDaysToSlider(uiState.skipLifespanDays))
                     }
                     // Si une alerte est annulée, on s'assure que le slider revient à la valeur réelle
                     LaunchedEffect(uiState.showSkipLifespanWarning) {
@@ -246,7 +247,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         Slider(
                             value = localSliderValue,
                             onValueChange = { localSliderValue = it },
@@ -256,7 +257,7 @@ fun SettingsScreen(
                             valueRange = 0f..500f, // Échelle personnalisée de 0 à 500
                             modifier = Modifier.padding(horizontal = 8.dp)
                         )
-                        
+
                         Text(
                             text = if (currentDays == 0L) stringResource(R.string.settings_skip_never) else stringResource(R.string.settings_skip_hint),
                             style = MaterialTheme.typography.labelSmall,
@@ -343,8 +344,6 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 16.dp)
                     )
-
-                    HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp), thickness = 0.5.dp)
                 }
             }
 
@@ -352,93 +351,111 @@ fun SettingsScreen(
 
             // SECTION ACTIONS SUR CARTES
             SettingsSection(title = stringResource(R.string.settings_interaction_card_title), icon = Icons.Default.Style) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    CardActionWithPosition(
-                        title = stringResource(R.string.settings_card_fullscreen),
-                        icon = Icons.Default.Fullscreen,
-                        checked = uiState.showFullscreenButton,
-                        onCheckedChange = { viewModel.setShowFullscreen(it) },
-                        position = uiState.fullscreenButtonPosition,
-                        onPositionSelected = { viewModel.setFullscreenButtonPosition(it) }
-                    )
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CardActionContainer {
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_card_fullscreen),
+                            icon = Icons.Default.Fullscreen,
+                            checked = uiState.showFullscreenButton,
+                            onCheckedChange = { viewModel.setShowFullscreen(it) },
+                            position = uiState.fullscreenButtonPosition,
+                            onPositionSelected = { viewModel.setFullscreenButtonPosition(it) }
+                        )
+                    }
 
-                    CardActionWithPosition(
-                        title = stringResource(R.string.settings_card_immich),
-                        icon = Icons.AutoMirrored.Filled.OpenInNew,
-                        checked = uiState.showImmichButton,
-                        onCheckedChange = { viewModel.setShowImmich(it) },
-                        position = uiState.immichButtonPosition,
-                        onPositionSelected = { viewModel.setImmichButtonPosition(it) }
-                    )
+                    CardActionContainer {
+                        ImmichCardAction(
+                            title = stringResource(R.string.settings_card_immich),
+                            icon = Icons.AutoMirrored.Filled.OpenInNew,
+                            checked = uiState.showImmichButton,
+                            onCheckedChange = { viewModel.setShowImmich(it) },
+                            position = uiState.immichButtonPosition,
+                            onPositionSelected = { viewModel.setImmichButtonPosition(it) },
+                            openMode = uiState.immichOpenMode,
+                            onOpenModeSelected = { viewModel.setImmichOpenMode(it) },
+                            longPressWeb = uiState.immichLongPressWeb,
+                            onLongPressWebChange = { viewModel.setImmichLongPressWeb(it) }
+                        )
+                    }
 
-                    CardActionWithPosition(
-                        title = stringResource(R.string.settings_card_display_mode),
-                        icon = Icons.Default.AspectRatio,
-                        checked = uiState.showCardDisplayButton,
-                        onCheckedChange = { viewModel.setShowCardDisplay(it) },
-                        position = uiState.cardDisplayButtonPosition,
-                        onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) }
-                    )
+                    CardActionContainer {
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_card_display_mode),
+                            icon = Icons.Default.AspectRatio,
+                            checked = uiState.showCardDisplayButton,
+                            onCheckedChange = { viewModel.setShowCardDisplay(it) },
+                            position = uiState.cardDisplayButtonPosition,
+                            onPositionSelected = { viewModel.setCardDisplayButtonPosition(it) }
+                        )
+                    }
 
-                    CardActionWithPosition(
-                        title = stringResource(R.string.settings_card_mute),
-                        icon = Icons.AutoMirrored.Filled.VolumeUp,
-                        checked = uiState.showMuteButton,
-                        onCheckedChange = { viewModel.setShowMute(it) },
-                        position = uiState.muteButtonPosition,
-                        onPositionSelected = { viewModel.setMuteButtonPosition(it) }
-                    )
+                    CardActionContainer {
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_card_mute),
+                            icon = Icons.AutoMirrored.Filled.VolumeUp,
+                            checked = uiState.showMuteButton,
+                            onCheckedChange = { viewModel.setShowMute(it) },
+                            position = uiState.muteButtonPosition,
+                            onPositionSelected = { viewModel.setMuteButtonPosition(it) }
+                        )
+                    }
 
-                    CardActionWithPosition(
-                        title = stringResource(R.string.settings_tri_share),
-                        icon = Icons.Default.Share,
-                        checked = uiState.showShareButton,
-                        onCheckedChange = { viewModel.setShowShare(it) },
-                        position = uiState.shareButtonPosition,
-                        onPositionSelected = { viewModel.setShareButtonPosition(it) }
-                    )
+                    CardActionContainer {
+                        CardActionWithPosition(
+                            title = stringResource(R.string.settings_tri_share),
+                            icon = Icons.Default.Share,
+                            checked = uiState.showShareButton,
+                            onCheckedChange = { viewModel.setShowShare(it) },
+                            position = uiState.shareButtonPosition,
+                            onPositionSelected = { viewModel.setShareButtonPosition(it) }
+                        )
+                    }
 
-                    CardActionWithPosition(
-                        title = stringResource(R.string.settings_card_rotate),
-                        icon = Icons.Default.RotateRight,
-                        checked = uiState.showRotateButton,
-                        onCheckedChange = { viewModel.setShowRotate(it) },
-                        position = uiState.rotateButtonPosition,
-                        onPositionSelected = { viewModel.setRotateButtonPosition(it) }
-                    )
-
-                    AnimatedVisibility(
-                        visible = uiState.showRotateButton,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(start = 32.dp, end = 8.dp, bottom = 8.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                    RoundedCornerShape(12.dp)
-                                )
-                        ) {
-                            SettingsToggleItemSmall(
-                                title = stringResource(R.string.settings_sync_rotate_label),
-                                checked = uiState.syncRotate,
-                                onCheckedChange = { viewModel.setSyncRotate(it) },
-                                icon = Icons.Default.CloudUpload
+                    CardActionContainer {
+                        Column {
+                            CardActionWithPosition(
+                                title = stringResource(R.string.settings_card_rotate),
+                                icon = Icons.Default.RotateRight,
+                                checked = uiState.showRotateButton,
+                                onCheckedChange = { viewModel.setShowRotate(it) },
+                                position = uiState.rotateButtonPosition,
+                                onPositionSelected = { viewModel.setRotateButtonPosition(it) }
                             )
-                            Text(
-                                text = stringResource(R.string.settings_sync_rotate_desc),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 4.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_sync_rotate_warning),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
-                            )
+
+                            AnimatedVisibility(
+                                visible = uiState.showRotateButton,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(start = 32.dp, end = 8.dp, bottom = 8.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                ) {
+                                    SettingsToggleItemSmall(
+                                        title = stringResource(R.string.settings_sync_rotate_label),
+                                        checked = uiState.syncRotate,
+                                        onCheckedChange = { viewModel.setSyncRotate(it) },
+                                        icon = Icons.Default.CloudUpload
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.settings_sync_rotate_desc),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 4.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.settings_sync_rotate_warning),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -627,7 +644,7 @@ fun SettingsScreen(
             text = {
                 val rawLogs = remember { viewModel.getLogs() }
                 val logLines = remember(rawLogs) { rawLogs.lines() }
-                
+
                 val errorColor = MaterialTheme.colorScheme.error
                 val warningColor = Color(0xFFFFA500) // Orange
                 val infoColor = Color(0xFF00B0FF)    // Bleu clair
@@ -646,7 +663,7 @@ fun SettingsScreen(
                         )
                     } else {
                         val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
-                        
+
                         SelectionContainer {
                             androidx.compose.foundation.lazy.LazyColumn(
                                 state = lazyListState,
@@ -679,7 +696,7 @@ fun SettingsScreen(
                         if (totalItems > 0) {
                             val indicatorHeightFraction = 0.15f
                             val trackHeightPx = with(LocalDensity.current) { this@BoxWithConstraints.maxHeight.toPx() }
-                            
+
                             val layoutInfo = lazyListState.layoutInfo
                             val visibleItems = layoutInfo.visibleItemsInfo
                             val avgItemSize = if (visibleItems.isNotEmpty()) visibleItems.sumOf { it.size }.toFloat() / visibleItems.size else 1f
@@ -697,16 +714,16 @@ fun SettingsScreen(
                                             onDragStart = { preciseItemIndex = lazyListState.firstVisibleItemIndex.toFloat() },
                                             onDrag = { change, dragAmount ->
                                                 change.consume()
-                                                
+
                                                 val scrollableTrackHeight = trackHeightPx * (1f - indicatorHeightFraction)
                                                 val itemsPerPixel = totalItems.toFloat() / scrollableTrackHeight
-                                                
+
                                                 preciseItemIndex = (preciseItemIndex + dragAmount.y * itemsPerPixel)
                                                     .coerceIn(0f, totalItems.toFloat() - 1f)
-                                                
+
                                                 val targetIndex = preciseItemIndex.toInt()
                                                 val targetOffset = ((preciseItemIndex - targetIndex) * avgItemSize).toInt()
-                                                
+
                                                 scope.launch {
                                                     // On défile à l'index précis ET avec l'offset de pixel
                                                     lazyListState.scrollToItem(targetIndex, targetOffset)
@@ -718,12 +735,12 @@ fun SettingsScreen(
                                 // Calcul de la position avec prise en compte de l'offset pour un mouvement continu
                                 val firstVisible = lazyListState.firstVisibleItemIndex
                                 val firstVisibleOffset = lazyListState.firstVisibleItemScrollOffset
-                                
+
                                 // On convertit l'offset de pixels en fraction d'item
                                 val continuousIndex = firstVisible + (firstVisibleOffset / avgItemSize)
-                                val scrollFraction = if (!lazyListState.canScrollForward) 1f 
+                                val scrollFraction = if (!lazyListState.canScrollForward) 1f
                                                      else (continuousIndex / maxScrollIndex).coerceIn(0f, 1f)
-                                
+
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight(indicatorHeightFraction)
@@ -754,7 +771,7 @@ fun SettingsScreen(
                             val clipData = android.content.ClipData.newPlainText("Immich Swipe Logs", logs)
                             clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(clipData))
                         }
-                        android.widget.Toast.makeText(context, context.getString(R.string.settings_logs_copied_toast), android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, R.string.settings_logs_copied_toast, android.widget.Toast.LENGTH_SHORT).show()
                     }) {
                         Text(stringResource(R.string.settings_logs_copy))
                     }
@@ -767,7 +784,7 @@ fun SettingsScreen(
     // Dialogue de confirmation pour les actions sur la Base de Données
     uiState.pendingDatabaseAction?.let { action ->
         val scope = uiState.pendingDatabaseScope ?: DatabaseScope.USER
-        
+
         AlertDialog(
             onDismissRequest = { viewModel.dismissDatabaseConfirmation() },
             title = {
@@ -788,7 +805,7 @@ fun SettingsScreen(
                         DatabaseAction.EXPORT -> null
                     }
                     msgRes?.let { Text(stringResource(it)) }
-                    
+
                     if (action != DatabaseAction.IMPORT && action != DatabaseAction.CLEAR_CACHE) {
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -919,8 +936,8 @@ fun formatDays(days: Long): String {
         days < 30 -> stringResource(R.string.duration_week, days / 7)
         days < 360 -> stringResource(R.string.duration_month, days / 30)
         else -> {
-            val years = (days + 5) / 365 
-            if (years <= 1L) stringResource(R.string.duration_year_one) 
+            val years = (days + 5) / 365
+            if (years <= 1L) stringResource(R.string.duration_year_one)
             else stringResource(R.string.duration_years, years)
         }
     }
@@ -1216,6 +1233,139 @@ fun CardActionWithPosition(
                     onPositionSelected = onPositionSelected
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun ImmichCardAction(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    position: IconPosition,
+    onPositionSelected: (IconPosition) -> Unit,
+    openMode: ImmichOpenMode,
+    onOpenModeSelected: (ImmichOpenMode) -> Unit,
+    longPressWeb: Boolean,
+    onLongPressWebChange: (Boolean) -> Unit
+) {
+    Column {
+        SettingsToggleItemSmall(
+            title = title,
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            icon = icon
+        )
+        AnimatedVisibility(
+            visible = checked,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(modifier = Modifier.padding(start = 32.dp, end = 16.dp, bottom = 12.dp)) {
+                IconPositionPicker(
+                    title = stringResource(R.string.settings_immich_pos_label),
+                    selectedPosition = position,
+                    onPositionSelected = onPositionSelected
+                )
+                
+                Spacer(Modifier.height(12.dp))
+                
+                Text(
+                    text = stringResource(R.string.settings_immich_open_mode_label),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CompactOptionButton(
+                        text = stringResource(R.string.settings_immich_open_mode_app),
+                        icon = Icons.Default.PhoneAndroid,
+                        selected = openMode == ImmichOpenMode.APP,
+                        onClick = { onOpenModeSelected(ImmichOpenMode.APP) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    CompactOptionButton(
+                        text = stringResource(R.string.settings_immich_open_mode_web),
+                        icon = Icons.Default.Language,
+                        selected = openMode == ImmichOpenMode.WEB,
+                        onClick = { onOpenModeSelected(ImmichOpenMode.WEB) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                AnimatedVisibility(
+                    visible = openMode == ImmichOpenMode.APP,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column {
+                        Spacer(Modifier.height(12.dp))
+                        SettingsToggleItemSmall(
+                            title = stringResource(R.string.settings_immich_long_press_web),
+                            checked = longPressWeb,
+                            onCheckedChange = onLongPressWebChange,
+                            icon = Icons.Default.TouchApp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CardActionContainer(content: @Composable () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun CompactOptionButton(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedCard(
+        onClick = onClick,
+        modifier = modifier.height(40.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        ),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
         }
     }
 }

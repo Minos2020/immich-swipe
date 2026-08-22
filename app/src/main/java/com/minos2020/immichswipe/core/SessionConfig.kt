@@ -51,3 +51,11 @@ enum class SwipeSortPriority {
     VIDEOS_FIRST, // Vidéos avant les photos
     PHOTOS_FIRST  // Photos avant les vidéos
 }
+
+/**
+ * Définit comment l'asset doit être ouvert dans Immich.
+ */
+enum class ImmichOpenMode {
+    APP, // Dans l'application mobile
+    WEB  // Dans le navigateur web
+}

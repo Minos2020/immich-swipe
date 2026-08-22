@@ -9,6 +9,7 @@ import com.minos2020.immichswipe.core.SessionConfig
 import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.core.SwipeSortPriority
+import com.minos2020.immichswipe.core.ImmichOpenMode
 import com.minos2020.immichswipe.data.datastore.SessionDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -126,6 +127,18 @@ class SessionRepository(context: Context) {
     val includeArchived: Flow<Boolean> = dataStore.isIncludeArchived()
 
     /**
+     * Expose le mode d'ouverture d'Immich.
+     */
+    val immichOpenMode: Flow<ImmichOpenMode> = dataStore.getImmichOpenMode().map {
+        it?.let { try { ImmichOpenMode.valueOf(it) } catch(e: Exception) { ImmichOpenMode.APP } } ?: ImmichOpenMode.APP
+    }
+
+    /**
+     * Expose si l'appui long pour ouvrir sur le web est activé.
+     */
+    val immichLongPressWeb: Flow<Boolean> = dataStore.isImmichLongPressWeb()
+
+    /**
      * Expose le mode d'affichage par défaut des cartes.
      */
     val defaultCardDisplayMode: Flow<CardDisplayMode> = dataStore.getDefaultCardDisplayMode().map {
@@ -239,6 +252,14 @@ class SessionRepository(context: Context) {
     suspend fun saveSyncRotate(sync: Boolean) { dataStore.saveSyncRotate(sync) }
     suspend fun saveAutoNextOnFav(autoNextOnFav: Boolean) { dataStore.saveAutoNextOnFav(autoNextOnFav) }
     suspend fun saveIncludeArchived(include: Boolean) { dataStore.saveIncludeArchived(include) }
+
+    suspend fun saveImmichOpenMode(mode: ImmichOpenMode) {
+        dataStore.saveImmichOpenMode(mode.name)
+    }
+
+    suspend fun saveImmichLongPressWeb(enabled: Boolean) {
+        dataStore.saveImmichLongPressWeb(enabled)
+    }
 
     suspend fun saveDefaultCardDisplayMode(mode: CardDisplayMode) {
         dataStore.saveDefaultCardDisplayMode(mode.name)

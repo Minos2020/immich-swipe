@@ -7,6 +7,7 @@ import com.minos2020.immichswipe.core.AppTheme
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
+import com.minos2020.immichswipe.core.ImmichOpenMode
 import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.data.repository.SessionRepository
 import com.minos2020.immichswipe.data.repository.SwipeDecisionRepository
@@ -192,6 +193,16 @@ class SettingsViewModel(
                 _uiState.update { it.copy(defaultCardDisplayMode = mode) }
             }
         }
+        viewModelScope.launch {
+            sessionRepository.immichOpenMode.collect { mode ->
+                _uiState.update { it.copy(immichOpenMode = mode) }
+            }
+        }
+        viewModelScope.launch {
+            sessionRepository.immichLongPressWeb.collect { enabled ->
+                _uiState.update { it.copy(immichLongPressWeb = enabled) }
+            }
+        }
     }
 
     fun setPlaybackBehavior(behavior: PlaybackBehavior) {
@@ -315,6 +326,18 @@ class SettingsViewModel(
     fun setDefaultCardDisplayMode(mode: com.minos2020.immichswipe.core.CardDisplayMode) {
         viewModelScope.launch {
             sessionRepository.saveDefaultCardDisplayMode(mode)
+        }
+    }
+
+    fun setImmichOpenMode(mode: ImmichOpenMode) {
+        viewModelScope.launch {
+            sessionRepository.saveImmichOpenMode(mode)
+        }
+    }
+
+    fun setImmichLongPressWeb(enabled: Boolean) {
+        viewModelScope.launch {
+            sessionRepository.saveImmichLongPressWeb(enabled)
         }
     }
 

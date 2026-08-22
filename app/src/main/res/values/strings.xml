@@ -109,6 +109,10 @@
     <string name="settings_swipe_invert_desc">Left to keep, right to delete</string>
     <string name="settings_fullscreen_pos_label">Fullscreen button position</string>
     <string name="settings_immich_pos_label">Open in Immich button position</string>
+    <string name="settings_immich_open_mode_label">Open mode</string>
+    <string name="settings_immich_open_mode_app">App</string>
+    <string name="settings_immich_open_mode_web">Web</string>
+    <string name="settings_immich_long_press_web">Long press to open in browser</string>
     <string name="settings_video_behavior_label">Video behavior</string>
     <string name="settings_video_behavior_desc">Manage interaction with other device sounds when playing a video</string>
     <string name="settings_video_pause">Pause other sounds</string>

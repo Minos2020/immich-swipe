@@ -44,6 +44,8 @@ class SessionDataStore(private val context: Context) {
         private val KEY_DEFAULT_CARD_DISPLAY_MODE = stringPreferencesKey("default_card_display_mode")
         private val KEY_SWIPE_SORT_ORDER = stringPreferencesKey("swipe_sort_order")
         private val KEY_SWIPE_SORT_PRIORITY = stringPreferencesKey("swipe_sort_priority")
+        private val KEY_IMMICH_OPEN_MODE = stringPreferencesKey("immich_open_mode")
+        private val KEY_IMMICH_LONG_PRESS_WEB = androidx.datastore.preferences.core.booleanPreferencesKey("immich_long_press_web")
     }
 
     suspend fun saveSession(baseUrl: String, apiKey: String, userId: String) {
@@ -186,6 +188,12 @@ class SessionDataStore(private val context: Context) {
 
     fun getSwipeSortPriority(): Flow<String?> = context.dataStore.data.map { it[KEY_SWIPE_SORT_PRIORITY] }
     suspend fun saveSwipeSortPriority(priority: String) { context.dataStore.edit { it[KEY_SWIPE_SORT_PRIORITY] = priority } }
+
+    fun getImmichOpenMode(): Flow<String?> = context.dataStore.data.map { it[KEY_IMMICH_OPEN_MODE] }
+    suspend fun saveImmichOpenMode(mode: String) { context.dataStore.edit { it[KEY_IMMICH_OPEN_MODE] = mode } }
+
+    fun isImmichLongPressWeb(): Flow<Boolean> = context.dataStore.data.map { it[KEY_IMMICH_LONG_PRESS_WEB] ?: true }
+    suspend fun saveImmichLongPressWeb(enabled: Boolean) { context.dataStore.edit { it[KEY_IMMICH_LONG_PRESS_WEB] = enabled } }
 
     suspend fun clearSession() {
         context.dataStore.edit { it.clear() }
