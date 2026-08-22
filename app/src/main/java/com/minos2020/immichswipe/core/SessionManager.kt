@@ -41,6 +41,12 @@ data class ConnectionStatus(
 
 object SessionManager {
 
+    /**
+     * Graine aléatoire stable pour toute la durée de vie du processus de l'application.
+     * Permet de garder le même ordre "Random" au sein d'une même session utilisateur.
+     */
+    val appSessionSeed: Long = System.currentTimeMillis()
+
     private var config: SessionConfig? = null
 
     var api: ImmichApi? = null

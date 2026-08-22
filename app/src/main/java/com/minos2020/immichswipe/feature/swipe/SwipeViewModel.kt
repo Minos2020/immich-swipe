@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.minos2020.immichswipe.data.repository.AssetRepository
 import com.minos2020.immichswipe.core.AppLogger
 import com.minos2020.immichswipe.core.CardDisplayMode
+import com.minos2020.immichswipe.core.SessionManager
 import com.minos2020.immichswipe.core.SwipeSortOrder
 import com.minos2020.immichswipe.core.SwipeSortPriority
 import com.minos2020.immichswipe.data.repository.SessionRepository
@@ -39,7 +40,7 @@ class SwipeViewModel(
 
     // Liste "Maître" contenant tous les assets chargés, dans leur ordre d'arrivée.
     private var masterWorkPile: List<Asset> = emptyList()
-    private var randomSeed: Long = System.currentTimeMillis()
+    private val randomSeed = SessionManager.appSessionSeed
     private var hasStartedSwiping: Boolean = false
 
     // On garde en mémoire les décisions qui étaient déjà synchronisées au début de la session
@@ -553,9 +554,6 @@ class SwipeViewModel(
     }
 
     fun setSortOrder(order: SwipeSortOrder) {
-        if (order == SwipeSortOrder.RANDOM) {
-            randomSeed = System.currentTimeMillis()
-        }
         viewModelScope.launch { sessionRepository.saveSwipeSortOrder(order) }
     }
 
