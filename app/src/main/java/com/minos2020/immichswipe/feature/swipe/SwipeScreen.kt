@@ -1260,8 +1260,29 @@ fun SwipeCard(
                                     icon = Icons.AutoMirrored.Filled.OpenInNew,
                                     contentDescription = stringResource(R.string.settings_immich_pos_label),
                                     onClick = {
-                                        val intent = Intent(Intent.ACTION_VIEW, "$baseUrl/photos/${asset.id}".toUri())
-                                        context.startActivity(intent)
+                                        val webUri = "$baseUrl/photos/${asset.id}".toUri()
+                                        // On utilise le format exact avec le paramètre de requête ?id= identifié dans les PR d'Immich
+                                        val customUri = "immich://asset?id=${asset.id}".toUri()
+                                        
+                                        val appIntent = Intent(Intent.ACTION_VIEW, customUri).apply {
+                                            setPackage("app.alextran.immich")
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        
+                                        try {
+                                            context.startActivity(appIntent)
+                                        } catch (e: Exception) {
+                                            // Fallback sur l'URL web classique si le schéma custom échoue
+                                            try {
+                                                val appWebIntent = Intent(Intent.ACTION_VIEW, webUri).apply {
+                                                    setPackage("app.alextran.immich")
+                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                }
+                                                context.startActivity(appWebIntent)
+                                            } catch (e2: Exception) {
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                                            }
+                                        }
                                     }
                                 )
                             }
