@@ -72,13 +72,13 @@ class SwipeViewModel(
         viewModelScope.launch {
             sessionRepository.swipeSortOrder.collect { order ->
                 _uiState.value = _uiState.value.copy(sortOrder = order)
-                if (masterWorkPile.isNotEmpty()) refreshSortedWorkPile()
+                if (masterWorkPile.isNotEmpty()) refreshSortedWorkPile(jumpToFirstUnprocessed = true)
             }
         }
         viewModelScope.launch {
             sessionRepository.swipeSortPriority.collect { priority ->
                 _uiState.value = _uiState.value.copy(sortPriority = priority)
-                if (masterWorkPile.isNotEmpty()) refreshSortedWorkPile()
+                if (masterWorkPile.isNotEmpty()) refreshSortedWorkPile(jumpToFirstUnprocessed = true)
             }
         }
     }
@@ -384,7 +384,7 @@ class SwipeViewModel(
                     val shouldKeepLoading = !isChronologicalSort && !hasStartedSwiping && isFetching
 
                     refreshSortedWorkPile(
-                        forceFirstUnprocessed = currentState.assets.isEmpty(),
+                        jumpToFirstUnprocessed = currentState.assets.isEmpty(),
                         overrideDecisions = mergedDecisions,
                         overrideSizes = mergedSizes,
                         overrideIsLoading = shouldKeepLoading
@@ -451,7 +451,7 @@ class SwipeViewModel(
     }
 
     private fun refreshSortedWorkPile(
-        forceFirstUnprocessed: Boolean = false,
+        jumpToFirstUnprocessed: Boolean = false,
         overrideDecisions: Map<String, SwipeDecision>? = null,
         overrideSizes: Map<String, Long>? = null,
         overrideIsLoading: Boolean? = null
@@ -459,7 +459,6 @@ class SwipeViewModel(
         val currentState = _uiState.value
         val decisions = overrideDecisions ?: currentState.decisions
         val assetSizes = overrideSizes ?: currentState.assetSizes
-        val currentAssetId = currentState.currentAsset?.id
         val order = currentState.sortOrder
         val priority = currentState.sortPriority
 
@@ -517,32 +516,15 @@ class SwipeViewModel(
         }
 
         // 3. Calcul de l'index de destination
-        var newIndex = -1
-        var newIsLoading = overrideIsLoading ?: currentState.isLoading
-
-        // SCÉNARIO A : Tant que l'utilisateur n'a pas fait de VÉRITABLE swipe decision, 
-        // on se "colle" à la toute première photo non traitée du nouvel ordre.
-        if (!hasStartedSwiping || forceFirstUnprocessed || (currentState.currentIndex == 0 && currentState.assets.isEmpty())) {
-            val firstUnprocessed = sorted.indexOfFirst { !decisions.containsKey(it.id) }
-            if (firstUnprocessed != -1) {
-                newIndex = firstUnprocessed
-                newIsLoading = overrideIsLoading ?: false // On a trouvé de quoi commencer !
-            } else if (sorted.isNotEmpty()) {
-                newIndex = sorted.size // Tout est trié
-                newIsLoading = overrideIsLoading ?: false
-            }
-        } 
-        
-        // SCÉNARIO B : L'utilisateur a commencé sa session de tri, on veut garder la photo actuelle
-        if (newIndex == -1 && currentAssetId != null) {
-            val index = sorted.indexOfFirst { it.id == currentAssetId }
-            if (index != -1) newIndex = index
+        val firstUnprocessed = sorted.indexOfFirst { !decisions.containsKey(it.id) }
+        val newIndex = if (jumpToFirstUnprocessed || currentState.assets.isEmpty()) {
+            if (firstUnprocessed != -1) firstUnprocessed else sorted.size
+        } else {
+            // On reste sur l'index actuel (celui du swipe ou du clic timeline)
+            currentState.currentIndex.coerceAtMost(sorted.size)
         }
 
-        // SCÉNARIO C : Sécurité / Fallback
-        if (newIndex == -1) {
-            newIndex = currentState.currentIndex.coerceAtMost(sorted.size)
-        }
+        val newIsLoading = overrideIsLoading ?: currentState.isLoading
 
         _uiState.value = currentState.copy(
             assets = sorted,
@@ -798,7 +780,7 @@ class SwipeViewModel(
                 hasStartedSwiping = false
                 
                 // 3. Rafraîchissement du tri pour revenir à la première photo
-                refreshSortedWorkPile(forceFirstUnprocessed = true)
+                refreshSortedWorkPile(jumpToFirstUnprocessed = true)
                 updateSummaryStats()
                 
                 AppLogger.i("Swipe", "Session réinitialisée : ${unsyncedIds.size} décisions supprimées")
