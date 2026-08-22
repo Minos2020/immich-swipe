@@ -15,13 +15,11 @@ import com.minos2020.immichswipe.core.CardDisplayMode
 import com.minos2020.immichswipe.core.IconPosition
 import com.minos2020.immichswipe.core.PlaybackBehavior
 import android.util.Log
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -122,7 +120,7 @@ class SwipeViewModelTest {
 
     @Test
     fun `Timeline size must equal Total assets minus Synced assets`() = runTest {
-        // GIVEN: 10 photos au total, 5 traitées dont 3 synchronisées
+        // GIVEN : 10 photos au total, 5 traitées dont 3 synchronisées
         val allAssets = (1..10).map { createAsset("photo_$it") }
         assetsFlow.value = allAssets
         
@@ -144,7 +142,7 @@ class SwipeViewModelTest {
 
     @Test
     fun `Remaining count must equal Total assets minus Treated assets (synced or not)`() = runTest {
-        // GIVEN: 5 photos au total, 1 déjà synchronisée
+        // GIVEN : 5 photos au total, 1 déjà synchronisée
         assetsFlow.value = (1..5).map { createAsset("photo_$it") }
         decisionsFlow.value = listOf(
             SwipeDecisionEntity("photo_1", testAlbum.id, testUserId, "KEEP", isSynced = true)
@@ -164,7 +162,7 @@ class SwipeViewModelTest {
 
     @Test
     fun `Progress must be 100 percent when all timeline assets have a decision`() = runTest {
-        // GIVEN: 2 photos, 1 déjà synchronisée
+        // GIVEN : 2 photos, 1 déjà synchronisée
         assetsFlow.value = listOf(createAsset("photo_1"), createAsset("photo_2"))
         decisionsFlow.value = listOf(
             SwipeDecisionEntity("photo_1", testAlbum.id, testUserId, "KEEP", isSynced = true)
@@ -181,11 +179,13 @@ class SwipeViewModelTest {
         assertEquals(1.0f, viewModel.uiState.value.progress)
         assertTrue("L'index doit être à la fin de la liste", 
             viewModel.uiState.value.currentIndex >= viewModel.uiState.value.assets.size)
+        assertTrue("L'asset courant doit être null (Fin du tri)", 
+            viewModel.uiState.value.currentAsset == null)
     }
 
     @Test
     fun `Progress must be 0 percent when no timeline assets have a decision`() = runTest {
-        // GIVEN: 5 photos, aucune synchronisée
+        // GIVEN : 5 photos, aucune synchronisée
         assetsFlow.value = (1..5).map { createAsset("photo_$it") }
         decisionsFlow.value = emptyList()
 
@@ -199,13 +199,13 @@ class SwipeViewModelTest {
 
     @Test
     fun `SwipeViewModel must purge assets immediately when userId changes`() = runTest {
-        // GIVEN: Le ViewModel est chargé avec Alice
+        // GIVEN : Le ViewModel est chargé avec Alice
         assetsFlow.value = listOf(createAsset("photo_alice"))
         val viewModel = SwipeViewModel(assetRepository, sessionRepository, swipeDecisionRepository, albumRepository, testAlbum)
         testScheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.assets.size)
 
-        // WHEN: On change l'utilisateur dans la session
+        // WHEN : On change l'utilisateur dans la session
         sessionConfigFlow.value = SessionConfig("http://url", "key", "user_bob")
         
         // On déclenche manuellement une émission sur les autres flux pour forcer le combine
@@ -213,7 +213,7 @@ class SwipeViewModelTest {
 
         testScheduler.advanceUntilIdle()
 
-        // THEN: Le ViewModel doit avoir détecté la fuite potentielle et vidé sa liste
+        // THEN : Le ViewModel doit avoir détecté la fuite potentielle et vidé sa liste
         assertTrue("La liste d'assets doit être vidée lors du changement d'utilisateur", 
             viewModel.uiState.value.assets.isEmpty())
     }
